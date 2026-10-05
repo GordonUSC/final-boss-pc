@@ -1071,7 +1071,7 @@ function startFallback(){
   if(fallbackOn)return; fallbackOn=true; $('fbgame').hidden=true; $('fallback').hidden=false; fb=bossRush();
 }
 (function loadGame(){
-  const mount=$('fbgame'), s=document.createElement('script'); s.src='game/game.bundle.js';
+  const mount=$('fbgame'), s=document.createElement('script'); s.src='game/game.bundle.js?v=20261005b';
   setTimeout(()=>{ if(!gameMounted&&!fallbackOn) startFallback() },9000);
   s.onload=()=>{ if(window.FBGame&&typeof FBGame.mount==='function'){ try{ mount.innerHTML=''; if(fallbackOn)return; FBGame.mount(mount,{look:payload(look),mode,control:(cards.find(c=>c.dataset.id===chosen)||{dataset:{}}).dataset.name||'BELLAMY'}); gameMounted=true }catch(e){ console.warn('FBGame.mount failed, using the built-in game',e); startFallback() } } else startFallback() };
   s.onerror=startFallback;
