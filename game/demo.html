@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Boss Rush Demo</title>
+<meta name="description" content="Standalone test bench for the FINAL BOSS Boss Rush dodgeball module: every team look and both arenas.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Teko:wght@500;600;700&family=Chakra+Petch:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="game.css" data-fbg-css>
+<style>
+:root{--void:#0c0612;--bone:#f5efe4;--ash:#b9aecb;--gold:#ffc83d;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--void);color:var(--bone);font:15px/1.5 'Chakra Petch',system-ui,sans-serif;overflow-x:hidden}
+.wrap{max-width:1180px;margin:0 auto;padding:16px}
+header{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:end;margin-bottom:12px}
+h1{font:700 44px/0.85 Teko,Impact,sans-serif;margin:0;transform:skewX(-10deg)}
+label{display:flex;flex-direction:column;gap:3px;font-weight:600;font-size:13px;color:var(--ash)}
+select,button{font:600 15px 'Chakra Petch',sans-serif;background:#1d0f2c;color:var(--bone);border:2px solid var(--bone);padding:8px 10px;min-height:42px}
+button[aria-pressed="true"]{background:var(--gold);color:#120818}
+.modes{display:flex;gap:6px}
+#fallback{display:none;padding:16px;border:2px solid var(--gold);margin-top:10px}
+p.note{color:var(--ash);font-size:13px;margin:10px 0 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>BOSS RUSH demo</h1>
+    <label>Team look<select id="look"></select></label>
+    <div><span style="font-size:13px;color:var(--ash);font-weight:600">Arena</span><div class="modes"><button type="button" id="m-fb" aria-pressed="true">Final Boss</button><button type="button" id="m-vc" aria-pressed="false">Miami night</button></div></div>
+  </header>
+  <div id="game"></div>
+  <div id="fallback">The game module did not load (it needs Three.js from jsdelivr and WebGL). <img src="assets/poster.jpg" alt="Still frame of the Boss Rush court" style="width:100%;margin-top:8px"></div>
+  <p class="note">Local test bench. API: FBGame.mount, setLook, setMode, setSquad, start, pause, state. Test hook: window.__bossrush.</p>
+</div>
+<script src="game.bundle.js"></script>
+<script>
+  window.__looksReady = /^https?:/.test(location.protocol) ? fetch('../../final-boss-jerseys/v5-looks.json').then(r => r.json()).catch(() => null) : Promise.resolve(null);
+</script>
+<script>
+(async function () {
+  const FBGame = window.FBGame;
+  const embedded = [
+    {"id":"fb01","name":"Chosen Family","mode":"fb","colors":["#14523f","#2ab3b8","#f3e6c8","#c9a24a"]},
+    {"id":"fb02","name":"Phase Two","mode":"fb","colors":["#ffffff","#111111","#e8442b","#f2b23a"]},
+    {"id":"fb03","name":"Boss Rush","mode":"fb","colors":["#ffffff","#1f4fd1","#e33b3b","#f2c94c"]},
+    {"id":"fb04","name":"The Final Boss (Fabulous)","mode":"fb","colors":["#f4efe3","#d7262e","#f6c938","#ff3ea5"]},
+    {"id":"fb05","name":"Respawn","mode":"fb","colors":["#fbf4ea","#ff6b4a","#e8b13c","#2b2b2e"]},
+    {"id":"fb09","name":"Loud and Loved","mode":"fb","colors":["#4b1f87","#f2ead8","#e7c24a","#111111"]},
+    {"id":"fb06","name":"Insert Coin","mode":"fb","colors":["#1f53e0","#ff3fb4","#a6f23a","#2e2e33"]},
+    {"id":"fb07","name":"Co-op Mode","mode":"fb","colors":["#1aa5a8","#ff6f5e","#111111","#ffffff"]},
+    {"id":"fb10","name":"Legendary Loot","mode":"fb","colors":["#1e4fd8","#f2a22b","#ffffff","#0b0b0b"]},
+    {"id":"fb08","name":"Save Point","mode":"fb","colors":["#8ec9f2","#14254f","#e6b84a","#ffffff"]},
+    {"id":"vc01","name":"No Sting Club","mode":"vc","colors":["#ffffff","#7fd6c2","#ff6f61","#1d4f91"]},
+    {"id":"vc02","name":"Deco Hotel","mode":"vc","colors":["#f5ecd9","#9fdcc4","#f6b39a","#b79be0"]},
+    {"id":"vc04","name":"Night Swim","mode":"vc","colors":["#a8e6f0","#14254f","#ff8cc2","#f6d94a"]},
+    {"id":"vc03","name":"Los Flamingos","mode":"vc","colors":["#f7a6c0","#ffffff","#9fe3cf","#0f5b5c"]},
+    {"id":"vc07","name":"Gator Boss","mode":"vc","colors":["#1f5a2e","#ff3fa1","#ffffff","#111111"]},
+    {"id":"vc05","name":"Wanted Level","mode":"vc","colors":["#ffffff","#ff2f8f","#1fb3b0","#121a3a"]},
+    {"id":"vc08","name":"Final Boss Motel","mode":"vc","colors":["#5fd3e0","#ff6f5e","#3b1a3d","#f6c938"]},
+    {"id":"vc06","name":"Sunset Getaway","mode":"vc","colors":["#ffffff","#ff8a3d","#ff3f8e","#6a2fb5"]},
+    {"id":"vc09","name":"The Crew","mode":"vc","colors":["#ffffff","#a8e3cf","#111111","#ff5fae"]},
+    {"id":"vc10","name":"Catch & Release","mode":"vc","colors":["#ffffff","#14254f","#3a8fd9","#e0b54a"]}
+  ];
+  const looks = (await window.__looksReady) || embedded;
+  window.__looks = looks;
+  const sel = document.getElementById('look');
+  sel.innerHTML = looks.map((l, i) => `<option value="${i}">${l.mode.toUpperCase()} ${l.id}: ${l.name}</option>`).join('');
+  FBGame.mount(document.getElementById('game'), { look: looks[0], mode: 'fb' });
+  sel.addEventListener('change', () => FBGame.setLook(looks[+sel.value]));
+  const setM = (m) => { FBGame.setMode(m); document.getElementById('m-fb').setAttribute('aria-pressed', m === 'fb'); document.getElementById('m-vc').setAttribute('aria-pressed', m === 'vc'); };
+  document.getElementById('m-fb').addEventListener('click', () => setM('fb'));
+  document.getElementById('m-vc').addEventListener('click', () => setM('vc'));
+  window.__setM = setM;
+  window.__demoReady = true;
+})();
+</script>
+<script>
+  setTimeout(() => { if (!window.__demoReady) document.getElementById('fallback').style.display = 'block'; }, 9000);
+</script>
+</body>
+</html>

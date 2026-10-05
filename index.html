@@ -1,0 +1,1191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<!-- STYLE: Versus Mode, a fighting-game boss file after the Persona 5 menu system and Street Fighter 6 select and VS screens; secret second skin "Vice", a generic 1980s Miami night (deco hotels, pastel neon, palms, pool light) | WHY: the team file IS a fighting game, and every jersey look re-skins the whole arena, so the kit is something you see the page wear, not read about | ALT: Casino Floor, rejected (jersey Fabulous already owns Vegas; cards drift to card grids) -->
+<title>FINAL BOSS Team File: PC Edition</title>
+<meta name="description" content="The FINAL BOSS team file for Sin City Classic 2027: the roster, twenty kit looks, the gear and prices, a playable round, and an open slot.">
+<meta property="og:title" content="FINAL BOSS Team File: PC Edition">
+<meta property="og:description" content="Pick a fighter. Pick a kit. Play a round. Sin City Classic 2027, Mixed No-Sting.">
+<meta property="og:image" content="assets/hero.jpg">
+<meta name="theme-color" content="#0c0612">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%230c0612'/%3E%3Crect x='8' y='26' width='48' height='12' fill='%23ff3b2f'/%3E%3Crect x='8' y='26' width='30' height='12' fill='%23ffc83d'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Teko:wght@500;600;700&family=Chakra+Petch:ital,wght@0,400;0,600;0,700;1,600&family=Yellowtail&family=Josefin+Sans:wght@400;600;700&display=swap">
+<style>
+:root{
+  /* look tokens: every value below is overwritten by the active look (see applyLook) */
+  --void:#0c0612; --void2:#170b22; --plum:#3a1663; --violet:#7b34e6; --red:#ff3b2f; --gold:#ffc83d; --bone:#f5efe4; --ash:#b9aecb; --ink:#0c0612; --onred:#0c0612; --ongold:#0c0612;
+  --c1:#14523f; --c2:#2ab3b8; --c3:#f3e6c8; --c4:#c9a24a; --glow:#ff3b2f66;
+  --bar:linear-gradient(90deg,var(--red) 0%,var(--gold) 100%);
+  /* mode tokens */
+  --disp:'Teko','Impact','Arial Narrow',sans-serif; --ui:'Chakra Petch',system-ui,-apple-system,'Segoe UI',sans-serif; --num:'Teko','Impact',sans-serif;
+  --skew:-10deg; --chip:-14deg; --unchip:14deg;
+  --neonpink:#ff6ec7; --neonteal:#3ef2e0;
+  color-scheme:dark;
+}
+body[data-mode="vc"]{--disp:'Yellowtail','Brush Script MT',cursive; --ui:'Josefin Sans',system-ui,-apple-system,'Segoe UI',sans-serif; --skew:0deg; --chip:0deg; --unchip:0deg}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;overflow-x:hidden}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}}
+body{margin:0;background:var(--void);color:var(--bone);font:16px/1.55 var(--ui);overflow-x:hidden;-webkit-font-smoothing:antialiased;padding-bottom:112px;transition:background-color .5s}
+a{color:var(--gold)}
+img{max-width:100%;display:block}
+button{font-family:inherit}
+:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+h1,h2,h3{font-family:var(--disp);font-weight:700;line-height:.86;margin:0;letter-spacing:.005em}
+body[data-mode="vc"] h1,body[data-mode="vc"] h2,body[data-mode="vc"] h3{font-weight:400;line-height:1.02;letter-spacing:0}
+p{margin:0 0 .8em}
+.skip{position:absolute;left:-999px;top:8px;background:var(--gold);color:var(--ink);padding:10px 14px;z-index:99}
+.skip:focus{left:8px}
+.vc-only{display:none!important}
+body[data-mode="vc"] .vc-only{display:revert!important}
+body[data-mode="vc"] .fb-only{display:none!important}
+
+/* the slash: every screen is cut on a diagonal; in Vice, a stepped deco edge */
+.screen{position:relative;min-height:100svh;padding:clamp(64px,9vw,120px) clamp(16px,5vw,72px);isolation:isolate}
+.slab{clip-path:polygon(0 0,100% 0,100% calc(100% - 5vw),0 100%)}
+.slab-r{clip-path:polygon(0 5vw,100% 0,100% 100%,0 100%)}
+body[data-mode="vc"] .slab,body[data-mode="vc"] .slab-r{clip-path:polygon(0 0,100% 0,100% calc(100% - 36px),72% calc(100% - 36px),72% calc(100% - 18px),58% calc(100% - 18px),58% 100%,42% 100%,42% calc(100% - 18px),28% calc(100% - 18px),28% calc(100% - 36px),0 calc(100% - 36px))}
+
+/* file tabs */
+.tabs{display:flex;flex-wrap:wrap;gap:6px 4px;margin:0 0 clamp(24px,3.5vw,44px);padding:0;list-style:none;position:relative;z-index:2}
+.tabs a{display:inline-block;font:600 14px/1 var(--ui);color:var(--bone);text-decoration:none;padding:9px 12px 8px;background:#ffffff12;transform:skewX(var(--chip))}
+.tabs a span{display:inline-block;transform:skewX(var(--unchip))}
+.tabs a:hover{background:var(--red);color:var(--onred)}
+.tabs .guide a{background:var(--gold);color:var(--ongold)}
+body[data-mode="vc"] .tabs a{background:transparent;box-shadow:inset 0 -2px 0 var(--neonteal);letter-spacing:.08em;text-transform:uppercase;font-size:13px}
+body[data-mode="vc"] .tabs .guide a{box-shadow:inset 0 0 0 2px var(--neonpink);color:var(--neonpink);background:transparent}
+
+/* 01 boss intro */
+#start{padding-top:clamp(28px,4vw,52px);background:radial-gradient(120% 90% at 70% 30%,var(--plum) 0%,var(--void2) 45%,var(--void) 80%);overflow:hidden}
+.startgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:clamp(24px,4vw,64px);align-items:center;position:relative;z-index:1}
+.intro{min-width:0}
+.badgerow{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+.badgerow .warn{margin:0}
+.mascot{width:clamp(60px,6vw,84px);height:auto;display:block;flex:0 0 auto;animation:bob 2.6s ease-in-out infinite;filter:drop-shadow(0 8px 24px var(--glow))}
+@keyframes bob{50%{transform:translateY(-8px) rotate(-4deg)}}
+.warn{display:inline-block;font:700 15px var(--ui);color:var(--onred);background:var(--red);padding:6px 14px;transform:skewX(var(--chip));margin-bottom:18px}
+.warn span{display:inline-block;transform:skewX(var(--unchip))}
+.title{font-size:clamp(72px,9vw,150px);transform:skewX(var(--skew));transform-origin:left;color:var(--bone);text-shadow:6px 6px 0 var(--red),12px 12px 0 var(--void2)}
+.title em{font-style:normal;color:var(--gold)}
+.vcword{font:700 clamp(22px,3vw,34px)/1 var(--ui);letter-spacing:.6em;color:var(--neonteal);text-shadow:0 0 12px var(--neonteal);margin:4px 0 0 .2em}
+body[data-mode="vc"] .title{text-shadow:0 0 6px #fff,0 0 22px var(--neonpink),0 0 48px var(--neonpink);color:#fff6fb;transform:rotate(-6deg);padding:.05em 0 .1em}
+body[data-mode="vc"] .title em{color:#fff6fb}
+.bossbar{margin:26px 0 10px;width:min(620px,100%);height:28px;border:3px solid var(--bone);background:var(--void2);position:relative;transform:skewX(var(--chip))}
+.bossbar i{position:absolute;inset:3px;background:var(--bar);transform-origin:left;animation:fill 1.6s cubic-bezier(.2,.9,.2,1) .4s both}
+body[data-mode="vc"] .bossbar{border-color:var(--neonteal);box-shadow:0 0 14px var(--neonteal);border-radius:20px;overflow:hidden}
+@keyframes fill{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.barlabel{display:flex;justify-content:space-between;gap:12px;width:min(620px,100%);font:600 15px var(--ui);color:var(--ash)}
+.barlabel b{color:var(--bone)}
+.lede{font-size:clamp(18px,2vw,22px);max-width:34ch;margin-top:22px}
+.cta{display:flex;flex-wrap:wrap;gap:14px;margin-top:24px}
+.btn{font:700 18px var(--ui);color:var(--ongold);background:var(--gold);border:0;padding:14px 26px;cursor:pointer;text-decoration:none;clip-path:polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%);min-height:48px;display:inline-flex;align-items:center;gap:10px}
+.btn:hover{filter:brightness(1.12)}
+.btn.ghost{background:transparent;color:var(--bone);box-shadow:inset 0 0 0 2px var(--bone)}
+.btn.ghost:hover{background:var(--plum)}
+body[data-mode="vc"] .btn{clip-path:none;border-radius:2px;letter-spacing:.06em;text-transform:uppercase;font-size:16px;box-shadow:0 0 0 2px var(--void),0 0 0 4px var(--gold)}
+body[data-mode="vc"] .btn.ghost{box-shadow:inset 0 0 0 2px var(--neonteal);color:var(--neonteal)}
+.blink{animation:blink 1.1s steps(2) infinite}
+@keyframes blink{50%{opacity:.25}}
+
+.herokit{margin:0;position:relative;min-width:0}
+.herolife{width:100%;height:auto;aspect-ratio:1600/904;object-fit:cover;clip-path:polygon(4% 0,100% 0,96% 100%,0 100%);box-shadow:0 0 0 3px var(--red);background:var(--void2)}
+body[data-mode="vc"] .herolife{clip-path:none;border-radius:120px 120px 6px 6px/70px 70px 6px 6px;box-shadow:0 0 0 3px var(--neonpink),0 0 40px var(--neonpink)}
+.heroflat{position:absolute;left:-4%;bottom:-16%;width:44%;border:0;padding:0;background:var(--bone);cursor:zoom-in;transform:rotate(-5deg);box-shadow:0 18px 40px #0009,0 0 0 4px var(--gold)}
+.heroflat img{width:100%;height:auto}
+.heroname{display:flex;align-items:baseline;gap:12px;margin:0 0 10px;padding-right:clamp(90px,12vw,170px)}
+.heroname b{display:block;font:700 clamp(34px,4vw,56px)/.82 var(--num);color:var(--gold);white-space:nowrap}
+.heroname span{font:600 clamp(15px,1.6vw,19px)/1.15 var(--ui);color:var(--bone)}
+body[data-mode="vc"] .heroname span{font-family:'Yellowtail',cursive;font-size:clamp(24px,2.6vw,34px);color:#fff}
+.ballbox{position:absolute;right:-2%;top:-10%;width:clamp(86px,11vw,160px);aspect-ratio:1;z-index:2;pointer-events:none}
+.ballbox canvas,.ballbox img{position:absolute;inset:0;width:100%;height:100%}
+.js .ballbox img{display:none}
+.sun{position:absolute;left:50%;bottom:-18vw;width:min(70vw,780px);aspect-ratio:1;transform:translateX(-50%);border-radius:50%;background:linear-gradient(180deg,#ffe36e 0%,#ff9a5a 38%,var(--neonpink) 70%,#b43cff 100%);-webkit-mask:repeating-linear-gradient(180deg,#000 0 22px,transparent 22px 30px);mask:repeating-linear-gradient(180deg,#000 0 22px,transparent 22px 30px);opacity:.85;z-index:0;filter:drop-shadow(0 0 40px #ff6ec7)}
+.palms{position:absolute;inset:auto 0 0 0;width:100%;height:auto;z-index:0;pointer-events:none}
+body[data-mode="vc"] #start{background:linear-gradient(180deg,#120a2e 0%,#2a0f52 38%,#6b1a6e 64%,#ff6ec7 88%,#ffb36b 100%)}
+
+/* 02 versus */
+#vs{position:relative;background:var(--bone);color:var(--ink);display:grid;grid-template-columns:1fr auto 1fr;gap:0;align-items:stretch;padding:0;min-height:auto}
+.side{position:relative;padding:clamp(48px,8vw,110px) clamp(16px,4vw,56px);min-height:min(92svh,820px);display:flex;flex-direction:column;justify-content:flex-end}
+.side.us{background:#0c0612;color:#fff;clip-path:polygon(0 0,100% 0,82% 100%,0 100%);margin-right:-14vw;z-index:1;isolation:isolate}
+.side.us::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 48%,var(--void) 100%);z-index:-1;opacity:.9}
+.vsimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:34% 30%;z-index:-2;opacity:0;transition:opacity .6s ease}
+.vsimg.on{opacity:1}
+.side.us::before{content:"";position:absolute;left:0;right:0;bottom:0;height:5px;background:var(--bar);z-index:0}
+.side.them{background:var(--red);color:var(--onred);clip-path:polygon(18% 0,100% 0,100% 100%,0 100%);margin-left:-14vw;padding-left:clamp(48px,16vw,240px)}
+.vsmark{align-self:center;z-index:3;font:700 clamp(90px,14vw,190px)/.8 var(--num);color:var(--gold);-webkit-text-stroke:5px var(--ink);transform:skewX(var(--skew));padding:0 .1em}
+.side h2{font-size:clamp(58px,8vw,118px)}
+.side.us{padding-bottom:clamp(28px,4vw,48px)}
+.side.us h2{font-size:clamp(44px,5vw,76px)}
+.side.us .bill{font-size:clamp(15px,1.4vw,18px)}
+.side .bill{font-weight:600;font-size:clamp(17px,1.8vw,21px);max-width:26ch}
+.stage{list-style:none;margin:18px 0 0;padding:0;font-weight:600}
+.stage li{display:flex;gap:12px;align-items:baseline;padding:8px 0;border-top:2px solid currentColor;border-top-color:color-mix(in srgb,currentColor 25%,transparent)}
+.stage li b{font:700 26px/1 var(--num);min-width:5.4em}
+.count{display:flex;gap:10px;margin-top:22px}
+.count div{background:var(--ink);color:var(--gold);padding:8px 12px;min-width:74px;text-align:center;clip-path:polygon(6px 0,100% 0,calc(100% - 6px) 100%,0 100%)}
+.count b{display:block;font:700 46px/.9 var(--num)}
+.count span{font-size:12px;color:var(--bone)}
+body[data-mode="vc"] .side.them{background:repeating-conic-gradient(from -90deg at 50% 110%,#ffd9c7 0 6deg,#ffc1d9 6deg 12deg);color:#2a0f52}
+body[data-mode="vc"] .side.us::before{background:linear-gradient(90deg,var(--neonpink),var(--neonteal));box-shadow:0 0 14px var(--neonpink)}
+body[data-mode="vc"] .vsmark{font-family:'Yellowtail',cursive;font-weight:400;color:#fff;-webkit-text-stroke:0;text-shadow:0 0 10px #fff,0 0 30px var(--neonpink),0 0 60px var(--neonpink)}
+body[data-mode="vc"] .count div{background:#2a0f52;clip-path:none;border-radius:4px;color:var(--neonteal)}
+
+/* 03 select */
+#select{background:linear-gradient(160deg,var(--void2) 0%,var(--void) 60%)}
+body[data-mode="vc"] #select{background:radial-gradient(circle at 50% 100%,transparent 0 22px,#ffffff08 22px 24px,transparent 24px) 0 0/48px 24px,linear-gradient(180deg,#0b2a3a,#140a30)}
+.head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:28px}
+.head h2{font-size:clamp(60px,9vw,132px);transform:skewX(var(--skew))}
+body[data-mode="vc"] .head h2,body[data-mode="vc"] .kith{text-shadow:0 0 18px var(--neonpink);color:#fff}
+.head p{max-width:36ch;color:var(--ash)}
+.selectwrap{display:grid;grid-template-columns:minmax(0,420px) minmax(0,1fr);gap:clamp(20px,4vw,56px);align-items:start}
+.grid9{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.slot{position:relative;aspect-ratio:1;border:0;padding:0;cursor:pointer;background:var(--plum);color:var(--bone);clip-path:polygon(12% 0,100% 0,88% 100%,0 100%);overflow:hidden;font:inherit}
+.slot svg,.slot img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.slot img{filter:saturate(.85) contrast(1.05)}
+.slot.photo::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 45%,var(--void) 100%)}
+.slot .nm{position:absolute;left:14%;right:6%;bottom:8%;font:700 clamp(17px,2.4vw,26px)/.85 var(--num);text-align:left;white-space:nowrap;z-index:1}
+.slot .nm.long{font-size:clamp(12px,1.6vw,18px)}
+.slot .no{position:absolute;right:16%;top:8%;font:700 clamp(22px,3.4vw,34px)/1 var(--num);color:var(--gold);z-index:1;text-shadow:0 2px 0 var(--void)}
+.slot[aria-pressed="true"]{background:var(--violet);box-shadow:inset 0 0 0 4px var(--gold)}
+.slot[aria-pressed="true"]::before{content:"";position:absolute;inset:0;box-shadow:inset 0 0 0 4px var(--gold);z-index:2}
+.slot.open{background:repeating-linear-gradient(-45deg,var(--plum) 0 10px,var(--void2) 10px 20px)}
+.slot.open .nm{color:var(--gold)}
+.slot:hover{filter:brightness(1.15)}
+body[data-mode="vc"] .slot{clip-path:none;border-radius:50% 50% 6px 6px/30% 30% 6px 6px}
+.profile{position:relative;min-height:520px}
+.card{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,220px);gap:18px;padding:clamp(18px,3vw,34px);background:var(--void2);box-shadow:inset 0 0 0 2px var(--plum);clip-path:polygon(0 0,100% 0,100% calc(100% - 26px),calc(100% - 26px) 100%,0 100%);margin-bottom:22px}
+body[data-mode="vc"] .card{clip-path:none;border-radius:4px;box-shadow:inset 0 0 0 2px var(--neonteal),0 0 30px #3ef2e033;background:#140a30e6}
+.js .card{display:none;margin:0}
+.js .card.on{display:grid;animation:slam .42s cubic-bezier(.2,1.4,.3,1)}
+@keyframes slam{from{transform:translateX(40px) skewX(-8deg);opacity:0}to{transform:none;opacity:1}}
+.card h3{text-transform:uppercase;font-size:clamp(50px,7vw,96px);transform:skewX(var(--skew));transform-origin:left}
+body[data-mode="vc"] .card h3{text-transform:none;color:var(--neonpink);text-shadow:0 0 14px var(--neonpink)}
+.card .role{font:600 18px var(--ui);color:var(--gold);margin:6px 0 14px}
+.card .move{display:inline-block;background:var(--red);color:var(--onred);font:700 22px/1 var(--num);padding:8px 14px 6px;transform:skewX(var(--chip));margin:4px 0 14px}
+.card .move span{display:inline-block;transform:skewX(var(--unchip))}
+.card ul{margin:0 0 12px;padding-left:18px}
+.card li{margin:4px 0}
+.card .src{font-size:13px;color:var(--ash)}
+.card .ns{display:inline-block;font:700 14px var(--ui);color:var(--ongold);background:var(--gold);padding:4px 10px;margin-bottom:10px}
+.back{position:relative;align-self:center}
+.back svg{width:100%;height:auto}
+.back.photo{align-self:start}
+.back.photo img{width:100%;height:auto;aspect-ratio:4/5;object-fit:cover;clip-path:polygon(8% 0,100% 0,92% 100%,0 100%)}
+body[data-mode="vc"] .back.photo img{clip-path:none;border-radius:120px 120px 4px 4px/90px 90px 4px 4px}
+.back.photo .plate{margin-top:-28px;position:relative;font:700 30px/1 var(--num);color:var(--onred);background:var(--red);padding:6px 10px 2px;width:max-content;max-width:100%;transform:skewX(var(--chip))}
+.back.photo figcaption{font-size:12px;color:var(--ash);margin-top:8px}
+.playas{margin-top:6px}
+.card.open h3{color:var(--gold)}
+
+/* 04 the kit */
+#kit{background:linear-gradient(170deg,var(--plum),var(--void2) 70%)}
+body[data-mode="vc"] #kit{background:linear-gradient(180deg,#0b5f70,#0a3550 60%,#140a30)}
+.caustic{position:absolute;inset:0;z-index:-1;opacity:.22;mix-blend-mode:screen;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='c'%3E%3CfeTurbulence type='turbulence' baseFrequency='0.014' numOctaves='2' seed='4'/%3E%3CfeColorMatrix values='0 0 0 0 0.75 0 0 0 0 1 0 0 0 0 1 0 0 0 -3.2 1.25'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23c)'/%3E%3C/svg%3E");background-size:400px 400px;animation:drift 24s linear infinite}
+@keyframes drift{to{background-position:400px 200px}}
+.kith{font-size:clamp(60px,9vw,132px);transform:skewX(var(--skew))}
+.kitsub{font:700 clamp(26px,3.2vw,40px)/1 var(--num);color:var(--gold)}
+body[data-mode="vc"] .kitsub{font-family:'Yellowtail',cursive;font-weight:400;color:#fff}
+.flatbig{display:block;width:100%;max-width:1240px;border:0;padding:0;background:#e9e6e1;cursor:zoom-in;position:relative;clip-path:polygon(1.5% 0,100% 0,98.5% 100%,0 100%)}
+body[data-mode="vc"] .flatbig{clip-path:none;border-radius:6px;box-shadow:0 0 0 3px #fff,0 0 0 7px var(--neonteal)}
+.flatbig img{width:100%;height:auto}
+.zoom{position:absolute;right:3%;bottom:4%;width:48px;height:48px;background:var(--void);color:var(--bone);display:grid;place-items:center;border-radius:50%}
+.kitrow{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:clamp(18px,3vw,44px);margin-top:clamp(22px,3vw,40px);align-items:start}
+.kitleft{display:grid;gap:16px;align-content:start}
+.craftnote p{margin:0 0 10px;font-size:15px;line-height:1.35;max-width:52ch}
+.craftnote b{display:inline-block;font:700 15px/1 var(--ui);color:var(--onred);background:var(--red);padding:5px 8px 4px;margin-right:6px;transform:skewX(var(--chip))}
+.craftnote p+p b{background:var(--gold);color:var(--ongold)}
+body[data-mode="vc"] .craftnote b{border-radius:2px}
+.thumbs{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.thumbs button{display:block;width:100%;border:0;padding:0;background:var(--void2);cursor:zoom-in;color:var(--bone);text-align:left;clip-path:polygon(0 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%)}
+body[data-mode="vc"] .thumbs button{clip-path:none;border-radius:4px}
+.thumbs img{width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;background:#e9e6e1}
+.thumbs span{display:block;padding:6px 8px;font-weight:700;font-size:13px}
+.was{display:inline-block;margin-left:6px;font-size:12px;color:var(--ash);font-weight:600}
+.lifefig{margin:0}
+.lifefig button{border:0;padding:0;background:none;cursor:zoom-in;width:100%;display:block}
+.lifefig img{width:100%;height:auto;clip-path:polygon(0 0,100% 0,100% 94%,96% 100%,0 100%)}
+body[data-mode="vc"] .lifefig img{clip-path:none;border-radius:4px}
+/* inside the heart: a patch of fabric turned inside out */
+.inside{position:relative;padding:22px 20px 18px 66px;background:var(--c3);color:#1b1420;background-image:repeating-linear-gradient(90deg,#0000000a 0 2px,transparent 2px 6px);clip-path:polygon(0 0,100% 0,100% 100%,0 100%);box-shadow:inset 0 0 0 3px #00000014}
+.inside::before{content:"";position:absolute;inset:7px;border:2px dashed #00000038;pointer-events:none}
+.inside svg{position:absolute;left:16px;top:20px;width:38px;height:38px}
+.inside q{display:block;font:700 clamp(30px,3.4vw,44px)/.92 var(--num);quotes:none;color:#1b1420}
+body[data-mode="vc"] .inside q{font-family:'Yellowtail',cursive;font-weight:400;line-height:1.05}
+.inside .names{font:700 11px/1.3 var(--ui);letter-spacing:.12em;margin:8px 0 10px;opacity:.75}
+.inside .callie{font-size:13px;margin:0;color:#1b1420}
+.inside .callie b{background:#1b1420;color:var(--c3);padding:1px 6px}
+.score{margin:18px 0 0}
+.score .tot{display:flex;align-items:baseline;gap:10px;margin-bottom:8px}
+.score .tot b{font:700 76px/.8 var(--num);color:var(--gold)}
+.score .tot span{color:var(--ash);font-weight:600}
+.bars{display:grid;gap:5px;margin:0;padding:0;list-style:none}
+.bars li{display:grid;grid-template-columns:7.6em minmax(0,1fr) 3.2em;gap:10px;align-items:center;font-size:14px;font-weight:600}
+.bars .tr{height:14px;position:relative}
+.bars .tr i{position:absolute;inset:0 auto 0 0;background:color-mix(in srgb,var(--bone) 14%,transparent);border-radius:0 4px 4px 0}
+.bars .tr s{position:absolute;inset:0 auto 0 0;background:var(--red);border-radius:0 4px 4px 0;transition:width .5s cubic-bezier(.2,.9,.2,1)}
+.bars .v{text-align:right;font-variant-numeric:tabular-nums;color:var(--bone)}
+.bars .v small{color:var(--ash);font-weight:400}
+.ladder{list-style:none;margin:clamp(28px,4vw,48px) 0 0;padding:0 0 10px;display:grid;grid-template-columns:repeat(10,minmax(116px,1fr));gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;overscroll-behavior-x:contain}
+.ladder li{scroll-snap-align:start}
+.ladder button{width:100%;border:0;padding:0 0 8px;background:var(--void2);color:var(--bone);cursor:pointer;text-align:left;position:relative;transition:transform .2s;clip-path:polygon(0 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%)}
+body[data-mode="vc"] .ladder button{clip-path:none;border-radius:60px 60px 4px 4px/40px 40px 4px 4px}
+.ladder img{width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;background:#e9e6e1}
+.ladder .rk{position:absolute;left:6px;top:4px;font:700 34px/1 var(--num);color:#fff;text-shadow:0 2px 0 #000,0 0 8px #000}
+.ladder .ln{display:block;font-weight:700;font-size:13px;line-height:1.15;padding:6px 8px 0;min-height:2.4em}
+.ladder .ls{display:block;padding:0 8px;font:700 22px/1 var(--num);color:var(--gold)}
+.ladder button[aria-pressed="true"]{transform:translateY(-6px);box-shadow:inset 0 -5px 0 var(--red)}
+
+/* 05 gear */
+#gear{background:repeating-linear-gradient(-45deg,var(--void) 0 26px,var(--void2) 26px 28px);min-height:auto;padding-top:clamp(40px,6vw,80px)}
+body[data-mode="vc"] #gear{background:linear-gradient(180deg,#ffd6cf,#ffc2dd);color:#2a0f52}
+body[data-mode="vc"] #gear .kith{color:#2a0f52;text-shadow:0 0 0 transparent,3px 3px 0 var(--neonteal)}
+.till{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;margin:18px 0 28px;background:var(--void2);box-shadow:inset 0 0 0 2px var(--plum)}
+.till div{padding:16px clamp(12px,2vw,24px);border-left:2px solid var(--plum)}
+.till div:first-child{border-left:0}
+.till b{display:block;font:700 clamp(48px,7vw,96px)/.84 var(--num);color:var(--gold);font-variant-numeric:tabular-nums}
+.till div:last-child b{color:var(--red)}
+.till span{font-weight:600;font-size:14px;color:var(--ash)}
+body[data-mode="vc"] .till{background:#2a0f52;box-shadow:0 0 0 3px #fff,0 0 0 6px var(--neonpink);border-radius:4px}
+body[data-mode="vc"] .till b{color:var(--neonteal)}
+body[data-mode="vc"] .till div:last-child b{color:var(--neonpink)}
+.pick{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0 0;max-width:760px}
+.pick button{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:12px;align-items:center;text-align:left;border:0;cursor:pointer;padding:12px 14px;background:var(--void2);color:var(--bone);box-shadow:inset 0 0 0 2px var(--plum);clip-path:polygon(12px 0,100% 0,calc(100% - 12px) 100%,0 100%)}
+.pick svg{grid-row:span 2;width:72px;height:48px}
+.pick .p1{fill:var(--red)} .pick .p2{fill:var(--gold)} .pick .p3{fill:var(--bone)}
+.pick b{font:700 30px/.9 var(--num)} .pick span{font-size:13px;color:var(--ash);line-height:1.2}
+.pick button[aria-checked="true"]{background:var(--red);color:var(--onred);box-shadow:inset 0 0 0 3px var(--gold)}
+.pick button[aria-checked="true"] span{color:var(--onred);opacity:.85}
+.pick button[aria-checked="true"] .p1{fill:var(--onred)}
+body[data-mode="vc"] .pick button{clip-path:none;border-radius:4px;background:#2a0f52;color:#fff}
+body[data-mode="vc"] .pick button span{color:#e9d8ff}
+body[data-mode="vc"] .pick button[aria-checked="true"]{background:var(--neonpink);color:#2a0f52;box-shadow:0 0 0 3px #fff,0 0 18px var(--neonpink)}
+body[data-mode="vc"] .pick button[aria-checked="true"] span{color:#2a0f52}
+.vnote{flex-basis:100%;margin:6px 0 0;font-size:14px;font-weight:600;color:var(--bone)}
+.vnote::before{content:"";display:inline-block;width:10px;height:10px;margin-right:8px;background:var(--gold);transform:rotate(45deg)}
+.vnote a{color:inherit}
+body[data-mode="vc"] #gear .vnote{color:#2a0f52}
+.vnote[hidden]{display:none}
+.cuts{margin:0 0 8px}
+.cutrow{display:flex;flex-wrap:wrap;gap:12px}
+.cut{flex:1 1 150px;max-width:210px;display:grid;gap:6px}
+.cut button{display:grid;justify-items:start;border:0;cursor:pointer;background:var(--c3);color:#1b1420;padding:12px 14px;text-align:left;clip-path:polygon(18px 0,100% 0,100% 100%,0 100%,0 18px);transition:transform .2s}
+.cut button svg{width:60px;height:60px;justify-self:end;margin-bottom:2px}
+.cut button b{font:700 44px/.8 var(--num)}
+.cut button span{font-weight:700;font-size:15px;line-height:1.15;margin-top:4px}
+.cut button small{font-size:13px;opacity:.8}
+.cut button[aria-checked="true"]{transform:translateY(-6px);box-shadow:inset 0 -6px 0 var(--red)}
+.cut a{font-size:13px;font-weight:600}
+body[data-mode="vc"] .cut a{color:#2a0f52}
+.cutnote{font-size:14px;font-weight:600;margin:14px 0 0}
+.cutnote:empty{display:none}
+.tags[hidden]{display:none}
+.tags{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:14px 12px}
+.tags li{flex:1 1 150px;max-width:220px}
+.tag{display:block;height:100%;text-decoration:none;color:#1b1420;background:var(--c3);padding:14px 14px 12px;position:relative;clip-path:polygon(18px 0,100% 0,100% 100%,0 100%,0 18px);transition:transform .2s}
+.tag:nth-child(odd){transform:rotate(-1deg)}
+.tags li:nth-child(even) .tag{transform:rotate(1.2deg)}
+.tag:hover{transform:translateY(-4px) rotate(0)!important}
+.tag::before{content:"";position:absolute;left:9px;top:9px;width:9px;height:9px;border-radius:50%;background:var(--void);box-shadow:0 0 0 2px #0003}
+.tag svg{width:64px;height:64px;display:block;margin:2px 0 6px auto}
+.tag b{display:block;font:700 44px/.8 var(--num)}
+.tag .it{display:block;font-weight:700;font-size:15px;line-height:1.15;margin-top:4px}
+.tag .nt{display:block;font-size:13px;line-height:1.25;margin-top:4px;opacity:.82}
+.tag .kit{position:absolute;right:10px;top:10px;font:700 12px/1 var(--ui);color:var(--c3);background:#1b1420;padding:4px 6px;transform:rotate(4deg)}
+.path{margin:30px 0 8px;display:grid;grid-template-columns:auto 1fr auto 1fr auto 2.2fr auto;align-items:center;gap:0 8px}
+.path .n{display:grid;justify-items:center;text-align:center;gap:4px;font-weight:700;font-size:14px;line-height:1.1}
+.path .n i{width:22px;height:22px;background:var(--gold);transform:rotate(45deg)}
+.path .n.end i{background:var(--red);width:28px;height:28px}
+.path .ln{height:4px;background:var(--plum);position:relative}
+.path .ln.long{background:repeating-linear-gradient(90deg,var(--gold) 0 10px,transparent 10px 16px)}
+.path .ln span{position:absolute;left:50%;top:10px;transform:translateX(-50%);font-size:12px;white-space:nowrap;color:var(--ash)}
+body[data-mode="vc"] .path .n i{background:var(--neonpink);border-radius:50%;transform:none}
+body[data-mode="vc"] .path .ln{background:#2a0f5240}
+body[data-mode="vc"] .path .ln span{color:#2a0f52}
+.order{font-weight:600;margin-top:34px;max-width:62ch}
+.fine{font-size:13px;color:var(--ash);max-width:70ch}
+body[data-mode="vc"] .fine{color:#4b2a6e}
+
+/* 06 play */
+#play{background:#07040b;overflow:hidden}
+body[data-mode="vc"] #play{background:linear-gradient(180deg,#120a2e 0%,#2a0f52 55%,#120a2e 100%)}
+.grid-floor{position:absolute;left:-50%;right:-50%;bottom:0;height:46%;z-index:-1;background:linear-gradient(transparent 0 calc(100% - 2px),var(--neonpink) 0) 0 0/100% 40px,linear-gradient(90deg,transparent 0 calc(100% - 2px),var(--neonpink) 0) 0 0/60px 100%;transform:perspective(320px) rotateX(58deg);transform-origin:bottom;opacity:.45;-webkit-mask:linear-gradient(transparent,#000 40%);mask:linear-gradient(transparent,#000 40%)}
+.playhead h2{font-size:clamp(60px,9vw,132px);transform:skewX(var(--skew))}
+.gamemount{max-width:1080px;margin:22px auto 0;min-height:120px;position:relative}
+.gamemount .loading{padding:40px 20px;text-align:center;color:var(--ash)}
+.arena{position:relative;max-width:980px;margin:22px auto 0}
+#game{display:block;width:100%;height:auto;aspect-ratio:16/10;background:var(--void2);touch-action:none;box-shadow:0 0 0 3px var(--violet)}
+.hud{display:flex;flex-wrap:wrap;gap:8px 18px;justify-content:space-between;align-items:center;margin:10px 0;font-weight:600}
+.hud b{font:700 30px/1 var(--num);color:var(--gold)}
+.pad{display:none;grid-template-columns:1fr 1fr 1.2fr 1.2fr;gap:8px;margin-top:10px}
+.pad button{font:700 24px/1 var(--num);min-height:64px;border:0;background:var(--plum);color:var(--bone);clip-path:polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%);touch-action:none;user-select:none;-webkit-user-select:none}
+.pad .c{background:var(--violet)} .pad .t{background:var(--red);color:var(--onred)}
+@media (hover:none),(max-width:760px){.pad{display:grid}}
+.keys{color:var(--ash);font-size:14px}
+.keys kbd{font:600 13px var(--ui);background:var(--plum);color:var(--bone);padding:2px 7px}
+.toggle{background:none;border:2px solid var(--ash);color:var(--bone);font:600 14px var(--ui);padding:6px 12px;cursor:pointer}
+.stagewrap{position:relative}
+.overlay{position:absolute;inset:3px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;background:color-mix(in srgb,var(--void) 85%,transparent);padding:16px}
+.overlay[hidden]{display:none}
+.overlay h3{font-size:clamp(48px,8vw,96px);transform:skewX(var(--skew));color:var(--gold)}
+.overlay p{max-width:40ch}
+
+/* 07 player nine */
+#nine{background:var(--gold);color:var(--ongold)}
+body[data-mode="vc"] #nine{background:linear-gradient(180deg,#ffb36b,#ff6ec7);color:#2a0f52}
+#nine h2{font-size:clamp(64px,11vw,160px);transform:skewX(var(--skew))}
+.ninegrid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:clamp(18px,4vw,60px);align-items:end}
+.letter{font-size:clamp(18px,2vw,22px);max-width:40ch}
+.letter p:first-child{font-weight:700}
+.card9{background:var(--ink);color:var(--bone);padding:20px 22px;clip-path:polygon(0 0,100% 0,100% 100%,14px 100%,0 calc(100% - 14px));margin-top:16px}
+.card9 b{color:var(--gold)}
+body[data-mode="vc"] .card9{background:#2a0f52;clip-path:none;border-radius:4px}
+body[data-mode="vc"] .card9 b{color:var(--neonteal)}
+.save{color:inherit!important;box-shadow:inset 0 0 0 2px currentColor!important;background:transparent!important}
+.story{margin:0}
+.story img{max-height:640px;width:auto;margin-left:auto;clip-path:polygon(6% 0,100% 0,94% 100%,0 100%)}
+
+footer{padding:48px clamp(16px,5vw,72px) 40px;color:var(--ash);font-size:14px;background:var(--void)}
+footer h2{font-size:44px;color:var(--bone);margin-bottom:10px}
+footer ol{padding-left:20px}
+footer li{margin:4px 0}
+.guideline{font-weight:700;font-size:16px}
+
+/* look dock: a hotbar of jersey swatches, keys 1 to 0 */
+.dock{position:fixed;left:12px;bottom:12px;z-index:50;background:color-mix(in srgb,var(--void) 88%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);padding:8px 10px 10px;box-shadow:inset 0 0 0 2px var(--plum),0 10px 30px #0008;clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,0 100%);max-width:calc(100vw - 24px)}
+body[data-mode="vc"] .dock{clip-path:none;border-radius:6px;box-shadow:inset 0 0 0 2px var(--neonteal),0 0 24px #3ef2e055;background:#140a30e0}
+.dockline{display:flex;align-items:baseline;gap:8px;margin:0 0 6px;font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden}
+.dockline b{font:700 24px/.8 var(--num);color:var(--gold)}
+.dockline span{overflow:hidden;text-overflow:ellipsis;color:var(--bone)}
+.dockline i{font-style:normal;color:var(--ash);font-weight:600}
+.hotbar{display:flex;gap:3px}
+.hot{position:relative;width:36px;height:40px;border:0;padding:0;background:#ffffff10;cursor:pointer;flex:0 0 auto}
+.hot svg{width:100%;height:100%;display:block}
+.hot u{position:absolute;right:1px;bottom:0;text-decoration:none;font:700 11px/1 var(--ui);color:var(--bone);text-shadow:0 1px 2px #000}
+.hot[aria-checked="true"]{background:var(--red);box-shadow:0 0 0 2px var(--gold);transform:translateY(-3px)}
+.hot:hover{background:#ffffff26}
+/* Alan's Secret Button: a real arcade button */
+.alan{position:fixed;right:14px;bottom:14px;z-index:51;display:flex;align-items:center;gap:10px;border:0;background:none;padding:0;cursor:pointer;color:var(--bone)}
+.alan .plaque{display:grid;text-align:right;line-height:1.05;background:#000c;padding:8px 10px;clip-path:polygon(8px 0,100% 0,100% 100%,0 100%,0 8px);box-shadow:inset 0 0 0 2px #ff6ec7}
+.alan .plaque b{font:400 22px/1 'Yellowtail',cursive;color:#ff9be0;text-shadow:0 0 8px #ff6ec7}
+.alan .plaque span{font:700 11px/1.2 'Chakra Petch',sans-serif;color:#9ff8ee;letter-spacing:.08em;text-transform:uppercase;margin-top:3px}
+.alan .bezel{width:76px;height:76px;border-radius:50%;background:radial-gradient(circle at 50% 40%,#3a3a44,#0d0d12 70%);display:grid;place-items:center;box-shadow:0 6px 0 #000,0 0 0 3px #222,0 0 26px #ff6ec7aa;animation:pulse 2.4s ease-in-out infinite;flex:0 0 auto}
+.alan .cap{width:56px;height:56px;border-radius:50%;background:radial-gradient(circle at 38% 30%,#fff 0 6%,#ffb8ea 14%,#ff6ec7 40%,#c21d8a 100%);box-shadow:0 5px 0 #7a0f57,inset 0 -4px 8px #0005;transition:transform .08s,box-shadow .08s;position:relative}
+.alan .cap::after{content:"";position:absolute;inset:-6px;border-radius:50%;border:2px solid #3ef2e0;box-shadow:0 0 10px #3ef2e0}
+.alan:active .cap,.alan.press .cap{transform:translateY(4px);box-shadow:0 1px 0 #7a0f57,inset 0 -2px 6px #0005}
+@keyframes pulse{50%{box-shadow:0 6px 0 #000,0 0 0 3px #222,0 0 44px #ff6ec7}}
+body[data-mode="vc"] .alan .cap{background:radial-gradient(circle at 38% 30%,#fff 0 6%,#ffd36e 14%,#ff3b2f 45%,#8a1410 100%);box-shadow:0 5px 0 #4a0a07,inset 0 -4px 8px #0005}
+body[data-mode="vc"] .alan .cap::after{border-color:#ffc83d;box-shadow:0 0 10px #ffc83d}
+body[data-mode="vc"] .alan .bezel{box-shadow:0 6px 0 #000,0 0 0 3px #222,0 0 26px #ff3b2faa}
+body[data-mode="vc"] .alan .plaque{box-shadow:inset 0 0 0 2px #ffc83d}
+body[data-mode="vc"] .alan .plaque b{font:700 20px/1 'Teko',sans-serif;color:#ffc83d;text-shadow:none;letter-spacing:.02em}
+/* transition */
+#wipe{position:fixed;inset:0;z-index:300;pointer-events:none;visibility:hidden;display:grid;place-items:center;overflow:hidden}
+#wipe.go{visibility:visible;animation:wipe 1.15s cubic-bezier(.6,0,.3,1) both}
+#wipe.tovc{background:linear-gradient(180deg,#120a2e 0%,#5a1670 50%,#ff6ec7 82%,#ffb36b 100%)}
+#wipe.tofb{background:linear-gradient(115deg,#0c0612 0 45%,#ff3b2f 45% 55%,#0c0612 55%)}
+#wipe .wsun{position:absolute;bottom:-20vmin;left:50%;width:90vmin;aspect-ratio:1;transform:translateX(-50%);border-radius:50%;background:linear-gradient(180deg,#ffe36e,#ff6ec7 70%,#b43cff);-webkit-mask:repeating-linear-gradient(180deg,#000 0 18px,transparent 18px 26px);mask:repeating-linear-gradient(180deg,#000 0 18px,transparent 18px 26px)}
+#wipe.tofb .wsun{display:none}
+#wipe p{position:relative;margin:0;font:400 clamp(90px,22vw,260px)/1 'Yellowtail',cursive;color:#fff;text-shadow:0 0 10px #fff,0 0 40px #ff6ec7,0 0 80px #ff6ec7;transform:rotate(-6deg)}
+#wipe.tofb p{font:700 clamp(80px,18vw,220px)/.85 'Teko',sans-serif;transform:skewX(-10deg);text-shadow:8px 8px 0 #ff3b2f;color:#f5efe4}
+@keyframes wipe{0%{clip-path:circle(0% at var(--wx,90%) var(--wy,90%))}38%{clip-path:circle(150% at var(--wx,90%) var(--wy,90%));opacity:1}66%{clip-path:circle(150% at var(--wx,90%) var(--wy,90%));opacity:1}100%{clip-path:circle(150% at var(--wx,90%) var(--wy,90%));opacity:0}}
+/* lightbox */
+#lb{border:0;padding:0;background:transparent;max-width:min(96vw,1800px);max-height:94vh;overflow:auto}
+#lb::backdrop{background:#000d}
+#lb img{width:100%;height:auto;max-height:90vh;object-fit:contain}
+#lb button{position:sticky;top:8px;float:right;margin:8px;z-index:2;font:700 16px var(--ui);background:var(--gold);color:var(--ongold);border:0;padding:10px 16px;cursor:pointer}
+
+@media (max-width:860px){
+  .startgrid{grid-template-columns:1fr;gap:0}
+  .intro{display:contents}
+  .herokit{order:1;margin:22px 0 64px}
+  .late{order:2}
+  .title{font-size:clamp(64px,19vw,96px)}
+  #vs{grid-template-columns:1fr}
+  .side.us{clip-path:polygon(0 0,100% 0,100% 88%,0 100%);margin:0;min-height:70svh}
+  .side.them{clip-path:polygon(0 8%,100% 0,100% 100%,0 100%);margin:0;padding:clamp(60px,14vw,90px) 16px 48px}
+  .vsmark{position:absolute;right:14px;left:auto;top:calc(70svh - 70px);font-size:96px}
+  .selectwrap,.ninegrid,.kitrow{grid-template-columns:1fr}
+  .card{grid-template-columns:1fr}
+  .back{max-width:220px}
+  .till div{padding:12px 8px}
+  .pick button{grid-template-columns:1fr;padding:10px}
+  .pick svg{grid-row:auto;width:56px;height:38px}
+  .pick b{font-size:24px}
+  .cut{flex-basis:140px}
+  .till b{font-size:clamp(30px,9vw,48px)}
+  .till span{font-size:12px;display:block;line-height:1.2}
+  .path{grid-template-columns:auto 1fr auto 1fr auto 1.6fr auto}
+  .path .n{font-size:12px}
+  .dock{left:0;right:0;bottom:0;max-width:none;clip-path:none;padding:12px 12px calc(8px + env(safe-area-inset-bottom));min-height:calc(104px + env(safe-area-inset-bottom))}
+  .dockline{margin-bottom:18px;max-width:calc(100% - 226px);flex-wrap:wrap;row-gap:2px}
+  body[data-mode="vc"] .dock{border-radius:0}
+  .hotbar{justify-content:space-between}
+  .hot{width:31px;height:36px}
+  .alan{bottom:calc(52px + env(safe-area-inset-bottom));right:10px;gap:8px}
+  .alan .bezel{width:50px;height:50px;box-shadow:0 4px 0 #000,0 0 0 2px #222,0 0 18px #ff6ec7aa}
+  .alan .cap{width:36px;height:36px}
+  .alan .cap::after{inset:-4px}
+  .alan .plaque{padding:5px 8px}
+  .alan .plaque b{font-size:17px}
+  .alan .plaque span{display:none}
+  body{padding-bottom:112px}
+}
+@media (max-width:420px){.count div{min-width:60px}.count b{font-size:36px}.tags li{flex-basis:140px}.path .ln span{font-size:11px}}
+@media (min-width:861px){.dockline{max-width:380px}}
+</style>
+<style>.pcnote{max-width:60ch;margin:.6em auto 0;font-size:.95rem;opacity:.9}.pc-phone{display:none}@media (pointer:coarse),(max-width:700px){.pc-phone{display:block}}</style>
+</head>
+<body data-mode="fb">
+<a class="skip" href="#play">Skip to the game</a>
+<script>document.documentElement.classList.add('js');document.body.classList.add('js')</script>
+
+<!-- 01 BOSS INTRO -->
+<section id="start" class="screen slab" aria-labelledby="t-title">
+  <div class="sun vc-only" aria-hidden="true"></div>
+  <svg class="palms vc-only" viewBox="0 0 1200 300" preserveAspectRatio="xMidYMax slice" aria-hidden="true"><g fill="#0d0620">
+    <path d="M90 300 C96 230 104 170 128 110 l6 2 C114 170 108 232 106 300Z"/><path d="M131 108c-30-26-70-30-104-14 34-4 66 6 92 26zM131 108c-14-40-48-60-86-62 34 12 60 34 76 66zM131 108c20-34 58-48 96-42-36 4-66 20-88 48zM131 108c34-10 72 0 98 28-30-18-64-24-94-18zM131 108c-6 30-26 56-54 72 24-20 40-44 46-74z"/>
+    <path d="M1040 300 C1036 220 1024 160 996 96 l7-2 C1032 158 1046 222 1054 300Z"/><path d="M998 94c28-28 70-34 104-20-34-2-66 8-92 30zM998 94c12-40 46-62 86-66-34 14-58 36-74 70zM998 94c-22-32-60-46-98-38 36 2 68 18 90 46zM998 94c-34-8-72 2-98 30 30-18 64-24 94-18zM998 94c8 30 28 54 56 70-24-20-40-42-48-72z"/>
+    <path d="M1150 300 C1148 250 1142 214 1128 180 l6-2 C1150 212 1158 250 1162 300Z"/><path d="M1130 178c22-20 52-24 76-12-26 0-48 6-68 22zM1130 178c-18-22-48-28-74-18 26 0 50 8 66 26zM1130 178c4-28 26-46 54-50-24 10-40 28-46 54z"/>
+    <rect x="0" y="292" width="1200" height="8"/></g></svg>
+  <ul class="tabs" aria-label="Sections">
+    <li><a href="#vs"><span>Fight</span></a></li><li><a href="#select"><span>Roster</span></a></li><li><a href="#kit"><span>Kit</span></a></li><li><a href="#gear"><span>Gear</span></a></li><li><a href="#play"><span>Play</span></a></li><li><a href="#nine"><span>Slot 9</span></a></li><li class="guide"><a href="brand-guide.html"><span>Logo and name guide</span></a></li>
+  </ul>
+  <div class="startgrid">
+    <div class="intro">
+      <div class="badgerow"><img class="mascot" src="assets/mascot.png" alt="The FINAL BOSS mascot: a smiling red dodgeball with tiny horns and a gold crown." width="400" height="400"><p class="warn"><span data-vc="LATE CHECK-IN: VICE MODE">WARNING: BOSS APPROACHING</span></p></div>
+      <h1 id="t-title" class="title" data-vc="Final Boss">FINAL <em>BOSS</em></h1>
+      <p class="vcword vc-only" aria-hidden="true">VICE</p>
+      <div class="bossbar late" role="img" aria-label="Boss health bar, full"><i></i></div>
+      <div class="barlabel late"><span>Mixed No-Sting</span><b>Sin City Classic 2027</b></div>
+      <p class="lede late" data-vc="Same eight fighters, a pastel night on the water, and a jersey for every one of them. Pick a look from the dock below.">Eight fighters from across the USA, three who have played for Team USA, one open slot. Pick a kit from the dock below, then pick a fighter.</p>
+      <div class="cta late">
+        <a class="btn" href="#select"><span class="blink">PRESS START</span></a>
+        <button class="btn ghost" id="announce" type="button" aria-pressed="false">Hear the announcer</button>
+        <audio id="vo" src="assets/announcer.mp3" preload="none"></audio>
+      </div>
+    </div>
+    <figure class="herokit">
+      <div class="ballbox" aria-hidden="true"><canvas id="ball3d"></canvas><img src="assets/ball.png" alt=""></div>
+      <figcaption class="heroname"><b id="hero-rank">#1 / 95</b><span id="hero-name">Phase Two</span></figcaption>
+      <img class="herolife" id="hero-life" src="assets/kits/fb02-phase-two-life.jpg" alt="" width="1600" height="904">
+      <button class="heroflat" id="hero-flat-btn" type="button" aria-label="Zoom into the flat lay of this kit"><img id="hero-flat" src="assets/kits/thumb/fb02-craft.jpg" alt="" width="520" height="294"></button>
+    </figure>
+  </div>
+</section>
+
+<!-- 02 VERSUS -->
+<section id="vs" aria-label="Versus: FINAL BOSS against Sin City Classic 2027">
+  <div class="side us">
+    <img class="vsimg on" id="vs-a" src="assets/hero.jpg" alt="" width="1920" height="1080"><img class="vsimg" id="vs-b" src="" alt="" aria-hidden="true" width="1920" height="1080">
+    <h2>FINAL BOSS</h2>
+    <p class="bill">From across the USA. Players who have played for Team USA. Captain Gordon Bellamy, #4.</p>
+  </div>
+  <div class="vsmark" aria-hidden="true">VS</div>
+  <div class="side them">
+    <h2>SIN CITY 2027</h2>
+    <ul class="stage">
+      <li><b>Stage</b> Las Vegas</li>
+      <li><b>Pool play</b> Saturday, Jan 16, 11 am</li>
+      <li><b>Playoffs</b> Sunday, Jan 17</li>
+      <li><b>Ball</b> Mixed No-Sting</li>
+    </ul>
+    <div class="count" id="count" aria-live="off" aria-label="Countdown to Saturday, January 16, 2027, 11 am Pacific">
+      <div><b data-u="d">--</b><span>days</span></div><div><b data-u="h">--</b><span>hours</span></div><div><b data-u="m">--</b><span>min</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- 03 CHARACTER SELECT -->
+<section id="select" class="screen slab-r" aria-labelledby="t-select">
+  <div class="head">
+    <h2 id="t-select" data-vc="Meet the Crew">SELECT YOUR FIGHTER</h2>
+    <p>Every jersey back wears the kit you picked. Sources sit at the bottom of the page.</p>
+  </div>
+  <div class="selectwrap">
+    <div class="grid9" id="grid9" role="group" aria-label="Roster"></div>
+    <div class="profile" id="profiles">
+
+      <article class="card" data-id="nina" data-name="FIORE" data-no="1" data-perk="Catch window 40% wider (Clutch Catch)">
+        <div>
+          <h3>Nina Fiore</h3>
+          <p class="role">#1. US Women's National Team. Now its coach.</p>
+          <p class="ns">Started in No Sting</p>
+          <p class="move"><span>SPECIAL: CLUTCH CATCH</span></p>
+          <ul>
+            <li>Gold and bronze with the US Women's National Team.</li>
+            <li>"One of the best catchers in all of dodgeball."</li>
+          </ul>
+          <p class="src">Sources: Boise State lecture series, 2026; Dodgeball Tribune, 2018.</p>
+        </div>
+        <div class="back" data-back></div>
+      </article>
+
+      <article class="card" data-id="flo" data-name="ZABOKRITSKY" data-no="2" data-perk="Catch +25%, throw +15% (Catch and Answer)">
+        <div>
+          <h3>Flo Zabokritsky</h3>
+          <p class="role">#2. Nina's US Women's teammate.</p>
+          <p class="ns">Started in No Sting</p>
+          <p class="move"><span>SPECIAL: CATCH AND ANSWER</span></p>
+          <ul>
+            <li>Top 20 woman in the East Region, 2018.</li>
+            <li>"A big catcher, but has an arm when she needs it."</li>
+          </ul>
+          <p class="src">Sources: Dodgeball Tribune, Jan 1 2018; Gordon.</p>
+        </div>
+        <div class="back" data-back></div>
+      </article>
+
+      <article class="card" data-id="mark" data-name="HAWKINS" data-no="3" data-photo="assets/people/hawkins-card.jpg" data-face="assets/people/hawkins-face.jpg" data-perk="Moves 20% faster (First In)">
+        <div>
+          <h3>Mark Hawkins</h3>
+          <p class="role">#3. First in, every season.</p>
+          <p class="move"><span>SPECIAL: FIRST IN</span></p>
+          <ul>
+            <li>First to text the captain when sign-ups opened in October 2025, and signed up that day.</li>
+            <li>Played fall 2025 with Gordon, Andrew Ketchum and Eric Francksen.</li>
+          </ul>
+          <p class="src">Source: team sign-up thread, Oct 2025. Photo: sent by Gordon.</p>
+        </div>
+        <div class="back" data-back></div>
+      </article>
+
+      <article class="card" data-id="gordon" data-name="BELLAMY" data-no="4" data-perk="+1 life (Captain)">
+        <div>
+          <h3>Gordon Bellamy</h3>
+          <p class="role">#4. Captain. Recreational, and proud of it.</p>
+          <p class="move"><span>SPECIAL: RALLY CALL</span></p>
+          <ul>
+            <li>Builds the squad every year, names it, and keeps it together.</li>
+            <li>Plays the Sin City Classic with his chosen-family crew.</li>
+          </ul>
+          <p class="src">Sources: Gordon; team sign-up thread, Oct 2025.</p>
+        </div>
+        <div class="back" data-back></div>
+      </article>
+
+      <article class="card" data-id="werten" data-name="BELLAMY III" data-no="5" data-photo="assets/people/bellamy-iii-card.jpg" data-face="assets/people/bellamy-iii-face.jpg" data-perk="Moves 15% faster (Family Business)">
+        <div>
+          <h3>Werten Bellamy III</h3>
+          <p class="role">#5. Gordon's nephew. A Morehouse man.</p>
+          <p class="move"><span>SPECIAL: FAMILY BUSINESS</span></p>
+          <ul>
+            <li>On the squad since the October 2025 sign-up: two Bellamys on one roster.</li>
+            <li>On last season's playoff jersey list.</li>
+          </ul>
+          <p class="src">Sources: team sign-up thread, Oct 2025; Gordon. Photo: sent by Gordon.</p>
+        </div>
+        <div class="back" data-back></div>
+      </article>
+
+      <article class="card" data-id="casey" data-name="REED" data-no="6" data-perk="Throws two balls (Coordinated Fire)">
+        <div>
+          <h3>Casey Reed</h3>
+          <p class="role">#6. USA Dodgeball Gender Diversity Committee Chair.</p>
+          <p class="ns">Started in No Sting</p>
+          <p class="move"><span>SPECIAL: COORDINATED FIRE</span></p>
+          <ul>
+            <li>Played the first UDC women's no-sting division in 2018, bringing "strong arms."</li>
+            <li>Captained LFG on the 2023 Premier Tour.</li>
+          </ul>
+          <p class="src">Sources: USA Dodgeball newsletter, Mar 2023; Dodgeball Tribune, Jul 2018.</p>
+        </div>
+        <div class="back" data-back></div>
+      </article>
+
+      <article class="card" data-id="matt" data-name="KRAMER" data-no="31" data-perk="Throws 25% faster (Heater)">
+        <div>
+          <h3>Matt Kramer</h3>
+          <p class="role">#31. Catcher, then pro pitcher, now dodgeballer.</p>
+          <p class="move"><span>SPECIAL: HEATER</span></p>
+          <ul>
+            <li>Signed as a catcher, converted to a pitcher.</li>
+            <li>Gordon's AI mentor, and Andrew Ketchum's student on the court.</li>
+            <li>His training camp: <a href="https://gordonusc.github.io/matt-kramer/season/">Bullpen to Battlefield</a>.</li>
+          </ul>
+          <p class="src">Sources: Matt's season page; Gordon.</p>
+        </div>
+        <div class="back" data-back></div>
+      </article>
+
+      <article class="card" data-id="andrew" data-name="KETCHUM" data-no="83" data-perk="Throws 40% faster (The Hammer)">
+        <div>
+          <h3>Andrew Ketchum</h3>
+          <p class="role">#83. Team USA gold, 2015. Matt Kramer's mentor.</p>
+          <p class="ns">Started in No Sting</p>
+          <p class="move"><span>SPECIAL: THE HAMMER</span></p>
+          <ul>
+            <li>"The most feared arm in dodgeball, even in foam."</li>
+            <li>Played for Team USA at the 2019 WDBF Worlds in Cancun.</li>
+          </ul>
+          <p class="src">Sources: Cronkite News, Dec 16 2019; USA Dodgeball and Dodgeball Tribune.</p>
+        </div>
+        <div class="back" data-back></div>
+      </article>
+
+      <article class="card open" data-id="nine" data-name="YOU" data-no="9" data-perk="Mystery perk">
+        <div>
+          <h3>Player 9</h3>
+          <p class="role">Slot open. Jersey waiting.</p>
+          <p class="move"><span>SPECIAL: ???</span></p>
+          <p><a href="#nine">Read the invitation</a></p>
+        </div>
+        <div class="back" data-back></div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- 04 THE KIT -->
+<section id="kit" class="screen slab" aria-labelledby="t-kit">
+  <div class="caustic vc-only" aria-hidden="true"></div>
+  <div class="head">
+    <h2 id="t-kit" class="kith" data-vc="The Kit">THE KIT</h2>
+    <p class="kitsub" id="kit-sub" aria-live="polite">#1 Phase Two</p>
+    <p class="vnote" id="kit-vn" hidden></p>
+  </div>
+  <button class="flatbig" id="flat-open" type="button" aria-label="Zoom into the craft sheet"><img id="kit-craft" src="assets/kits/fb02-craft.jpg" alt="" width="1800" height="1018" loading="lazy"><span class="zoom" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="10" cy="10" r="7"/><path d="M15 15l7 7M10 7v6M7 10h6"/></svg></span></button>
+  <div class="kitrow">
+    <div class="kitleft">
+      <div class="craftnote"><p><b>What changed</b> <span id="kit-cc"></span></p><p><b>Still open</b> <span id="kit-cl"></span></p></div>
+      <div class="thumbs">
+        <button type="button" id="flatthumb" aria-label="Zoom into the flat lay"><img id="kit-flat" src="assets/kits/thumb/fb02-phase-two-flat.jpg" alt="" width="520" height="294" loading="lazy"><span>Previous concept: flat lay</span></button>
+        <button type="button" id="life-open" aria-label="Zoom into the launch sheet"><img id="kit-life" src="assets/kits/fb02-phase-two-life.jpg" alt="" width="1600" height="904" loading="lazy"><span>Previous concept: launch sheet</span></button>
+      </div>
+    </div>
+    <div>
+      <div class="inside">
+        <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 35 C6 25 3 18 3 12a8 8 0 0 1 17-3 8 8 0 0 1 17 3c0 6-3 13-17 23z" fill="#1b1420"/></svg>
+        <q id="kit-inside">ONE MORE LIFE. CHOSEN FAMILY.</q>
+        <p class="names">GORDON ANDREW MATT MARK WERTEN NINA FLO CASEY</p>
+        <p class="callie"><b>Inside, over the heart.</b> Awaits Callie's OK at KBS.</p>
+      </div>
+      <figure class="score" aria-labelledby="score-cap">
+        <div class="tot"><b id="kit-total">95</b><span id="score-cap">points of 100 on Gordon's jersey rubric <small class="was" id="kit-was">was 93</small></span></div>
+        <ul class="bars" id="bars"></ul>
+      </figure>
+    </div>
+  </div>
+  <ol class="ladder" id="ladder" aria-label="All ten looks in this mode, ranked"></ol>
+</section>
+
+<!-- 05 GEAR -->
+<section id="gear" class="screen" aria-labelledby="t-gear">
+  <h2 id="t-gear" class="kith" data-vc="Gear Up">GEAR UP</h2>
+  <p class="vnote" id="gear-vn" hidden></p>
+  <div class="pick" id="pick" role="radiogroup" aria-label="What to order">
+    <button type="button" role="radio" data-pick="kit" aria-checked="true"><svg viewBox="0 0 96 64" aria-hidden="true"><path class="p1" d="M14 6l-10 6 3 9 6-2v27h22V19l6 2 3-9-10-6c-2 4-18 4-20 0z"/><path class="p2" d="M50 30h26l4 26H68l-5-11-5 11H46z"/><path class="p3" d="M84 8h8v22l5 4c2 3 0 8-4 8h-7c-3 0-5-2-5-5V8z"/></svg><b>Full kit</b><span>Both jerseys, shorts, socks, headband</span></button>
+    <button type="button" role="radio" data-pick="jersey" aria-checked="false"><svg viewBox="0 0 96 64" aria-hidden="true"><path class="p1" d="M18 6l-12 7 3 9 7-2v32h24V20l7 2 3-9-12-7c-3 4-17 4-20 0z"/><path class="p2" d="M58 10l-12 7 3 9 7-2v32h24V24l7 2 3-9-12-7c-3 4-17 4-20 0z"/></svg><b>Jerseys only</b><span>Day One plus Playoff, nothing else</span></button>
+  </div>
+  <div class="till" aria-live="polite">
+    <div><b id="g-pair">$100</b><span id="g-pair-l">Day One plus Playoff jersey, per player</span></div>
+    <div><b id="g-kit">$165</b><span id="g-kit-l">Full kit per player</span></div>
+    <div><b id="g-team">$1,350</b><span id="g-team-l">Team of 8 in full kits, plus one flag</span></div>
+  </div>
+  <div class="cuts" id="cuts" hidden><div class="cutrow" id="cutrow" role="radiogroup" aria-label="Jersey cut"></div><p class="cutnote" id="cutnote"></p></div>
+  <ul class="tags" id="tags"></ul>
+  <p class="order">Order path: Callie at KBS, about 4 weeks plus shipping; lock design about Oct 30, order about Nov 6.</p>
+  <div class="path" aria-hidden="true">
+    <div class="n"><i></i>Now<br>Callie</div><div class="ln"></div>
+    <div class="n"><i></i>Oct 30<br>lock</div><div class="ln"></div>
+    <div class="n"><i></i>Nov 6<br>order</div><div class="ln long"><span>about 4 weeks + shipping</span></div>
+    <div class="n end"><i></i>Jan 16<br>Vegas</div>
+  </div>
+  <p class="fine">KBS list prices, read Oct 5. Full kit = both jerseys, shorts, socks and headband. Jerseys only = the Day One and Playoff pair in any cut. Team-store jerseys can run $5 to $15 more. Shipping and tax not included.</p>
+</section>
+
+<!-- 06 PLAY -->
+<section id="play" class="screen slab-r" aria-labelledby="t-play">
+  <div class="grid-floor vc-only" aria-hidden="true"></div>
+  <div class="playhead head">
+    <h2 id="t-play" data-vc="Boss Rush">BOSS RUSH</h2>
+    <p>Catch to put the thrower out. Throw to win the round. Your kit pick dresses the court.</p>
+    <p class="pcnote"><strong>PC Edition.</strong> Ultra graphics: supersampled, 4096-pixel shadow maps, full-resolution floor reflections, arena lighting on every player. Built for a desktop or laptop with a keyboard. The Quality button steps down if your machine needs it.</p>
+    <p class="pcnote pc-phone">On a phone? <a href="https://gordonusc.github.io/final-boss/">Play the regular edition</a>, tuned for mobile.</p>
+  </div>
+  <div class="gamemount" id="fbgame"><p class="loading">Loading the arena...</p></div>
+  <div class="arena" id="fallback" hidden>
+    <div class="hud" aria-live="polite">
+      <span>Playing as <b id="hud-who">BELLAMY</b></span>
+      <span>Score <b id="hud-score">0</b></span>
+      <span>Mult <b id="hud-mult">x1</b></span>
+      <span>Balls <b id="hud-ammo">1</b></span>
+      <span>Wave <b id="hud-wave">1</b></span>
+      <button class="toggle" id="sfx" type="button" aria-pressed="false">Sound off</button>
+    </div>
+    <div class="stagewrap"><canvas id="game" width="960" height="600" aria-label="Boss Rush dodgeball game. Use the keyboard or the on-screen buttons." tabindex="0"></canvas>
+    <div class="overlay" id="ov">
+      <h3 id="ov-h">READY?</h3>
+      <p id="ov-p">Left and Right to dodge. Space to catch when a ball reaches your ring. Up to throw. A catch puts the thrower out and gives you a ball.</p>
+      <button class="btn" id="ov-go" type="button">PLAY</button>
+    </div></div>
+    <div class="pad" aria-label="Touch controls">
+      <button type="button" data-k="left" aria-label="Move left">&larr;</button>
+      <button type="button" data-k="right" aria-label="Move right">&rarr;</button>
+      <button type="button" class="c" data-k="catch">CATCH</button>
+      <button type="button" class="t" data-k="throw">THROW</button>
+    </div>
+    <p class="keys"><kbd>&larr;</kbd> <kbd>&rarr;</kbd> or <kbd>A</kbd> <kbd>D</kbd> move. <kbd>Space</kbd> catch. <kbd>&uarr;</kbd> or <kbd>W</kbd> throw. <kbd>P</kbd> pause. <kbd>R</kbd> restart. Perks are just for fun, not real stats.</p>
+  </div>
+  <noscript><p>The game needs JavaScript. Everything else in this file reads fine without it.</p></noscript>
+</section>
+
+<!-- 07 PLAYER NINE -->
+<section id="nine" class="screen slab" aria-labelledby="t-nine">
+  <div class="ninegrid">
+    <div>
+      <h2 id="t-nine" data-vc="Room for One More">PLAYER SELECT: SLOT 9</h2>
+      <div class="letter">
+        <p>Alan, there's a jersey with your name on it.</p>
+        <p>FINAL BOSS is eight teammates from across the country: two US Women's catchers, a Team USA arm, a former pro pitcher, family, and a captain who would love to see you on court. No experience required. Our best players started where you would, with the No-Sting ball.</p>
+        <p>One weekend in Las Vegas, January 16 to 17. Say yes and Gordon handles the sign-up.</p>
+      </div>
+      <div class="card9"><b>PLAYER 9.</b> Special move: to be discovered on court. You also have a secret button, bottom right.</div>
+      <p style="margin-top:14px"><a class="btn ghost save" href="assets/canva-story.jpg" download>Save the hype card</a></p>
+    </div>
+    <figure class="story"><img src="assets/canva-story.jpg" alt="FINAL BOSS hype card: a boss health bar, Sin City Classic 2027, Mixed No-Sting, Jan 16 to 17, Las Vegas, and Player 9: your slot is open." width="540" height="960" loading="lazy"></figure>
+  </div>
+</section>
+
+<footer>
+  <h2>CREDITS</h2>
+  <p class="guideline"><a href="brand-guide.html">Logo and name guide</a></p>
+  <p>A team file for FINAL BOSS, made by Darby for Gordon, October 2026. The VS hero was made with Higgsfield from Gordon's own photos, the kit images are the craft revision of all 20 looks (Astra and Darby, QA by Astra and d5), scored on Gordon's own rubric as comparative design judgments, not vendor certification; the smaller flat lay and launch sheet are previous concepts, and the hype card was made with Canva. Mark Hawkins and Werten Bellamy III appear in photos Gordon sent for this file; every other teammate appears as a name and a jersey back. The announcer is an ElevenLabs voice and plays only if you press the button.</p>
+  <ol>
+    <li>Andrew Ketchum: <a href="https://cronkitenews.azpbs.org/2019/12/16/professional-adult-dodgeball/">Cronkite News, Dec 16 2019</a>; <a href="https://soundcloud.com/thedodgeballpodcast/s4-e-46-team-usa-chat-ft-nate-krieter-and-andrew-ketchum">The Dodgeball Podcast</a>.</li>
+    <li>Nina Fiore: <a href="https://events.boisestate.edu/event/film-lecture-series-nina-fiore">Boise State</a>; <a href="https://medium.com/thedodgeballtribune/the-top-30-women-in-us-dodgeball-part-1-35fc89e6197a">Dodgeball Tribune, Top 30 Women</a>; <a href="https://medium.com/thedodgeballtribune/a-look-at-the-ultimate-dodgeball-championship-womens-division-495b026e8de7">Dodgeball Tribune, UDC Women's Division</a>.</li>
+    <li>Flo Zabokritsky: <a href="https://medium.com/thedodgeballtribune/the-top-20-women-in-the-east-region-19e14574ac44">Dodgeball Tribune, Top 20 Women in the East</a>.</li>
+    <li>Casey Reed: <a href="https://usadodgeball.com/announcements">USA Dodgeball, March 2023 newsletter</a>.</li>
+    <li>Event: <a href="https://www.sincityclassic.org/sports/dodgeball">Sin City Classic, Dodgeball</a>.</li>
+    <li>Prices: <a href="https://www.kbssportsapparel.com/">KBS Sports Apparel (Kickballstuff)</a>, public catalog read Oct 5 2026.</li>
+    <li>"Started in No Sting" for Andrew, Nina, Flo and Casey: Gordon. Werten, Mark and Gordon: the team's own sign-up thread.</li>
+  </ol>
+</footer>
+
+<!-- look dock and the secret button -->
+<nav class="dock" aria-label="Kit looks">
+  <p class="dockline" aria-live="polite"><b id="dock-rank">1</b><span id="dock-name">Phase Two</span><i id="dock-score">95</i></p>
+  <div class="hotbar" id="hotbar" role="radiogroup" aria-label="Kit look, ranked. Keys 1 to 0, or left and right arrows."></div>
+</nav>
+<button class="alan" id="alan" type="button" aria-pressed="false"><span class="plaque"><b>Alan's Secret Button</b><span id="alan-sub">Press for Vice</span></span><span class="bezel"><span class="cap"></span></span></button>
+<div id="wipe" aria-hidden="true"><div class="wsun"></div><p id="wipe-word">Vice</p></div>
+<dialog id="lb" aria-label="Zoomed kit image"><button type="button" id="lb-close">Close</button><img id="lb-img" src="" alt=""></dialog>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const $=id=>document.getElementById(id);
+let ac=null,sound=false;
+
+/* ---------- looks: the craft-revision data (v6, final after Astra/d5 QA) ---------- */
+const LOOKS=[{"id":"fb02","m":"fb","r":1,"n":"Phase Two","t":95,"s":[19,15,13,15,10,10,8,5],"i":"ONE MORE LIFE. CHOSEN FAMILY.","c":["#ffffff","#111111","#e8442b","#f2b23a"],"cut":"sl","pair":90,"kit":155,"match":"black arm sleeve with eight pixel hearts; health-bar headband; pinstripe shorts","flat":"assets/kits/fb02-phase-two-flat.jpg","life":"assets/kits/fb02-phase-two-life.jpg","thumb":"assets/kits/thumb/fb02-phase-two-flat.jpg","cs":"assets/kits/fb02-craft.jpg","ct":"assets/kits/thumb/fb02-craft.jpg","cc":"Numerals cut with the same 8 segments as the health bar; bar full on Day One, one segment left on Playoff; PHASE ONE and PHASE TWO captions; hearts kept on the armhole.","cl":"Pixel hearts read small at court distance.","v5":93,"ov":2},{"id":"fb01","m":"fb","r":2,"n":"Chosen Family","t":94,"s":[19,15,13,15,9,10,8,5],"i":"WE PICKED EACH OTHER","c":["#14523f","#2ab3b8","#f3e6c8","#c9a24a"],"cut":"ss","pair":100,"kit":165,"match":"socks in the green-to-teal fade with tiny hearts; cream headband; navy Playoff shorts","flat":"assets/kits/fb01-chosen-family-flat.jpg","life":"assets/kits/fb01-chosen-family-life.jpg","thumb":"assets/kits/thumb/fb01-chosen-family-flat.jpg","cs":"assets/kits/fb01-craft.jpg","ct":"assets/kits/thumb/fb01-craft.jpg","cc":"Astra: wallpaper and fade removed; one linked-arc motif low on the sides; cleaner wordmark, number and mascot spacing; crew neck shown, polo kept as an unconfirmed option.","cl":"Playoff navy and Day One green are close in value on court.","v5":93,"ov":3,"vn":"a polo concept; exact KBS pattern pending"},{"id":"fb03","m":"fb","r":3,"n":"Boss Rush","t":93,"s":[19,15,15,13,10,9,8,4],"i":"EIGHT BOSSES. EIGHT OF US.","c":["#ffffff","#1f4fd1","#e33b3b","#f2c94c"],"cut":"ss","pair":100,"kit":165,"match":"royal socks with the eight-monster band; white headband; royal shorts","flat":"assets/kits/fb03-boss-rush-flat.jpg","life":"assets/kits/fb03-boss-rush-life.jpg","thumb":"assets/kits/thumb/fb03-boss-rush-flat.jpg","cs":"assets/kits/fb03-craft.jpg","ct":"assets/kits/thumb/fb03-craft.jpg","cc":"Pixel-step numerals on the monster grid; Playoff front now carries wordmark and number; crowned monsters.","cl":"Dense chest band competes with the wordmark.","v5":93,"ov":5},{"id":"fb08","m":"fb","r":4,"n":"Save Point","t":92,"s":[17,15,13,15,9,10,8,5],"i":"WE SAVED A SPOT FOR YOU","c":["#8ec9f2","#14254f","#e6b84a","#ffffff"],"cut":"ss","pair":100,"kit":165,"match":"sky socks with a gem cuff; navy shorts with a gold crystal hem","flat":"assets/kits/fb08-save-point-flat.jpg","life":"assets/kits/fb08-save-point-life.jpg","thumb":"assets/kits/thumb/fb08-save-point-flat.jpg","cs":"assets/kits/fb08-craft.jpg","ct":"assets/kits/thumb/fb08-craft.jpg","cc":"Single faceted heart gem framing the number; faceted numerals; esports-crystal feel gone.","cl":"Gem outline is thin; may need a heavier stroke to print.","v5":89,"ov":6},{"id":"fb04","m":"fb","r":5,"n":"The Final Boss (Fabulous)","t":92,"s":[17,14,14,15,10,10,8,4],"i":"WELCOME TO THE FAMILY","c":["#f4efe3","#d7262e","#f6c938","#ff3ea5"],"cut":"ss","pair":100,"kit":165,"match":"yellow-dot socks; hot pink headband; black shorts with pink and cyan side panels","flat":"assets/kits/fb04-fabulous-flat.jpg","life":"assets/kits/fb04-fabulous-life.jpg","thumb":"assets/kits/thumb/fb04-fabulous-flat.jpg","cs":"assets/kits/fb04-craft.jpg","ct":"assets/kits/thumb/fb04-craft.jpg","cc":"Marquee bulbs around the diamond sign and inside the numerals; side-seam dots removed; standard pink and cyan.","cl":"Split panels now mirror correctly front to back; bulb dots inside numerals need Callie to confirm.","v5":92,"ov":7},{"id":"fb07","m":"fb","r":6,"n":"Co-op Mode","t":91,"s":[18,15,13,14,9,10,8,4],"i":"NOBODY PLAYS ALONE","c":["#1aa5a8","#ff6f5e","#111111","#ffffff"],"cut":"ss","pair":100,"kit":165,"match":"split teal and coral socks (one of each); black shorts","flat":"assets/kits/fb07-co-op-flat.jpg","life":"assets/kits/fb07-co-op-life.jpg","thumb":"assets/kits/thumb/fb07-co-op-flat.jpg","cs":"assets/kits/fb07-craft.jpg","ct":"assets/kits/thumb/fb07-craft.jpg","cc":"Zigzag seam where the two halves interlock; keyline numerals in both colors; PLAYER 2 HAS JOINED on the back.","cl":"Split now mirrors correctly front to back; split color can split a player visually on court.","v5":90,"ov":10},{"id":"fb09","m":"fb","r":7,"n":"Loud and Loved","t":91,"s":[17,15,13,14,9,10,8,5],"i":"LOUD AND LOVED","c":["#4b1f87","#f2ead8","#e7c24a","#111111"],"cut":"ss","pair":100,"kit":165,"match":"sparkle-cuff socks with hidden Pride confetti; gold headband; black shorts","flat":"assets/kits/fb09-loud-and-loved-flat.jpg","life":"assets/kits/fb09-loud-and-loved-life.jpg","thumb":"assets/kits/thumb/fb09-loud-and-loved-flat.jpg","cs":"assets/kits/fb09-craft.jpg","ct":"assets/kits/thumb/fb09-craft.jpg","cc":"Confetti burst from one shoulder, thinning before the number; serif numerals with diamond terminals; Pride confetti kept.","cl":"Confetti is rectangles, dots and ribbons only (no stars); purple and gold edge close to a known pro palette.","v5":91,"ov":11},{"id":"fb05","m":"fb","r":8,"n":"Respawn","t":90,"s":[17,15,12,15,9,10,8,4],"i":"WE ALWAYS COME BACK","c":["#fbf4ea","#ff6b4a","#e8b13c","#2b2b2e"],"cut":"sl","pair":90,"kit":155,"match":"feather-print arm sleeve; coral headband; charcoal shorts with a flame hem","flat":"assets/kits/fb05-respawn-flat.jpg","life":"assets/kits/fb05-respawn-life.jpg","thumb":"assets/kits/thumb/fb05-respawn-flat.jpg","cs":"assets/kits/fb05-craft.jpg","ct":"assets/kits/thumb/fb05-craft.jpg","cc":"Painted phoenix replaced with two clean feather-stroke wings cradling the ball; feather-cut numerals.","cl":"Loses some of the cute factor of the crowned phoenix.","v5":91,"ov":14},{"id":"fb06","m":"fb","r":9,"n":"Insert Coin","t":90,"s":[16,15,13,14,10,10,8,4],"i":"CONTINUE? YES","c":["#1f53e0","#ff3fb4","#a6f23a","#2e2e33"],"cut":"ss","pair":100,"kit":165,"match":"pixel-camo socks; magenta headband; coin-stripe shorts","flat":"assets/kits/fb06-insert-coin-flat.jpg","life":"assets/kits/fb06-insert-coin-life.jpg","thumb":"assets/kits/thumb/fb06-insert-coin-flat.jpg","cs":"assets/kits/fb06-craft.jpg","ct":"assets/kits/thumb/fb06-craft.jpg","cc":"One diagonal pixel staircase; pixel numerals on the same grid; FINAL STAGE moved to the back neck.","cl":"Diagonal staircase still crosses the number on the fronts.","v5":90,"ov":15},{"id":"fb10","m":"fb","r":10,"n":"Legendary Loot","t":87,"s":[15,15,12,13,10,10,8,4],"i":"THE REAL LOOT IS US","c":["#1e4fd8","#f2a22b","#ffffff","#0b0b0b"],"cut":"ss","pair":100,"kit":165,"match":"hex socks (blue Day One, gold Playoff); rarity-bar headband","flat":"assets/kits/fb10-legendary-loot-flat.jpg","life":"assets/kits/fb10-legendary-loot-life.jpg","thumb":"assets/kits/thumb/fb10-legendary-loot-flat.jpg","cs":"assets/kits/fb10-craft.jpg","ct":"assets/kits/thumb/fb10-craft.jpg","cc":"Hex band at the shoulders only; hexagonal numerals; RARE and LEGENDARY tier tags.","cl":"Plainest silhouette; reads like a stock template.","v5":90,"ov":20},{"id":"vc01","m":"vc","r":1,"n":"No Sting Club","t":97,"s":[20,15,15,14,10,10,8,5],"i":"NO STING. ALL HEART.","c":["#ffffff","#7fd6c2","#ff6f61","#1d4f91"],"cut":"ss","pair":100,"kit":165,"match":"cabana-stripe socks; coral headband; ocean shorts with jellyfish hem; team flag with the jellyfish","flat":"assets/kits/vc01-no-sting-club-flat.jpg","life":"assets/kits/vc01-no-sting-club-life.jpg","thumb":"assets/kits/thumb/vc01-no-sting-club-flat.jpg","cs":"assets/kits/vc01-craft.jpg","ct":"assets/kits/thumb/vc01-craft.jpg","cc":"Astra: navy Day One lettering, ivory Playoff lettering, competing sleeve ring, hem jellyfish and jock tag removed.","cl":"Jellyfish still reads a little like an octopus (four thick arms).","v5":96,"ov":1},{"id":"vc04","m":"vc","r":2,"n":"Night Swim","t":94,"s":[18,15,14,15,9,10,8,5],"i":"JUMP IN. WE GOT YOU.","c":["#a8e6f0","#14254f","#ff8cc2","#f6d94a"],"cut":"ss","pair":100,"kit":165,"match":"pool-caustic socks; pink inner-tube headband; midnight shorts","flat":"assets/kits/vc04-night-swim-flat.jpg","life":"assets/kits/vc04-night-swim-life.jpg","thumb":"assets/kits/thumb/vc04-night-swim-flat.jpg","cs":"assets/kits/vc04-craft.jpg","ct":"assets/kits/thumb/vc04-craft.jpg","cc":"One pool-tile band as the hero; numerals drawn on the same square tile grid; caustics pushed back to a quiet ground; crest restored on Playoff.","cl":"Tile-grid numerals need a real type test at 6 inch height.","v5":94,"ov":4},{"id":"vc02","m":"vc","r":3,"n":"Deco Hotel","t":92,"s":[19,15,12,15,10,9,8,4],"i":"CHECK IN. CHOSEN FAMILY.","c":["#f5ecd9","#9fdcc4","#f6b39a","#b79be0"],"cut":"ss","pair":100,"kit":165,"match":"pastel ringer socks; lavender headband; navy shorts with lit-window hem","flat":"assets/kits/vc02-deco-hotel-flat.jpg","life":"assets/kits/vc02-deco-hotel-life.jpg","thumb":"assets/kits/thumb/vc02-deco-hotel-flat.jpg","cs":"assets/kits/vc02-craft.jpg","ct":"assets/kits/thumb/vc02-craft.jpg","cc":"Facade becomes a crisp lower band; stepped deco numerals echo the fins; sunburst roundel crest.","cl":"Day One front number sits high and the crest is small next to it.","v5":94,"ov":8},{"id":"vc07","m":"vc","r":4,"n":"Gator Boss","t":92,"s":[16,15,15,14,10,10,8,4],"i":"WE SNAP BACK","c":["#1f5a2e","#ff3fa1","#ffffff","#111111"],"cut":"ss","pair":100,"kit":165,"match":"gator-scale socks with heart cuffs; hot pink headband","flat":"assets/kits/vc07-gator-flat.jpg","life":"assets/kits/vc07-gator-life.jpg","thumb":"assets/kits/thumb/vc07-gator-flat.jpg","cs":"assets/kits/vc07-craft.jpg","ct":"assets/kits/thumb/vc07-craft.jpg","cc":"Scales confined to yoke and side panels like armor; tooth-notched numerals; quiet front panel.","cl":"Hot pink Playoff panels are loud next to the black.","v5":93,"ov":9},{"id":"vc08","m":"vc","r":5,"n":"Final Boss Motel","t":91,"s":[18,15,14,14,10,9,8,3],"i":"ALWAYS VACANCY FOR FAMILY","c":["#5fd3e0","#ff6f5e","#3b1a3d","#f6c938"],"cut":"ss","pair":100,"kit":165,"match":"aqua socks with a coral stripe; plum shorts; VACANCY sign flag","flat":"assets/kits/vc08-motel-flat.jpg","life":"assets/kits/vc08-motel-life.jpg","thumb":"assets/kits/thumb/vc08-motel-flat.jpg","cs":"assets/kits/vc08-craft.jpg","ct":"assets/kits/thumb/vc08-craft.jpg","cc":"Arrow sign as the one idea; sign-lettering numerals; crew ringer collar; round bulb tip; plain sleeves.","cl":"Arrow tip is three round bulbs (no starburst); plum Playoff is dark under gym light.","v5":92,"ov":12},{"id":"vc10","m":"vc","r":6,"n":"Catch & Release","t":91,"s":[17,15,13,14,10,10,8,4],"i":"WE CATCH EACH OTHER","c":["#ffffff","#14254f","#3a8fd9","#e0b54a"],"cut":"ss","pair":100,"kit":165,"match":"white socks with a navy ringer; navy wave shorts; marlin flag","flat":"assets/kits/vc10-catch-release-flat.jpg","life":"assets/kits/vc10-catch-release-life.jpg","thumb":"assets/kits/thumb/vc10-catch-release-flat.jpg","cs":"assets/kits/vc10-craft.jpg","ct":"assets/kits/thumb/vc10-craft.jpg","cc":"One clean two-color marlin; rope-twist inline numerals; Playoff front carries the full system.","cl":"Marlin plus script plus wordmark is a tall stack on the chest.","v5":91,"ov":13},{"id":"vc03","m":"vc","r":7,"n":"Los Flamingos","t":90,"s":[17,15,15,13,9,9,8,4],"i":"WE FLOCK TOGETHER","c":["#f7a6c0","#ffffff","#9fe3cf","#0f5b5c"],"cut":"ss","pair":100,"kit":165,"match":"flamingo socks; mint headband; teal shorts with a flamingo hem","flat":"assets/kits/vc03-los-flamingos-flat.jpg","life":"assets/kits/vc03-los-flamingos-life.jpg","thumb":"assets/kits/thumb/vc03-los-flamingos-flat.jpg","cs":"assets/kits/vc03-craft.jpg","ct":"assets/kits/thumb/vc03-craft.jpg","cc":"Script swash curves like a flamingo neck; matching drop-shadow numerals; flamingo row only on Playoff.","cl":"Tonal leaf print still busy behind the numbers.","v5":93,"ov":16},{"id":"vc05","m":"vc","r":8,"n":"Wanted Level","t":90,"s":[17,15,14,13,9,10,8,4],"i":"WANTED BY EACH OTHER","c":["#ffffff","#ff2f8f","#1fb3b0","#121a3a"],"cut":"ss","pair":100,"kit":165,"match":"white socks with a pink wanted-meter cuff; navy shorts with pink and teal stripes","flat":"assets/kits/vc05-wanted-level-flat.jpg","life":"assets/kits/vc05-wanted-level-life.jpg","thumb":"assets/kits/thumb/vc05-wanted-level-flat.jpg","cs":"assets/kits/vc05-craft.jpg","ct":"assets/kits/thumb/vc05-craft.jpg","cc":"Wanted meter as a contained bar; italic numerals at the wordmark angle; nothing above the name.","cl":"Meter is now five round siren dots (no stars); number sits close under the meter.","v5":92,"ov":17},{"id":"vc09","m":"vc","r":9,"n":"The Crew","t":89,"s":[16,15,13,14,9,10,8,4],"i":"THE REAL SCORE IS US","c":["#ffffff","#a8e3cf","#111111","#ff5fae"],"cut":"ss","pair":100,"kit":165,"match":"palm-camo socks; black headband with pink tipping","flat":"assets/kits/vc09-the-crew-flat.jpg","life":"assets/kits/vc09-the-crew-life.jpg","thumb":"assets/kits/thumb/vc09-the-crew-flat.jpg","cs":"assets/kits/vc09-craft.jpg","ct":"assets/kits/thumb/vc09-craft.jpg","cc":"Stencil bridges shared by wordmark and numerals; camo pushed to the sides only; heart in the blueprint grid.","cl":"Heist theme is the weakest story for this team.","v5":91,"ov":18},{"id":"vc06","m":"vc","r":10,"n":"Sunset Getaway","t":87,"s":[15,14,12,14,10,10,8,4],"i":"WE ALWAYS GET AWAY TOGETHER","c":["#ffffff","#ff8a3d","#ff3f8e","#6a2fb5"],"cut":"ss","pair":100,"kit":165,"match":"sunset-fade socks; black shorts with a palm hem","flat":"assets/kits/vc06-sunset-getaway-flat.jpg","life":"assets/kits/vc06-sunset-getaway-life.jpg","thumb":"assets/kits/thumb/vc06-sunset-getaway-flat.jpg","cs":"assets/kits/vc06-craft.jpg","ct":"assets/kits/thumb/vc06-craft.jpg","cc":"Single striped sun with stripe-cut numerals; only two palms; plate reads SIN CITY.","cl":"Synthwave sun is the most generic idea in the set.","v5":91,"ov":19}];
+const RUBRIC=[['Story',20],['Hidden',15],['Adorable',15],['Craft',15],['Day1/Day2',10],['Court',10],['Make',10],['Joy',5]];
+const short=n=>n.replace(/^The Final Boss \((.+)\)$/,'$1');
+const byMode=m=>LOOKS.filter(l=>l.m===m).sort((a,b)=>a.r-b.r);
+
+/* ---------- color math: derive the page from the four kit colors ---------- */
+const rgb=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
+const hex=c=>'#'+c.map(v=>Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,'0')).join('');
+const lum=c=>{const f=v=>{v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4)};return .2126*f(c[0])+.7152*f(c[1])+.0722*f(c[2])};
+const sat=c=>{const mx=Math.max(...c),mn=Math.min(...c);return mx?(mx-mn)/mx:0};
+const mix=(a,b,t)=>a.map((v,i)=>v+(b[i]-v)*t);
+const cr=(a,b)=>{const x=lum(a),y=lum(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05)};
+const WHITE=[255,255,255],INK=[14,9,22];
+function lift(c,bg,min){let k=0;while(cr(c,bg)<min&&k<12){c=mix(c,WHITE,.18);k++}return c}
+function palette(L,mode){
+  const C=L.c.map(rgb), byL=[...C].sort((a,b)=>lum(a)-lum(b));
+  const dark=byL[0], light=byL[3];
+  const viv=[...C].filter(c=>lum(c)>.03&&sat(c)>.25).sort((a,b)=>sat(b)*(.5+lum(b))-sat(a)*(.5+lum(a)));
+  let acc=viv[0]||byL[2], acc2=viv[1]||byL[2]; if(acc2===acc)acc2=byL[2];
+  const bg= mode==='vc' ? mix([20,10,48],dark,.16) : mix(dark,[8,5,14],lum(dark)>.04?.8:.4);
+  const bg2=mix(bg,acc,.12), panel=mix(bg,acc,.28);
+  acc=lift(acc,bg,4.5); acc2=lift(acc2,bg,4.5);
+  const bone=lum(light)>.75?light:mix(light,WHITE,.7);
+  const on=c=>cr(c,INK)>=cr(c,WHITE)?'#0e0916':'#ffffff';
+  return {'--void':hex(bg),'--void2':hex(bg2),'--plum':hex(panel),'--violet':hex(mix(acc,acc2,.5)),'--red':hex(acc),'--gold':hex(acc2),
+    '--bone':hex(bone),'--ash':hex(mix(bone,bg,.32)),'--ink':hex(bg),'--onred':on(acc),'--ongold':on(acc2),
+    '--c1':L.c[0],'--c2':L.c[1],'--c3':hex(lum(light)>.6?light:mix(light,WHITE,.75)),'--c4':L.c[3],'--glow':hex(acc)+'66'};
+}
+let TOK={};
+
+/* ---------- state ---------- */
+const store={get(){try{return JSON.parse(localStorage.getItem('fb-dossier-v3')||'{}')}catch(e){return {}}},set(v){try{localStorage.setItem('fb-dossier-v3',JSON.stringify(v))}catch(e){}}};
+const saved=store.get();
+const qs=new URLSearchParams(location.search);
+let mode=qs.get('mode')==='vc'?'vc':qs.get('mode')==='fb'?'fb':(saved.mode==='vc'?'vc':'fb');
+const cur={fb:saved.fb&&LOOKS.some(l=>l.id===saved.fb)?saved.fb:byMode('fb')[0].id, vc:saved.vc&&LOOKS.some(l=>l.id===saved.vc)?saved.vc:byMode('vc')[0].id};
+const ql=qs.get('look'); if(ql){const L=LOOKS.find(l=>l.id===ql); if(L){cur[L.m]=L.id; if(!qs.get('mode'))mode=L.m}}
+let look=null;
+
+/* ---------- jersey back svg, in the active kit's colors ---------- */
+function shirtColors(){const L=look, C=L.c.map(rgb); const body=C[0];
+  const rest=C.slice(1).sort((a,b)=>cr(b,body)-cr(a,body)); return {body:L.c[0],num:hex(rest[0]),trim:hex(rest[1]),edge:hex(rest[2])}}
+function backSVG(name,no,open){
+  const k=shirtColors(); const body=open?'none':k.body, num=open?TOK['--gold']:k.num;
+  const fs=24, w=name.length*fs*.46, fit=w>132?` textLength="132" lengthAdjust="spacingAndGlyphs"`:'';
+  return `<svg viewBox="0 0 200 230" role="img" aria-label="${open?'Empty jersey, slot 9':'Jersey back: '+name+(no?' '+no:'')}"><path d="M40 20 L75 8 Q100 22 125 8 L160 20 L188 70 L160 84 L156 222 L44 222 L40 84 L12 70 Z" fill="${body}" stroke="${open?TOK['--gold']:k.edge}" stroke-width="4" ${open?'stroke-dasharray="10 8"':''}/>${open?'':`<path d="M75 8 Q100 22 125 8" fill="none" stroke="${k.trim}" stroke-width="8"/><path d="M160 20 L188 70 L180 74 L154 26Z M40 20 L12 70 L20 74 L46 26Z" fill="${k.trim}"/><text x="100" y="34" text-anchor="middle" font-family="Chakra Petch,sans-serif" font-weight="700" font-size="7" fill="${num}" opacity=".85">SIN CITY 2027</text>`}<text x="100" y="64" text-anchor="middle" font-family="Teko,Impact,sans-serif" font-weight="700" font-size="${fs}"${fit} fill="${num}">${open?'':name}</text><text x="100" y="170" text-anchor="middle" font-family="Teko,Impact,sans-serif" font-weight="700" font-size="92" fill="${num}">${no||(open?'?':'')}</text></svg>`;
+}
+const cards=[...document.querySelectorAll('.card')];
+function renderBacks(){
+  cards.forEach(c=>{const el=c.querySelector('[data-back]');
+    if(c.dataset.photo){ if(!el.dataset.done){el.classList.add('photo');el.innerHTML=`<figure style="margin:0"><img src="${c.dataset.photo}" alt="${c.querySelector('h3').textContent}, photo sent by Gordon for this file" width="480" height="600" loading="lazy"><p class="plate">${c.dataset.name} ${c.dataset.no}</p></figure>`;el.dataset.done=1} }
+    else el.innerHTML=backSVG(c.dataset.name,c.dataset.no,c.classList.contains('open'))});
+  slots.forEach(s=>{const c=cards.find(x=>x.dataset.id===s.dataset.id); if(c.dataset.face||c.classList.contains('open'))return;
+    const k=shirtColors(); s.querySelector('.sil').innerHTML=`<circle cx="50" cy="38" r="15" fill="${k.body}" opacity=".9"/><path d="M18 100 Q22 64 50 62 Q78 64 82 100 Z" fill="${k.body}" opacity=".9"/><path d="M40 63 Q50 72 60 63" stroke="${k.trim}" stroke-width="4" fill="none"/>`});
+}
+
+/* ---------- character select ---------- */
+const grid=$('grid9'); let chosen='gordon';
+cards.forEach((c,i)=>{
+  const b=document.createElement('button'); b.type='button'; b.className='slot'+(c.classList.contains('open')?' open':'')+(c.dataset.face?' photo':'');
+  b.dataset.id=c.dataset.id; b.setAttribute('aria-pressed','false');
+  b.setAttribute('aria-label',c.querySelector('h3').textContent+(c.dataset.no&&c.dataset.id!=='nine'?', number '+c.dataset.no:''));
+  b.tabIndex=-1;
+  const vis=c.dataset.face?`<img src="${c.dataset.face}" alt="" width="300" height="300" loading="lazy">`:`<svg viewBox="0 0 100 100" aria-hidden="true" class="sil"></svg>`;
+  b.innerHTML=`${vis}<span class="no">${c.dataset.id==='nine'?'':c.dataset.no}</span><span class="nm${c.dataset.name.length>8?' long':''}">${c.dataset.id==='nine'?'???':c.dataset.name}</span>`;
+  grid.appendChild(b);
+});
+const slots=[...grid.children];
+function choose(id,focus){
+  chosen=id;
+  slots.forEach(s=>{const on=s.dataset.id===id;s.setAttribute('aria-pressed',on);s.tabIndex=on?0:-1;if(on&&focus)s.focus()});
+  cards.forEach(c=>c.classList.toggle('on',c.dataset.id===id));
+  const c=cards.find(c=>c.dataset.id===id);
+  if(id!=='nine'&&$('hud-who'))$('hud-who').textContent=c.dataset.name;
+  blip(520,.05);
+}
+slots.forEach((s,i)=>{
+  s.addEventListener('click',()=>choose(s.dataset.id));
+  s.addEventListener('keydown',e=>{
+    let j=i; if(e.key==='ArrowRight')j=(i+1)%9; else if(e.key==='ArrowLeft')j=(i+8)%9; else if(e.key==='ArrowDown')j=(i+3)%9; else if(e.key==='ArrowUp')j=(i+6)%9; else if(e.key==='Home')j=0; else if(e.key==='End')j=8; else return;
+    e.preventDefault(); e.stopPropagation(); choose(slots[j].dataset.id,true);
+  });
+});
+cards.forEach(c=>{ if(c.dataset.id==='nine')return; const p=document.createElement('p'); p.className='playas'; p.innerHTML=`<a class="btn" href="#play">PLAY AS ${c.dataset.name}</a> <span class="src">Game perk: ${c.dataset.perk}</span>`; p.querySelector('a').addEventListener('click',()=>choose(c.dataset.id)); c.firstElementChild.appendChild(p)});
+
+/* ---------- gear: KBS items, priced from the published catalog ---------- */
+const KBS='https://www.kbssportsapparel.com/products/';
+const GEAR=[
+  {k:'shorts',it:'Full-sub shorts',p:35,u:KBS+'full-sublimation-kick-shorts',kit:1,def:'In the kit artwork'},
+  {k:'socks',it:'Full-sub socks',p:20,u:KBS+'full-sublimation-socks-1',kit:1,def:'Crew or knee-high'},
+  {k:'headband',it:'Compression headband',p:10,u:KBS+'headband',kit:1,def:'In the kit colors'},
+  {k:'sleeve',it:'Arm sleeve',p:12,u:KBS+'full-sublimation-arm-sleeve',def:'Optional, one size'},
+  {k:'hoodie',it:'Full-sub hoodie',p:65,u:KBS+'full-sublimation-hoodie',def:'Carries the Playoff artwork'},
+  {k:'flag',it:'3x5 team flag',p:30,u:KBS+'3x5-all-over-printed-flag',def:'One for the whole team'}];
+const KEYW={shorts:/short/i,socks:/sock/i,headband:/headband/i,sleeve:/sleeve/i,flag:/flag/i,hoodie:/hoodie/i};
+function icon(k,c){
+  const [a,b,d,e]=c;
+  const pat=`<defs><pattern id="gp-${k}" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(${k==='socks'?0:45})"><rect width="10" height="10" fill="${a}"/><rect width="5" height="10" fill="${b}"/></pattern></defs>`;
+  const S={
+    shorts:`<path d="M10 10h44l6 42H38l-6-18-6 18H4z" fill="${d}" stroke="#1b1420" stroke-width="2"/><path d="M10 10h6l-4 42H4zM54 10h-6l4 42h8z" fill="${b}"/><rect x="10" y="10" width="44" height="6" fill="${a}"/>`,
+    socks:`<path d="M22 4h18v30l12 9c5 4 2 15-6 15H28c-7 0-10-5-10-11V4z" fill="url(#gp-socks)" stroke="#1b1420" stroke-width="2"/><rect x="22" y="4" width="18" height="7" fill="${d}"/>`,
+    headband:`<ellipse cx="32" cy="34" rx="24" ry="12" fill="none" stroke="${b}" stroke-width="10"/><ellipse cx="32" cy="34" rx="24" ry="12" fill="none" stroke="${d}" stroke-width="2" stroke-dasharray="4 5"/>`,
+    sleeve:`<path d="M20 4h24l-4 54H24z" fill="url(#gp-sleeve)" stroke="#1b1420" stroke-width="2"/><rect x="20" y="4" width="24" height="5" fill="${d}"/>`,
+    hoodie:`<path d="M22 10c3 10 17 10 20 0l14 8 5 18-10 2v22H13V38L3 36l5-18z" fill="${a}" stroke="#1b1420" stroke-width="2"/><path d="M22 10c3 10 17 10 20 0" fill="none" stroke="${b}" stroke-width="5"/><rect x="24" y="34" width="16" height="10" fill="${b}"/>`,
+    flag:`<rect x="6" y="4" width="4" height="56" fill="#1b1420"/><rect x="10" y="6" width="48" height="8" fill="${a}"/><rect x="10" y="14" width="48" height="8" fill="${b}"/><rect x="10" y="22" width="48" height="8" fill="${d}"/><rect x="10" y="30" width="48" height="8" fill="${e}"/>`};
+  return `<svg viewBox="0 0 64 64" aria-hidden="true">${pat}${S[k]}</svg>`;
+}
+const CUTS=[
+  {k:'ss',it:'Short-sleeve top',p:50,u:KBS+'full-sublimation-custom-short-sleeve-dodgeball-jersey',d:'M22 6L8 14l4 12 8-3v35h24V23l8 3 4-12-14-8c-3 5-17 5-20 0z'},
+  {k:'sl',it:'Sleeveless',p:45,u:KBS+'full-sublimation-custom-sleeveless-jersey-dodgeball',d:'M22 6c-2 8-6 10-8 12v40h36V18c-2-2-6-4-8-12-3 5-17 5-20 0z'},
+  {k:'tank',it:'Tank',p:45,u:KBS+'full-sublimation-custom-tank-top-jersey-dodgeball',d:'M23 6c0 10-6 12-8 14v38h34V20c-2-2-8-4-8-14h-4c-1 7-9 7-10 0z'},
+  {k:'rb',it:"Women's racerback",p:45,u:KBS+'full-sublimation-custom-racerback-jersey-dodgeball',d:'M25 6c0 9-10 14-10 20v32h34V26c0-6-10-11-10-20h-3c-1 7-7 7-8 0z'}];
+let pick=saved.pick==='jersey'?'jersey':'kit', cutUser=CUTS.some(c=>c.k===saved.cut)?saved.cut:null;
+const money=n=>'$'+n.toLocaleString('en-US');
+function renderGear(L){
+  const team=L.kit*8+30;
+  document.querySelectorAll('#pick button').forEach(b=>b.setAttribute('aria-checked',b.dataset.pick===pick));
+  const jer=pick==='jersey'; $('cuts').hidden=!jer; $('tags').hidden=jer;
+  if(jer){
+    const ck=cutUser||(L.cut==='sl'?'sl':'ss'), C=CUTS.find(c=>c.k===ck);
+    $('g-pair').textContent=money(C.p*2); $('g-pair-l').textContent='Jersey pair per player, '+C.it.toLowerCase();
+    $('g-kit').textContent=money(C.p); $('g-kit-l').textContent='Each jersey, Day One or Playoff';
+    $('g-team').textContent=money(C.p*16); $('g-team-l').textContent='Team of 8, jerseys only';
+    const k=shirtColors();
+    $('cutrow').innerHTML=CUTS.map(c=>`<div class="cut"><button type="button" role="radio" data-cut="${c.k}" aria-checked="${c.k===ck}"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="${c.d}" fill="${k.body}" stroke="#1b1420" stroke-width="2"/><text x="32" y="46" text-anchor="middle" font-family="Teko,Impact,sans-serif" font-weight="700" font-size="20" fill="${k.num}">4</text></svg><b>${money(c.p)}</b><span>${c.it}</span><small>${money(c.p*2)} pair, ${money(c.p*16)} team</small></button><a href="${c.u}" target="_blank" rel="noopener">See it at KBS</a></div>`).join('');
+    $('cutrow').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{cutUser=b.dataset.cut;renderGear(look);saveState()}));
+    $('cutnote').textContent=L.cut==='sl'?`${short(L.n)} was drawn sleeveless, and any cut works, including a top.`:'';
+    return;
+  }
+  $('g-pair-l').textContent='Day One plus Playoff jersey, per player'; $('g-kit-l').textContent='Full kit per player';
+  $('g-team-l').textContent='Team of 8 in full kits, plus one flag';
+  $('g-pair').textContent='$'+L.pair; $('g-kit').textContent='$'+L.kit; $('g-team').textContent='$'+team.toLocaleString('en-US');
+  const parts=L.match.split(';').map(s=>s.trim()).filter(Boolean);
+  const tagbg=rgb(TOK['--c3']), ic=[...L.c].sort((x,y)=>cr(rgb(y),tagbg)-cr(rgb(x),tagbg));
+  $('tags').innerHTML=GEAR.map(g=>{const hit=parts.find(p=>KEYW[g.k].test(p)); const nt=hit?hit[0].toUpperCase()+hit.slice(1):g.def;
+    return `<li><a class="tag" href="${g.u}" target="_blank" rel="noopener">${icon(g.k,ic)}${g.kit?'<span class="kit">IN KIT</span>':''}<b>$${g.p}</b><span class="it">${g.it}</span><span class="nt">${nt}</span></a></li>`}).join('');
+}
+
+/* ---------- kit ---------- */
+function renderKit(L){
+  $('kit-craft').src=L.cs; $('kit-craft').alt=`${short(L.n)} craft revision, rank ${L.r}: Day One and Playoff, front and back, with the crest and the inside print reading "${L.i}".`;
+  $('kit-cc').textContent=L.cc; $('kit-cl').textContent=L.cl; $('kit-was').textContent='was '+L.v5;
+  $('kit-flat').src=L.thumb; $('kit-flat').alt=`${short(L.n)}, rank ${L.r}: four views of the BELLAMY 4 jersey, Day One and Playoff, front and back, plus the inside over the heart reading "${L.i}".`;
+  $('kit-life').src=L.life; $('kit-life').alt=`${short(L.n)} launch sheet: Gordon in the Day One jersey, teammates seen from behind in the Playoff edition, and detail close-ups.`;
+  $('kit-sub').textContent=`#${L.r} ${short(L.n)}, ${L.ov} of 20 overall`; $('kit-inside').textContent=L.i; $('kit-total').textContent=L.t;
+  $('bars').innerHTML=RUBRIC.map(([n,mx],i)=>`<li title="${n}: ${L.s[i]} of ${mx}"><span>${n}</span><span class="tr"><i style="width:${mx/20*100}%"></i><s style="width:${L.s[i]/20*100}%"></s></span><span class="v">${L.s[i]}<small>/${mx}</small></span></li>`).join('');
+  [...$('ladder').querySelectorAll('button')].forEach(b=>b.setAttribute('aria-pressed',b.dataset.id===L.id));
+}
+function renderLadder(){
+  $('ladder').innerHTML=byMode(mode).map(L=>`<li><button type="button" data-id="${L.id}" aria-pressed="false" aria-label="Rank ${L.r}, ${short(L.n)}, ${L.t} points"><img src="${L.ct}" alt="" width="520" height="294" loading="lazy"><span class="rk">${L.r}</span><span class="ov" style="font-size:.7em;opacity:.75;margin-left:.3em">${L.ov}/20</span><span class="ln">${short(L.n)}</span><span class="ls">${L.t}</span></button></li>`).join('');
+  $('ladder').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>setLook(b.dataset.id)));
+}
+
+/* ---------- dock ---------- */
+function miniShirt(L){const [a,b,c,d]=L.c;
+  return `<svg viewBox="0 0 36 40" aria-hidden="true"><path d="M9 5l6-2q3 3 6 0l6 2 7 9-5 3-1-3v23H8V14l-1 3-5-3z" fill="${a}" stroke="#0006" stroke-width="1"/><path d="M15 3q3 3 6 0" stroke="${c}" stroke-width="2.5" fill="none"/><rect x="8" y="20" width="20" height="5" fill="${b}"/><circle cx="23" cy="13" r="2.4" fill="${c}"/><path d="M27 5l7 9-3 2-6-9z M9 5L2 14l3 2 6-9z" fill="${d}"/></svg>`}
+function renderHotbar(){
+  const hb=$('hotbar'); hb.innerHTML=byMode(mode).map((L,i)=>`<button type="button" class="hot" role="radio" aria-checked="false" data-id="${L.id}" aria-label="Look ${L.r}: ${short(L.n)}, ${L.t} points" title="${L.r}. ${short(L.n)} (${L.t})" tabindex="-1">${miniShirt(L)}<u>${(i+1)%10}</u></button>`).join('');
+  hb.querySelectorAll('.hot').forEach(b=>{b.addEventListener('click',()=>setLook(b.dataset.id));
+    b.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key==='ArrowLeft'){e.preventDefault();e.stopPropagation();step(e.key==='ArrowRight'?1:-1,true)}})});
+}
+function step(d,focus){const list=byMode(mode); const i=list.findIndex(l=>l.id===look.id); setLook(list[(i+d+list.length)%list.length].id); if(focus)$('hotbar').querySelector('[aria-checked="true"]').focus()}
+
+/* ---------- VS hero: Gordon in the active kit, crossfaded ---------- */
+const vsSrc=L=>L.flat.replace('assets/kits/','assets/vs/').replace('-flat.jpg','.jpg');
+let vsFront=$('vs-a'), vsBack=$('vs-b'), vsWant='';
+function vsSwap(L){
+  const src=vsSrc(L); vsWant=src;
+  const im=new Image();
+  const show=u=>{ if(vsWant!==src)return; if(vsFront.getAttribute('src')===u)return; vsBack.src=u; vsBack.alt=`Gordon Bellamy, #4, in the ${short(L.n)} kit`; vsBack.removeAttribute('aria-hidden'); vsFront.setAttribute('aria-hidden','true'); vsFront.alt='';
+    vsBack.classList.add('on'); vsFront.classList.remove('on'); [vsFront,vsBack]=[vsBack,vsFront];
+    try{document.querySelector('meta[property="og:image"]').setAttribute('content',u)}catch(e){} };
+  im.onload=()=>show(src); im.onerror=()=>show('assets/hero.jpg'); im.src=src;
+  const list=byMode(L.m), i=list.findIndex(l=>l.id===L.id); const nx=new Image(); nx.src=vsSrc(list[(i+1)%list.length]);
+}
+/* ---------- apply a look ---------- */
+function payload(L){return {id:L.id,name:short(L.n),rank:L.r,mode:L.m,total:L.t,scores:L.s,inside:L.i,colors:L.c.slice(),flat:L.flat,life:L.life,palette:Object.assign({},TOK)}}
+function setLook(id,quiet){
+  const L=LOOKS.find(l=>l.id===id); if(!L)return; look=L; cur[L.m]=L.id;
+  TOK=palette(L,mode); const rs=document.documentElement.style; for(const k in TOK)rs.setProperty(k,TOK[k]);
+  document.querySelector('meta[name=theme-color]').setAttribute('content',TOK['--void']);
+  $('hero-life').src=L.life; $('hero-life').alt=`${short(L.n)} kit launch: Gordon in the Day One jersey with teammates seen from behind.`;
+  $('hero-flat').src=L.ct; $('hero-flat').alt=`${short(L.n)} craft sheet`;
+  $('hero-rank').textContent='#'+L.r+' / '+L.t; $('hero-rank').title=L.ov+' of 20 overall'; $('hero-name').textContent=short(L.n);
+  $('dock-rank').textContent=L.r; $('dock-name').textContent=short(L.n); $('dock-score').textContent=L.t;
+  $('hotbar').querySelectorAll('.hot').forEach(b=>{const on=b.dataset.id===L.id;b.setAttribute('aria-checked',on);b.tabIndex=on?0:-1});
+  renderBacks(); renderKit(L); renderGear(L); ballTint(); vsSwap(L);
+  ['kit-vn','gear-vn'].forEach(id=>{const el=$(id); el.hidden=!L.vn; el.innerHTML=L.vn?`${short(L.n)}: ${L.vn}. <a href="${KBS}full-sublimation-custom-polo-style-jersey" target="_blank" rel="noopener">KBS polo listing</a>, $50 a top.`:''});
+  if(window.FBGame&&gameMounted){try{FBGame.setLook(payload(L))}catch(e){}}
+  saveState();
+}
+function saveState(){store.set({mode,fb:cur.fb,vc:cur.vc,pick,cut:cutUser})}
+document.querySelectorAll('#pick button').forEach(b=>b.addEventListener('click',()=>{pick=b.dataset.pick;renderGear(look);saveState()}));
+
+/* ---------- mode: FINAL BOSS or Vice ---------- */
+const swaps=[...document.querySelectorAll('[data-vc]')]; swaps.forEach(el=>el.dataset.fb=el.innerHTML);
+function setMode(m){
+  mode=m; document.body.dataset.mode=m;
+  swaps.forEach(el=>el.innerHTML=m==='vc'?el.dataset.vc:el.dataset.fb);
+  const vo=$('vo'); vo.pause(); vo.src=m==='vc'?'assets/announcer-vice.mp3':'assets/announcer.mp3'; announceReset();
+  $('alan').setAttribute('aria-pressed',m==='vc'); $('alan-sub').textContent=m==='vc'?'Back to FINAL BOSS':'Press for Vice';
+  $('alan').setAttribute('aria-label',"Alan's Secret Button: "+(m==='vc'?'return to FINAL BOSS mode':'switch the page to Vice mode'));
+  renderHotbar(); renderLadder();
+  setLook(cur[m]);
+  if(window.FBGame&&gameMounted){try{FBGame.setMode(m);FBGame.setLook(payload(look))}catch(e){}}
+}
+$('alan').addEventListener('click',e=>{
+  const to=mode==='vc'?'fb':'vc', b=$('alan'); b.classList.add('press'); setTimeout(()=>b.classList.remove('press'),160); blip(to==='vc'?660:330,.18,'sine');
+  if(reduce){setMode(to);return}
+  const w=$('wipe'), r=b.getBoundingClientRect();
+  w.style.setProperty('--wx',(r.left+r.width-40)+'px'); w.style.setProperty('--wy',(r.top+r.height/2)+'px');
+  w.className='go '+(to==='vc'?'tovc':'tofb'); $('wipe-word').textContent=to==='vc'?'Vice':'FINAL BOSS';
+  setTimeout(()=>setMode(to),470); setTimeout(()=>{w.className=''},1200);
+});
+
+/* ---------- global keys: arrows and 1 to 0 switch looks ---------- */
+addEventListener('keydown',e=>{
+  if(e.metaKey||e.ctrlKey||e.altKey||e.defaultPrevented)return;
+  const t=e.target; if(t&&(t.closest('input,textarea,select,[contenteditable],#grid9,#play,dialog')))return;
+  if(fbRunning())return;
+  if(e.key==='ArrowRight'||e.key==='ArrowLeft'){e.preventDefault();step(e.key==='ArrowRight'?1:-1)}
+  else if(/^[0-9]$/.test(e.key)){const i=(+e.key+9)%10, l=byMode(mode)[i]; if(l){setLook(l.id)}}
+});
+
+/* ---------- lightbox ---------- */
+const lb=$('lb');
+function zoom(src,alt){$('lb-img').src=src;$('lb-img').alt=alt||'';if(lb.showModal)lb.showModal();else window.open(src)}
+$('flat-open').addEventListener('click',()=>zoom(look.cs,$('kit-craft').alt));
+$('flatthumb').addEventListener('click',()=>zoom(look.flat,$('kit-flat').alt));
+$('hero-flat-btn').addEventListener('click',()=>zoom(look.cs,$('kit-craft').alt));
+$('life-open').addEventListener('click',()=>zoom(look.life,$('kit-life').alt));
+$('lb-close').addEventListener('click',()=>lb.close());
+lb.addEventListener('click',e=>{if(e.target===lb||e.target.tagName==='IMG')lb.close()});
+
+/* ---------- countdown ---------- */
+const target=Date.UTC(2027,0,16,19,0,0); // 11:00 am PST = 19:00 UTC
+function tick(){const d=Math.max(0,target-Date.now());const days=Math.floor(d/864e5),h=Math.floor(d/36e5)%24,m=Math.floor(d/6e4)%60;
+  const q=u=>document.querySelector(`#count [data-u="${u}"]`);q('d').textContent=days;q('h').textContent=String(h).padStart(2,'0');q('m').textContent=String(m).padStart(2,'0')}
+tick();setInterval(tick,30000);
+
+/* ---------- announcer ---------- */
+const vo=$('vo'),ab=$('announce');
+function announceReset(){ab.setAttribute('aria-pressed','false');ab.textContent='Hear the announcer'}
+ab.addEventListener('click',()=>{if(vo.paused){vo.play().catch(()=>{});ab.setAttribute('aria-pressed','true');ab.textContent='Stop the announcer'}else{vo.pause();vo.currentTime=0;announceReset()}});
+vo.addEventListener('ended',announceReset);
+
+/* ---------- sound (opt-in) ---------- */
+function blip(f,d,type){if(!sound||!ac)return;const o=ac.createOscillator(),g=ac.createGain();o.type=type||'square';o.frequency.value=f;g.gain.value=.06;g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+d);o.connect(g).connect(ac.destination);o.start();o.stop(ac.currentTime+d)}
+
+/* ---------- 3D intro ball, tinted by the kit ---------- */
+let ballTint=()=>{};
+(function three(){
+  const cv=$('ball3d'), still=document.querySelector('.ballbox img');
+  if(!window.THREE||!cv){still.style.display='block';return}
+  let r; try{ r=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true}) }catch(e){still.style.display='block';return}
+  r.setPixelRatio(Math.min(2,devicePixelRatio));
+  const sc=new THREE.Scene(), cam=new THREE.PerspectiveCamera(32,1,.1,100); cam.position.set(0,0,7.4);
+  const tc=document.createElement('canvas');tc.width=tc.height=256;const tx=tc.getContext('2d');tx.fillStyle='#808080';tx.fillRect(0,0,256,256);
+  for(let i=0;i<5200;i++){const v=110+Math.random()*60;tx.fillStyle=`rgb(${v},${v},${v})`;tx.beginPath();tx.arc(Math.random()*256,Math.random()*256,1+Math.random()*1.6,0,7);tx.fill()}
+  const bump=new THREE.CanvasTexture(tc);bump.wrapS=bump.wrapT=THREE.RepeatWrapping;bump.repeat.set(4,2);
+  const mat=new THREE.MeshPhysicalMaterial({color:0xd8241c,roughness:.55,clearcoat:.35,clearcoatRoughness:.4,bumpMap:bump,bumpScale:.02});
+  const ball=new THREE.Mesh(new THREE.SphereGeometry(1.6,96,96),mat); sc.add(ball);
+  const seamM=new THREE.MeshStandardMaterial({color:0x8a1410,roughness:.6});
+  const seam=new THREE.Mesh(new THREE.TorusGeometry(1.605,.018,8,160),seamM); seam.rotation.y=Math.PI/2; ball.add(seam);
+  const hemi=new THREE.HemisphereLight(0x7b34e6,0x0c0612,.6); sc.add(hemi);
+  const key=new THREE.DirectionalLight(0xffd27a,1.6); key.position.set(3,2,4); sc.add(key);
+  const rim=new THREE.DirectionalLight(0x9d5bff,2.4); rim.position.set(-4,1,-3); sc.add(rim);
+  ballTint=()=>{ if(!look)return; mat.color.set(TOK['--red']); seamM.color.set(TOK['--void2']); rim.color.set(TOK['--gold']); hemi.color.set(TOK['--violet']) };
+  let mx=0,my=0; addEventListener('pointermove',e=>{mx=e.clientX/innerWidth-.5;my=e.clientY/innerHeight-.5},{passive:true});
+  function size(){const w=cv.clientWidth||160,h=cv.clientHeight||160;r.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix()}
+  size(); addEventListener('resize',size);
+  let vis=true; new IntersectionObserver(es=>{vis=es[0].isIntersecting}).observe(cv);
+  let t=0; (function loop(){requestAnimationFrame(loop); if(!vis)return; t+=reduce?0:.01;
+    ball.rotation.y=t*.8+mx*.6; ball.rotation.x=.3+my*.4+Math.sin(t)*.08; r.render(sc,cam)})();
+})();
+
+/* ---------- game: mount game/game.js, else the built-in Boss Rush ---------- */
+let gameMounted=false, fallbackOn=false, fb=null;
+function fbRunning(){ if(fb&&fb.running())return true; try{ if(gameMounted&&window.FBGame&&FBGame.state){const s=FBGame.state(); return !!(s&&s.phase&&!/title|over|result|end|menu/i.test(s.phase)&&!s.paused)} }catch(e){} return false }
+function startFallback(){
+  if(fallbackOn)return; fallbackOn=true; $('fbgame').hidden=true; $('fallback').hidden=false; fb=bossRush();
+}
+(function loadGame(){
+  const mount=$('fbgame'), s=document.createElement('script'); s.src='game/game.bundle.js';
+  setTimeout(()=>{ if(!gameMounted&&!fallbackOn) startFallback() },9000);
+  s.onload=()=>{ if(window.FBGame&&typeof FBGame.mount==='function'){ try{ mount.innerHTML=''; if(fallbackOn)return; FBGame.mount(mount,{look:payload(look),mode,control:(cards.find(c=>c.dataset.id===chosen)||{dataset:{}}).dataset.name||'BELLAMY'}); gameMounted=true }catch(e){ console.warn('FBGame.mount failed, using the built-in game',e); startFallback() } } else startFallback() };
+  s.onerror=startFallback;
+  document.body.appendChild(s);
+})();
+
+function bossRush(){
+const sb=$('sfx');
+sb.addEventListener('click',()=>{sound=!sound;sb.setAttribute('aria-pressed',sound);sb.textContent=sound?'Sound on':'Sound off';if(sound&&!ac){try{ac=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}});
+const cv=$('game'),g=cv.getContext('2d'),W=960,H=600;
+const ov=$('ov'),ovh=$('ov-h'),ovp=$('ov-p'),go=$('ov-go');
+const hs=$('hud-score'),hm=$('hud-mult'),ha=$('hud-ammo'),hw=$('hud-wave');
+const PERK={gordon:{life:1},andrew:{throw:1.4},nina:{catch:1.4},flo:{catch:1.25,throw:1.15},casey:{multi:2},matt:{throw:1.25},werten:{move:1.15},mark:{move:1.2}};
+let S=null, keys={}, running=false, paused=false, shake=0, stop=0, flash=0, last=0;
+const T=k=>TOK[k]||'#fff';
+function newGame(){
+  const p=PERK[chosen]||{};
+  S={x:W/2,vx:0,lives:3+(p.life||0),ammo:1,score:0,base:0,mult:1,wave:1,outs:0,catches:0,t:0,balls:[],shots:[],throwers:[],catchT:0,catchCD:0,msg:'',msgT:0,perk:p,ended:false,invul:0};
+  spawnWave(1); upd();
+}
+function spawnWave(n){
+  S.wave=n; S.throwers=[]; const count=n===3?1:2+n-1;
+  for(let i=0;i<count;i++){ S.throwers.push({x:W*(i+1)/(count+1),y:110,hp:n===3?4:1,max:n===3?4:1,boss:n===3,cd:1+Math.random()*1.2+i*.4,dir:Math.random()<.5?-1:1}) }
+  S.msg=n===3?'PHASE TWO':'WAVE '+n; S.msgT=1.4; blip(n===3?220:440,.25,'sawtooth');
+}
+function upd(){hs.textContent=Math.round(S.score);hm.textContent='x'+S.mult.toFixed(1);ha.textContent=S.ammo;hw.textContent=S.wave}
+function throwAt(th){
+  const speed=(S.wave===1?250:S.wave===2?320:380)*(th.boss?1.1:1);
+  const ang=Math.atan2(520-th.y,S.x+(Math.random()-.5)*120-th.x);
+  const curve=th.boss&&Math.random()<.5?(Math.random()<.5?-1:1)*90:0;
+  S.balls.push({x:th.x,y:th.y+20,vx:Math.cos(ang)*speed,vy:Math.sin(ang)*speed,curve,from:th});
+}
+function step(dt){
+  const p=S.perk; S.t+=dt;
+  const acc=(keys.left?-1:0)+(keys.right?1:0), max=420*(p.move||1);
+  S.vx += (acc*max - S.vx)*Math.min(1,dt*14); S.x=Math.max(40,Math.min(W-40,S.x+S.vx*dt));
+  S.catchCD=Math.max(0,S.catchCD-dt); S.catchT=Math.max(0,S.catchT-dt); S.invul=Math.max(0,S.invul-dt); S.msgT=Math.max(0,S.msgT-dt);
+  S.throwers.forEach(th=>{ th.x+=th.dir*(th.boss?110:70)*dt; if(th.x<80||th.x>W-80)th.dir*=-1; th.cd-=dt;
+    if(th.cd<=0){ throwAt(th); if(th.boss&&th.hp<=2){ throwAt(th) } th.cd=(S.wave===1?1.9:S.wave===2?1.4:1.05)+Math.random()*.6 } });
+  const ring=46*(p.catch||1);
+  for(let i=S.balls.length-1;i>=0;i--){ const b=S.balls[i]; b.vx+=b.curve*dt; b.x+=b.vx*dt; b.y+=b.vy*dt;
+    const dx=b.x-S.x, dy=b.y-520, d=Math.hypot(dx,dy);
+    if(S.catchT>0 && d<ring){
+      S.balls.splice(i,1); S.catches++; S.ammo++; S.base+=150; S.mult=Math.min(8,S.mult+.5); S.score+=150*S.mult;
+      if(b.from&&S.throwers.includes(b.from)){ if(b.from.boss){b.from.hp--; if(b.from.hp<=0) out(b.from)} else out(b.from) }
+      stop=.07; flash=.12; S.msg='CATCH!'; S.msgT=.6; blip(880,.12); upd(); continue }
+    if(d<26 && S.invul<=0){ S.balls.splice(i,1); S.lives--; S.mult=1; S.invul=1.1; shake=reduce?0:14; flash=.08; S.msg='HIT'; S.msgT=.6; blip(120,.2,'triangle'); upd(); if(S.lives<=0) return end(false); continue }
+    if(b.y>H+40||b.x<-40||b.x>W+40) S.balls.splice(i,1);
+  }
+  for(let i=S.shots.length-1;i>=0;i--){ const s=S.shots[i]; s.y+=s.vy*dt; s.x+=s.vx*dt;
+    for(const th of S.throwers){ if(Math.hypot(s.x-th.x,s.y-th.y)<38){ S.shots.splice(i,1); th.hp--; S.base+=100; S.score+=100*S.mult; blip(660,.08); if(th.hp<=0) out(th); else {S.msg='HIT THE BOSS'; S.msgT=.5} upd(); break } }
+    if(s.y<-30) S.shots.splice(i,1);
+  }
+  if(S.throwers.length===0){ if(S.wave<3){ S.score+=250*S.mult; spawnWave(S.wave+1); upd() } else return end(true) }
+  if(S.t>75) return end(false,true);
+}
+function out(th){ S.throwers=S.throwers.filter(x=>x!==th); S.outs++; S.msg=th.boss?'BOSS DOWN':'OUT!'; S.msgT=.8; stop=th.boss?.25:.05 }
+function doThrow(){ if(!running||paused||S.ammo<=0)return; S.ammo--; const n=S.perk.multi||1, sp=620*(S.perk.throw||1);
+  for(let k=0;k<n;k++) S.shots.push({x:S.x,y:500,vx:(n>1?(k?1:-1)*70:0),vy:-sp}); blip(300,.06); upd() }
+function doCatch(){ if(!running||paused||S.catchCD>0)return; S.catchT=.28; S.catchCD=.45 }
+function end(win,timeout){
+  running=false; S.ended=true; const left=win?S.lives*300:0; S.score+=left*S.mult;
+  ovh.textContent=win?'BOSS DEFEATED':timeout?'TIME':'KNOCKED OUT';
+  ovp.textContent=`${Math.round(S.score)} points. ${S.outs} outs, ${S.catches} catches${win?', '+S.lives+' lives left, paid out':''}. ${win?'That is a Phase Two clear.':'Run it back.'}`;
+  go.textContent='PLAY AGAIN'; ov.hidden=false; upd(); go.focus();
+}
+function draw(){
+  g.save(); g.clearRect(0,0,W,H);
+  if(shake>0){g.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);shake*=.86;if(shake<.4)shake=0}
+  g.fillStyle=T('--void2');g.fillRect(0,0,W,H); g.fillStyle=T('--plum');g.globalAlpha=.55;g.fillRect(0,H/2,W,H/2);g.globalAlpha=1;
+  g.strokeStyle=T('--gold');g.lineWidth=4;g.beginPath();g.moveTo(0,H/2);g.lineTo(W,H/2);g.stroke();
+  g.strokeStyle=T('--plum');g.lineWidth=2;g.strokeRect(20,20,W-40,H-40);
+  if(S){
+    S.throwers.forEach(th=>{ g.fillStyle=th.boss?T('--red'):T('--ash'); g.beginPath();g.arc(th.x,th.y-26,th.boss?22:16,0,7);g.fill(); g.fillRect(th.x-(th.boss?26:18),th.y-6,(th.boss?52:36),th.boss?56:44);
+      if(th.boss){ g.fillStyle=T('--void');g.fillRect(th.x-60,th.y-70,120,12); g.fillStyle=T('--gold');g.fillRect(th.x-58,th.y-68,116*th.hp/th.max,8) } });
+    S.balls.forEach(b=>{ g.fillStyle=T('--red');g.beginPath();g.arc(b.x,b.y,14,0,7);g.fill(); g.strokeStyle=T('--void');g.lineWidth=2;g.beginPath();g.arc(b.x,b.y,14,-.6,.6);g.stroke() });
+    S.shots.forEach(s=>{ g.fillStyle=T('--gold');g.beginPath();g.arc(s.x,s.y,13,0,7);g.fill() });
+    const blinkOn=S.invul>0&&Math.floor(S.invul*12)%2;
+    if(!blinkOn){ const k=look?shirtColors():{body:'#7b34e6',num:'#ffc83d'}; g.fillStyle=T('--bone');g.beginPath();g.arc(S.x,488,15,0,7);g.fill(); g.fillStyle=k.body;g.fillRect(S.x-20,504,40,52); g.fillStyle=k.num;g.font='700 26px Teko, Impact, sans-serif';g.textAlign='center';g.fillText((cards.find(c=>c.dataset.id===chosen)||{}).dataset?.no||'',S.x,542) }
+    const ring=46*(S.perk.catch||1); g.strokeStyle=S.catchT>0?T('--gold'):'rgba(255,255,255,.25)'; g.lineWidth=S.catchT>0?5:2; g.beginPath();g.arc(S.x,520,ring,0,7);g.stroke();
+    g.fillStyle=T('--void');g.fillRect(28,H-34,260,16); const lmax=3+(S.perk.life||0); const grd=g.createLinearGradient(30,0,290,0);grd.addColorStop(0,T('--red'));grd.addColorStop(1,T('--gold'));g.fillStyle=grd;g.fillRect(30,H-32,256*S.lives/lmax,12);
+    g.fillStyle=T('--bone');g.font='600 15px Chakra Petch, sans-serif';g.textAlign='left';g.fillText('FINAL BOSS',30,H-40);
+    g.textAlign='right';g.fillText(Math.max(0,75-S.t).toFixed(0)+'s',W-30,H-22);
+    if(S.msgT>0){ g.textAlign='center';g.font='700 '+(S.msg==='PHASE TWO'?96:64)+'px Teko, Impact, sans-serif';g.fillStyle=T('--gold');g.globalAlpha=Math.min(1,S.msgT*2);g.fillText(S.msg,W/2,H/2-20);g.globalAlpha=1 }
+  }
+  if(flash>0){g.fillStyle=`rgba(255,255,255,${flash*3})`;g.fillRect(0,0,W,H)}
+  g.restore();
+}
+let vis=true; new IntersectionObserver(es=>{vis=es[0].isIntersecting}).observe(cv);
+function loop(ts){ requestAnimationFrame(loop); const dt=Math.min(.05,(ts-last)/1000||0); last=ts;
+  if(flash>0)flash=Math.max(0,flash-dt);
+  if(running&&!paused){ if(stop>0){stop-=dt} else step(dt) }
+  if(vis||running)draw() }
+requestAnimationFrame(loop);
+function start(){ newGame(); ov.hidden=true; running=true; paused=false; cv.focus() }
+go.addEventListener('click',()=>{ if(paused){paused=false;ov.hidden=true;cv.focus()} else start() });
+const map={ArrowLeft:'left',a:'left',A:'left',ArrowRight:'right',d:'right',D:'right'};
+addEventListener('keydown',e=>{ const inGame=document.activeElement===cv||running;
+  if(!inGame)return;
+  if(map[e.key]){keys[map[e.key]]=true;e.preventDefault()}
+  else if(e.key===' '||e.key==='s'||e.key==='S'){ if(running){doCatch();e.preventDefault()} }
+  else if(e.key==='ArrowUp'||e.key==='w'||e.key==='W'||e.key==='f'||e.key==='F'){ if(running){doThrow();e.preventDefault()} }
+  else if((e.key==='p'||e.key==='P'||e.key==='Escape')&&running){paused=!paused; ovh.textContent='PAUSED';ovp.textContent='Press P to resume.';go.textContent='RESUME';ov.hidden=!paused}
+  else if((e.key==='r'||e.key==='R')&&S){start()}
+},true);
+addEventListener('keyup',e=>{ if(map[e.key])keys[map[e.key]]=false });
+document.querySelectorAll('.pad button').forEach(b=>{ const k=b.dataset.k;
+  const down=e=>{e.preventDefault(); if(k==='catch')doCatch(); else if(k==='throw')doThrow(); else keys[k]=true};
+  const up=e=>{e.preventDefault(); if(k==='left'||k==='right')keys[k]=false};
+  b.addEventListener('pointerdown',down); b.addEventListener('pointerup',up); b.addEventListener('pointerleave',up); b.addEventListener('pointercancel',up) });
+document.addEventListener('visibilitychange',()=>{ if(document.hidden&&running&&!paused){paused=true;ovh.textContent='PAUSED';ovp.textContent='Press P or Resume.';go.textContent='RESUME';ov.hidden=false} });
+window.__bossrush={state:()=>S,start};
+return {running:()=>running&&!paused};
+}
+
+/* ---------- boot ---------- */
+choose('gordon');
+setMode(mode);
+window.__dossier={setLook,setMode,state:()=>({mode,look:look.id,cur:Object.assign({},cur),gameMounted,fallbackOn})};
+})();
+</script>
+</body>
+</html>
