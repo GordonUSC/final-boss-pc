@@ -628,23 +628,78 @@ class Sfx {
     const g = this.ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + Math.min(0.05, dur * 0.3)); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
     s.connect(f); f.connect(g); g.connect(this.master); s.start(t); s.stop(t + dur + 0.05);
   }
-  throw(p) { this.noise(p ? 0.45 : 0.22, p ? 500 : 900, p ? 4000 : 2400, 2, p ? 0.5 : 0.3); if (p) this.tone('sawtooth', 220, 880, 0.4, 0.08); }
-  hit(p) { this.tone('sine', p ? 150 : 190, 45, p ? 0.35 : 0.2, 0.7); this.noise(0.12, 1800, 300, 0.8, 0.5); }
-  catch() { this.tone('square', 660, 990, 0.08, 0.18); this.tone('square', 990, 1320, 0.1, 0.14, 0.06); this.noise(0.06, 3000, 2000, 1, 0.25); }
+  _throw(p) { this.noise(p ? 0.45 : 0.22, p ? 500 : 900, p ? 4000 : 2400, 2, p ? 0.5 : 0.3); if (p) this.tone('sawtooth', 220, 880, 0.4, 0.08); }
+  _hit(p) { this.tone('sine', p ? 150 : 190, 45, p ? 0.35 : 0.2, 0.7); this.noise(0.12, 1800, 300, 0.8, 0.5); }
+  _catch() { this.tone('square', 660, 990, 0.08, 0.18); this.tone('square', 990, 1320, 0.1, 0.14, 0.06); this.noise(0.06, 3000, 2000, 1, 0.25); }
   bobble() { this.tone('triangle', 500, 300, 0.15, 0.2); }
-  crowd(big) { this.noise(big ? 1.4 : 0.9, 600, 1400, 0.4, big ? 0.35 : 0.2); }
-  step() { this.tone('sine', 120, 80, 0.04, 0.12); }
+  _crowd(big) { this.noise(big ? 1.4 : 0.9, 600, 1400, 0.4, big ? 0.35 : 0.2); }
+  _step() { this.tone('sine', 120, 80, 0.04, 0.12); }
   ko() { [523, 659, 784, 1047].forEach((f, i) => this.tone('triangle', f, f, 0.12, 0.15, i * 0.07)); }
-  buzz() { this.tone('square', 140, 120, 0.7, 0.18); }
+  _buzz() { this.tone('square', 140, 120, 0.7, 0.18); }
   tick() { this.tone('square', 1400, 1400, 0.03, 0.06); }
-  roar(l = 1) {
+  _roar(l = 1) {
     this.noise(0.9 + 1.6 * l, 520, 1300, 0.5, 0.18 + 0.2 * l); this.noise(0.8 + 1.2 * l, 160, 240, 0.7, 0.12 * l, 0, 'lowpass');
     for (let k = 0; k < Math.round(l * 3); k++) this.tone('sine', 1800 + Math.random() * 500, 2500 + Math.random() * 400, 0.3, 0.04, 0.15 + k * 0.32);
     for (let i = 0; i < Math.round(10 * l); i++) this.noise(0.05, 2100, 1500, 1.3, 0.14, 0.1 + Math.random() * (0.6 + l));
   }
-  groan(l = 1) { this.noise(0.6 + 1.2 * l, 640, 190, 0.6, 0.1 + 0.18 * l); this.tone('sawtooth', 200, 125, 0.4 + 0.9 * l, 0.03); }
-  ooh() { this.noise(0.9, 300, 950, 0.8, 0.2); }
-  chant() { for (const r of [0, 1.2]) for (const t of [0, 0.3, 0.6, 0.78, 0.96]) this.noise(0.06, 2300, 1600, 1.4, 0.3, r + t); }
+  _groan(l = 1) { this.noise(0.6 + 1.2 * l, 640, 190, 0.6, 0.1 + 0.18 * l); this.tone('sawtooth', 200, 125, 0.4 + 0.9 * l, 0.03); }
+  _ooh() { this.noise(0.9, 300, 950, 0.8, 0.2); }
+  _chant() { for (const r of [0, 1.2]) for (const t of [0, 0.3, 0.6, 0.78, 0.96]) this.noise(0.06, 2300, 1600, 1.4, 0.3, r + t); }
+  // ---- recorded audio (ElevenLabs + Kenney CC0), loaded from assets/audio/ once sound is on; the synth versions above are the fallback
+  ensure() {
+    if (this.loading || !this.ctx || !this.base) return; this.loading = true; this.buf = this.buf || {};
+    const C = this.ctx;
+    this.sfxBus = C.createGain(); this.sfxBus.connect(this.master);
+    this.bedBus = C.createGain(); this.bedBus.connect(this.master);
+    this.vBus = C.createGain(); this.vBus.gain.value = 1.15; this.vBus.connect(this.master);
+    const names = ['crowd_bed', 'crowd_hype', 'crowd_roar', 'crowd_groan', 'crowd_ooh', 'crowd_chant', 'hit', 'catch', 'throw', 'whistle', 'buzzer', 'squeak', 'bounce',
+      'vo_open', 'vo_rps', 'vo_ready', 'vo_set', 'vo_go', 'vo_next', 'vo_catch', 'vo_headshot', 'vo_tide', 'vo_opptide', 'vo_lead', 'vo_point_fb', 'vo_point_gl', 'vo_phase2', 'vo_ot', 'vo_win', 'vo_lose', 'vo_clutch', 'vo_falsestart'];
+    for (let i = 0; i < 5; i++) names.push('k_hit' + i, 'k_power' + i, 'k_step' + i, 'k_bounce' + i);
+    for (const n of names) {
+      fetch(this.base + n + '.mp3').then(r => r.ok ? r.arrayBuffer() : null).then(ab => { if (ab) C.decodeAudioData(ab, b => { this.buf[n] = b; }, () => {}); }).catch(() => {});
+    }
+  }
+  smp(n, vol = 1, rate = 1, delay = 0, bus) {
+    if (!this.on || !this.ctx) return null; this.ensure();
+    const b = this.buf && this.buf[n]; if (!b) return null;
+    const C = this.ctx, s = C.createBufferSource(), g = C.createGain();
+    s.buffer = b; s.playbackRate.value = rate; g.gain.value = vol; s.connect(g); g.connect(bus || this.sfxBus); s.start(C.currentTime + delay); return s;
+  }
+  any(prefix, vol, rate) { return this.smp(prefix + ((Math.random() * 5) | 0), vol, rate * (0.94 + Math.random() * 0.12)); }
+  vo(n, prio = 1) {
+    // one announcer line at a time; a higher-priority call may talk over a lower one; the crowd ducks under the voice
+    if (!this.on || !this.ctx) return; const now = this.ctx.currentTime;
+    if (now < (this.voUntil || 0) && prio <= (this.voPrio || 0)) return;
+    const s = this.smp(n, 1, 1, 0, this.vBus); if (!s) return;
+    const d = s.buffer.duration; this.voUntil = now + d; this.voPrio = prio;
+    this.bedBus.gain.cancelScheduledValues(now); this.bedBus.gain.setTargetAtTime(0.4, now, 0.04); this.bedBus.gain.setTargetAtTime(1, now + d, 0.35);
+  }
+  mood(m, e, live) {
+    // crowd beds: a steady murmur that swells with excitement, plus a cheering loop that rises with a happy crowd
+    if (!this.ctx) return;
+    const want = this.on && live && this.buf && this.buf.crowd_bed && this.buf.crowd_hype;
+    if (want && !this.beds) {
+      const C = this.ctx; this.beds = ['crowd_bed', 'crowd_hype'].map(n => { const s = C.createBufferSource(), g = C.createGain(); s.buffer = this.buf[n]; s.loop = true; g.gain.value = 0; s.connect(g); g.connect(this.bedBus); s.start(); return { s, g }; });
+    }
+    if (!want && this.beds) { const t = this.ctx.currentTime; for (const b of this.beds) { b.g.gain.setTargetAtTime(0, t, 0.2); b.s.stop(t + 1.2); } this.beds = null; }
+    if (!this.beds) return;
+    const t = this.ctx.currentTime, up = Math.max(0, m), dn = Math.max(0, -m);
+    this.beds[0].g.gain.setTargetAtTime(0.55 + 0.35 * e - 0.25 * dn, t, 0.3);
+    this.beds[1].g.gain.setTargetAtTime(Math.min(0.85, up * (0.25 + 0.75 * e)), t, 0.35);
+  }
+  throw(p) { if (this.smp('throw', p ? 0.95 : 0.6, p ? 0.82 : 1 + Math.random() * 0.12)) { if (p) this.tone('sawtooth', 220, 880, 0.4, 0.04); } else this._throw(p); }
+  hit(p) { if (this.any(p ? 'k_power' : 'k_hit', p ? 1 : 0.8, p ? 0.9 : 1)) { this.smp('hit', p ? 0.9 : 0.55, p ? 0.85 : 1.05); } else this._hit(p); }
+  catch() { if (!this.smp('catch', 0.95, 0.97 + Math.random() * 0.08)) this._catch(); }
+  crowd(big) { if (!this.smp('crowd_roar', big ? 0.9 : 0.5)) this._crowd(big); }
+  step() { if (!this.any('k_step', 0.22, 1.1)) this._step(); }
+  buzz() { if (!this.smp('buzzer', 0.75)) this._buzz(); }
+  roar(l = 1) { if (!this.smp('crowd_roar', 0.45 + 0.5 * l)) this._roar(l); }
+  groan(l = 1) { if (!this.smp('crowd_groan', 0.35 + 0.55 * l)) this._groan(l); }
+  ooh() { if (!this.smp('crowd_ooh', 0.75)) this._ooh(); }
+  chant() { if (!this.smp('crowd_chant', 0.8)) this._chant(); }
+  whistle() { this.smp('whistle', 0.35, 1 + Math.random() * 0.05); }
+  squeak() { const t = this.ctx ? this.ctx.currentTime : 0; if (t - (this.lastSq || 0) < 0.25) return; this.lastSq = t; this.smp('squeak', 0.4, 0.9 + Math.random() * 0.25); }
+  bounce(k) { const t = this.ctx ? this.ctx.currentTime : 0; if (t - (this.lastBn || 0) < 0.05) return; this.lastBn = t; if (!this.any('k_bounce', 0.25 + 0.5 * k, 1.15)) this.smp('bounce', 0.3 + 0.5 * k); }
   stinger() { [392, 494, 587, 784].forEach((f, i) => this.tone('sawtooth', f, f * 1.01, 0.16, 0.08, i * 0.09)); }
 }
 
@@ -659,7 +714,7 @@ class Game {
     this.look = this.opts.look || DEFAULT_LOOK; this.mode = this.opts.mode === 'vc' ? 'vc' : 'fb';
     this.controlKey = rosterKey(this.opts.player) || rosterKey(this.opts.control) || 'BELLAMY';
     this.squad = ROSTER.map(r => r.key);
-    this.sfx = new Sfx();
+    this.sfx = new Sfx(); this.sfx.base = this.base + 'assets/audio/';
     this.keys = {}; this.edge = {}; this.lastTap = { dir: 0, f: -99 };
     this.touch = { mx: 0, mz: 0, run: false, btn: {} };
     this.frame = 0; this.phase = 'title'; this.paused = false; this.visible = true; this.hitstop = 0;
@@ -1289,6 +1344,8 @@ class Game {
     const S = this.sfx, big = Math.abs(K[0]) >= 0.85;
     if (K[0] > 0) { S.roar(K[1]); if (big) { S.chant(); if (this.signs) for (const sg of this.signs) sg.wig = 1; } if (kind === 'bigplus') S.ooh(); }
     else S.groan(Math.min(1, -K[0] + 0.2));
+    const VO = { tide: ['vo_tide', 3], opptide: ['vo_opptide', 3], clutch: ['vo_clutch', 3], lead: ['vo_lead', 3] }[kind];
+    if (VO) this.sfx.vo(VO[0], VO[1]); else if (kind === 'catch' && Math.random() < 0.45) this.sfx.vo('vo_catch', 1);
     if (kind === 'tide') { this.popBrush('THE TIDE TURNS!', 'THE CROWD IS ON ITS FEET', '', 0.3, 1.8); this.ref('FINAL BOSS fights back'); }
     if (kind === 'opptide') { this.popBrush('UH OH...', 'THE GLITCHES ARE COMING BACK', 'lime', 0.3, 1.6); }
     if (kind === 'clutch') this.popBrush('CLUTCH!', 'LAST ONE STANDING', '', 0.3, 1.6);
@@ -1307,10 +1364,11 @@ class Game {
     this.mood = (this.mood || 0) * 0.994; this.exc = (this.exc || 0) * 0.988;
     const m = this.mood, e = this.exc;
     this.crowdMood.value = m; this.crowdExc.value = e; this.crowdAmp.value = (this.rm || this.tier === 'low') ? 0 : 1;
-    if (!this.$.crowd) return;
+    if (!this.$.crowd) { this.sfx.mood(m, e, this.phase !== 'title' && this.phase !== 'result' && !this.paused); return; }
     const word = m > 0.6 ? 'CROWD ROARING' : m > 0.25 ? 'CROWD CHEERING' : m < -0.5 ? 'CROWD STUNNED' : m < -0.2 ? 'CROWD GROANING' : 'CROWD WATCHING';
     if (word !== this.crowdWord) { this.crowdWord = word; this.$.crowdL.textContent = word; this.$.crowd.classList.toggle('up', m > 0.25); this.$.crowd.classList.toggle('down', m < -0.2); }
     this.$.crowdB.style.left = (50 + 46 * m).toFixed(1) + '%';
+    this.sfx.mood(m, e, this.phase !== 'title' && this.phase !== 'result' && !this.paused);
   }
   cheer(name) { if (!this.signs) return; for (const sg of this.signs) if (sg.def.who === name) sg.wig = 1; }
   updateStands() {
@@ -1405,7 +1463,7 @@ class Game {
     this.paused = false; this.$.ov.hidden = true; this.$.pause.textContent = 'Time out';
     this.phase = 'intro'; this.introT = 0;
     this.showVS();
-    this.sfx.stinger();
+    this.sfx.stinger(); this.sfx.vo('vo_open', 3);
     this.$.stage.focus({ preventScroll: true });
   }
   showVS() {
@@ -1417,6 +1475,7 @@ class Game {
   startBrief() {
     // the rules card before every game: what to do on GO, how you get out, and the controls
     this.phase = 'brief'; this.briefT = 0; this.briefGo = false;
+    if (this.ot) this.sfx.vo('vo_ot', 3); else if (this.lastCtl >= 0) this.sfx.vo('vo_next', 1);
     const touch = this.root.classList.contains('has-touch');
     const title = this.ot ? 'OVERTIME' : 'GAME ' + this.gameNo;
     const rules = [['rush', 'Rush right only', 'on GO, run only for the balls on your right as you face the other team'], ['line', 'Clear the line', 'carry a rushed ball past your attack line before you throw'], ['catch', 'Catch = back in', 'the thrower is out and your next teammate returns'],
@@ -1450,9 +1509,10 @@ class Game {
     const w = 1 - this.lastCtl; this.rpsWinner = w;
     this.$.vs.hidden = true; this.placeRushBalls(w);
     this.phase = 'lineup'; this.lineT = 0;
-    this.popCenter('READY', 'big', 0.45, 0.75); this.ref((w === 0 ? 'FINAL BOSS' : 'THE GLITCHES') + ' has the 3 balls. Rush only your right'); this.showLanes(true);
+    this.popCenter('READY', 'big', 0.45, 0.75); this.sfx.vo('vo_ready', 2); this.ref((w === 0 ? 'FINAL BOSS' : 'THE GLITCHES') + ' has the 3 balls. Rush only your right'); this.showLanes(true);
   }
   startRPS() {
+    this.sfx.vo('vo_rps', 2);
     this.phase = 'rps'; this.rpsT = 0; this.rpsPick = null; this.rpsCPU = null; this.rpsDone = 0;
     const names = ['ROCK', 'PAPER', 'SCISSORS'];
     this.$.vs.innerHTML = `<div class="fbg-rps"><h3>RO-SHAM-BO</h3><p>${this.gameNo === 1 && !this.ot ? 'Winner takes 3 balls on its right.' : (this.ot ? 'Overtime. Winner takes 3 balls.' : 'Game ' + this.gameNo + '. Winner takes 3 balls on its right.')}</p>
@@ -1483,7 +1543,7 @@ class Game {
       this.$.vs.hidden = true; this.$.vs.classList.remove('live');
       this.placeRushBalls(this.rpsWinner);
       this.phase = 'lineup'; this.lineT = 0;
-      this.popCenter('READY', 'big', 0.45, 0.75); this.ref('Rush only the balls on your right'); this.showLanes(true);
+      this.popCenter('READY', 'big', 0.45, 0.75); this.sfx.vo('vo_ready', 2); this.ref('Rush only the balls on your right'); this.showLanes(true);
     }
   }
   lineupTick() {
@@ -1492,13 +1552,13 @@ class Game {
     if (!this.falseStart && this.lineT > 8 && (Math.abs(ui.mx) + Math.abs(ui.mz) > 0.3 || ui.dash)) {
       this.falseStart = true;
       for (const b of this.balls) if (b.state === 'rest' && b.rushTeam === 0) b.rushTeam = 1;
-      this.popCenter('FALSE START', 'big red', 0.6); this.ref('Balls go to THE GLITCHES'); this.sfx.buzz();
+      this.popCenter('FALSE START', 'big red', 0.6); this.ref('Balls go to THE GLITCHES'); this.sfx.buzz(); this.sfx.vo('vo_falsestart', 3);
     }
     for (const a of this.all) if (a.active) { a.tgt = this.poseSquat(a, 0.45); a.tgt.sq = 1; a.tgt.sh = [-0.6, 0.3, -0.6, 0.3]; this.blend(a, 0.25); this.place(a); }
     for (const b of this.balls) this.placeBallMesh(b);
-    if (this.lineT === 45) this.popCenter('SET', 'big', 0.45, 0.75);
+    if (this.lineT === 45) { this.popCenter('SET', 'big', 0.45, 0.75); this.sfx.vo('vo_set', 2); }
     if (this.lanes && this.lanesOn) for (const m of this.lanes) m.material.opacity = 0.34 + 0.1 * Math.sin(this.lineT * 0.15);
-    if (this.lineT === 90) { this.phase = 'play'; this.rushT = 0; this.cheer('*go'); this.popBrush('RUSH!', (this.rpsWinner === 0 ? 'FINAL BOSS' : 'GLITCHES') + ' rush 3 balls', '', 0.3, 1.3); this.sfx.crowd(true); this.sfx.buzz(); }
+    if (this.lineT === 90) { this.phase = 'play'; this.rushT = 0; this.cheer('*go'); this.popBrush('RUSH!', (this.rpsWinner === 0 ? 'FINAL BOSS' : 'GLITCHES') + ' rush 3 balls', '', 0.3, 1.3); this.sfx.crowd(true); this.sfx.vo('vo_go', 3); this.sfx.whistle(); }
   }
   pause(auto) {
     if (this.phase === 'title' || this.phase === 'result' || this.dead) return;
@@ -1521,7 +1581,7 @@ class Game {
   resume() { if (!this.paused) return; this.paused = false; this.timeoutT = 0; this.$.ov.hidden = true; this.$.pause.textContent = this.timeoutUsed ? 'Pause' : 'Time out'; this.$.stage.focus({ preventScroll: true }); }
   endMatch(result) {
     if (this.over) return; this.over = true; this.phase = 'result'; this.resultT = 0; this.result = result;
-    this.sfx.buzz(); this.crowdReact(result.win ? 'matchwin' : 'matchlose');
+    this.sfx.buzz(); this.crowdReact(result.win ? 'matchwin' : 'matchlose'); this.sfx.vo(result.win ? 'vo_win' : 'vo_lose', 4);
     this.popCenter(result.win ? 'MATCH: FINAL BOSS' : 'MATCH: GLITCHES', result.win ? 'big gold' : 'big red');
     setTimeout(() => this.showResults(), this.rm ? 600 : 1600);
   }
@@ -1795,7 +1855,7 @@ class Game {
     const ground = a.h <= 0.0001;
     if (it.jump && ground && (a.state === 'idle' || a.state === 'walk' || a.state === 'run')) { a.airSteps = a.state === 'run' ? Math.max(1, a.steps) : 0; a.set('squat'); this.sfx.step(); return; }
     if (a.state === 'air') { a.airF++; return; }
-    if (it.dash && (a.state === 'idle' || a.state === 'walk')) { a.set('run'); a.runDir = it.dash; a.runF = 0; a.steps = 0; }
+    if (it.dash && (a.state === 'idle' || a.state === 'walk')) { if (a === this.user) this.sfx.squeak(); a.set('run'); a.runDir = it.dash; a.runF = 0; a.steps = 0; }
     if (a.state === 'run') {
       const holding = it.holdRun && Math.sign(it.mx || a.runDir) === a.runDir;
       if (!holding) a.set('idle');
@@ -1980,7 +2040,7 @@ class Game {
     }
     // loose (dead) ball
     B.vh -= GRAV * DT; B.x += B.vx * DT; B.z += B.vz * DT; B.h += B.vh * DT;
-    if (B.h <= 0.22) { B.h = 0.22; if (Math.abs(B.vh) > 1.5) B.vh = -B.vh * 0.5; else B.vh = 0; B.vx *= 0.94; B.vz *= 0.94; }
+    if (B.h <= 0.22) { B.h = 0.22; if (Math.abs(B.vh) > 1.5) { this.sfx.bounce(Math.min(1, Math.abs(B.vh) / 7)); B.vh = -B.vh * 0.5; } else B.vh = 0; B.vx *= 0.94; B.vz *= 0.94; }
     if (Math.abs(B.x) > 12) { B.x = Math.sign(B.x) * 12; B.vx = -B.vx * 0.5; }
     if (Math.abs(B.z) > 6.2) { B.z = Math.sign(B.z) * 6.2; B.vz = -B.vz * 0.5; }
     const slow = Math.hypot(B.vx, B.vz) < 0.35 && B.h <= 0.23;
@@ -2047,7 +2107,7 @@ class Game {
       B.hitSet.add(f); B.vx *= -0.25; B.vz *= -0.25; B.vh = 4; this.killBall(B, 'head');
       this.spark(B.x, B.h, B.z, 1.3); this.hitstop = 4; f.shake = 8; f.shakeMax = 8;
       if (!crouched && thrower && thrower.role === 'in') {
-        this.popBrush('HEADSHOT!', 'THROWER OUT', 'red'); this.stats.headshots++;
+        this.popBrush('HEADSHOT!', 'THROWER OUT', 'red'); this.stats.headshots++; this.sfx.vo('vo_headshot', 2);
         this.eliminate(thrower, 'headshot');
       } else this.pop(f, 'HEADSHOT: NO CALL', 'small');
       return;
@@ -2115,7 +2175,7 @@ class Game {
   eliminate(a, why, dir) {
     if (a.role !== 'in') return;
     if (a.held) { const b = a.held; a.held = null; b.holder = null; b.state = 'loose'; b.live = false; b.vh = 4; b.vx = (dir || -a.side) * 1.5; b.vz = (Math.random() - 0.5) * 2; b.cleared = true; }
-    a.role = 'gone'; a.oob = 0; a.ai.press = -1; a.ai.claimBall = null;
+    a.role = 'gone'; a.oob = 0; a.ai.press = -1; a.ai.claimBall = null; this.sfx.whistle();
     dir = dir || -a.side;
     if (why === 'power') { a.knock = {}; a.vx = dir * 7; a.vz = (Math.random() - 0.5) * 2; a.vh = 6; a.h = 0.05; a.set('knock'); }
     else if (why === 'hit') { a.knock = { dx: dir * 0.8, dz: 0 }; a.set('hitstun'); }
@@ -2192,7 +2252,7 @@ class Game {
       if (this.ctlT >= RULES.control) this.controlViolation(maj);
     }
     // phase two: the GLITCH KING powers up when his team is down to 3
-    if (!this.p2 && this.liveCount(1) <= 3 && this.boss.role === 'in') { this.p2 = true; this.cheer('*p2'); this.popBrush('PHASE TWO!', 'THE GLITCH KING POWERS UP', 'red'); this.sfx.stinger(); this.$.boss.classList.add('on'); this.aura(this.boss); }
+    if (!this.p2 && this.liveCount(1) <= 3 && this.boss.role === 'in') { this.p2 = true; this.cheer('*p2'); this.popBrush('PHASE TWO!', 'THE GLITCH KING POWERS UP', 'red'); this.sfx.stinger(); this.sfx.vo('vo_phase2', 3); this.$.boss.classList.add('on'); this.aura(this.boss); }
     if (this.p2) this.$.bossI.style.transform = `scaleX(${this.liveCount(1) / 8})`;
     // game over
     const l0 = this.liveCount(0), l1 = this.liveCount(1);
@@ -2237,6 +2297,8 @@ class Game {
     if (before < 0 && after >= 0) { this.crowdReact('lead'); this.ref(after > 0 ? 'FINAL BOSS takes the lead' : 'All square'); }
     else if (before > 0 && after <= 0) { this.crowdReact('opplead'); this.ref(after < 0 ? 'THE GLITCHES take the lead' : 'All square'); }
     else this.crowdReact(w === 0 ? 'gamewin' : 'gamelose');
+    if (!(before < 0 && after >= 0)) this.sfx.vo(w === 0 ? 'vo_point_fb' : 'vo_point_gl', 2);
+    this.sfx.buzz();
     this.updateHUD(true);
   }
   timeUp() {

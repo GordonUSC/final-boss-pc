@@ -764,6 +764,7 @@ body[data-mode="vc"] .alan .plaque b{font:700 20px/1 'Teko',sans-serif;color:#ff
     <li>Casey Reed: <a href="https://usadodgeball.com/announcements">USA Dodgeball, March 2023 newsletter</a>.</li>
     <li>Event: <a href="https://www.sincityclassic.org/sports/dodgeball">Sin City Classic, Dodgeball</a>.</li>
     <li>Prices: <a href="https://www.kbssportsapparel.com/">KBS Sports Apparel (Kickballstuff)</a>, public catalog read Oct 5 2026.</li>
+    <li>Boss Rush audio: announcer (David, Sports Arena Announcer voice), crowd and arena sounds made with ElevenLabs; ball hits, bounces and footsteps from <a href="https://kenney.nl/assets/impact-sounds">Kenney Impact Sounds</a> (CC0).</li>
     <li>"Started in No Sting" for Andrew, Nina, Flo and Casey: Gordon. Werten, Mark and Gordon: the team's own sign-up thread.</li>
   </ol>
 </footer>
@@ -1071,7 +1072,7 @@ function startFallback(){
   if(fallbackOn)return; fallbackOn=true; $('fbgame').hidden=true; $('fallback').hidden=false; fb=bossRush();
 }
 (function loadGame(){
-  const mount=$('fbgame'), s=document.createElement('script'); s.src='game/game.bundle.js?v=20261005b';
+  const mount=$('fbgame'), s=document.createElement('script'); s.src='game/game.bundle.js?v=20261005c';
   setTimeout(()=>{ if(!gameMounted&&!fallbackOn) startFallback() },9000);
   s.onload=()=>{ if(window.FBGame&&typeof FBGame.mount==='function'){ try{ mount.innerHTML=''; if(fallbackOn)return; FBGame.mount(mount,{look:payload(look),mode,control:(cards.find(c=>c.dataset.id===chosen)||{dataset:{}}).dataset.name||'BELLAMY'}); gameMounted=true }catch(e){ console.warn('FBGame.mount failed, using the built-in game',e); startFallback() } } else startFallback() };
   s.onerror=startFallback;
