@@ -624,6 +624,14 @@ class Sfx {
   ko() { [523, 659, 784, 1047].forEach((f, i) => this.tone('triangle', f, f, 0.12, 0.15, i * 0.07)); }
   buzz() { this.tone('square', 140, 120, 0.7, 0.18); }
   tick() { this.tone('square', 1400, 1400, 0.03, 0.06); }
+  roar(l = 1) {
+    this.noise(0.9 + 1.6 * l, 520, 1300, 0.5, 0.18 + 0.2 * l); this.noise(0.8 + 1.2 * l, 160, 240, 0.7, 0.12 * l, 0, 'lowpass');
+    for (let k = 0; k < Math.round(l * 3); k++) this.tone('sine', 1800 + Math.random() * 500, 2500 + Math.random() * 400, 0.3, 0.04, 0.15 + k * 0.32);
+    for (let i = 0; i < Math.round(10 * l); i++) this.noise(0.05, 2100, 1500, 1.3, 0.14, 0.1 + Math.random() * (0.6 + l));
+  }
+  groan(l = 1) { this.noise(0.6 + 1.2 * l, 640, 190, 0.6, 0.1 + 0.18 * l); this.tone('sawtooth', 200, 125, 0.4 + 0.9 * l, 0.03); }
+  ooh() { this.noise(0.9, 300, 950, 0.8, 0.2); }
+  chant() { for (const r of [0, 1.2]) for (const t of [0, 0.3, 0.6, 0.78, 0.96]) this.noise(0.06, 2300, 1600, 1.4, 0.3, r + t); }
   stinger() { [392, 494, 587, 784].forEach((f, i) => this.tone('sawtooth', f, f * 1.01, 0.16, 0.08, i * 0.09)); }
 }
 
@@ -691,6 +699,7 @@ class Game {
     <div class="fbg-mid"><div class="fbg-games"><b class="fbg-g0">0</b><div class="fbg-clock">3:00</div><b class="fbg-g1">0</b></div><div class="fbg-sub">GAME 1</div><div class="fbg-score">0</div></div>
     <div class="fbg-team r"><div class="fbg-tname"><span>THE GLITCHES</span><span class="fbg-crest g">${CREST_GL}</span></div><div class="fbg-live" data-t="1"></div><div class="fbg-q" data-t="1"></div></div>
   </div>
+  <div class="fbg-crowd" aria-hidden="true"><span>CROWD WATCHING</span><i><b></b></i></div>
   <div class="fbg-ctl" hidden></div>
   <div class="fbg-bossbar"><span>GLITCH KING</span><i></i></div>
   <div class="fbg-meter"><b>STEPS</b><div class="fbg-steps"></div></div>
@@ -711,7 +720,7 @@ class Game {
 <div class="fbg-ov" hidden><div class="fbg-card"></div></div>`;
     this.el.appendChild(r);
     const q = (s) => r.querySelector(s);
-    this.$ = { stage: q('.fbg-stage'), canvas: q('.fbg-canvas'), world: q('.fbg-world'), flash: q('.fbg-flash'), clock: q('.fbg-clock'), score: q('.fbg-score'),
+    this.$ = { stage: q('.fbg-stage'), canvas: q('.fbg-canvas'), world: q('.fbg-world'), flash: q('.fbg-flash'), clock: q('.fbg-clock'), score: q('.fbg-score'), crowd: q('.fbg-crowd'), crowdL: q('.fbg-crowd span'), crowdB: q('.fbg-crowd b'),
       looknm: q('.fbg-looknm') || document.createElement('div'), chip: q('.fbg-chip'), l0: q('.fbg-live[data-t="0"]'), l1: q('.fbg-live[data-t="1"]'), q0: q('.fbg-q[data-t="0"]'), q1: q('.fbg-q[data-t="1"]'),
       g0: q('.fbg-g0'), g1: q('.fbg-g1'), sub: q('.fbg-sub'), ctl: q('.fbg-ctl'), boss: q('.fbg-bossbar'), bossI: q('.fbg-bossbar i'),
       meter: q('.fbg-meter'), steps: q('.fbg-steps'), vs: q('.fbg-vs'), ov: q('.fbg-ov'), card: q('.fbg-card'), sound: q('.fbg-sound'), qual: q('.fbg-qual'), pause: q('.fbg-pause'), sr: q('.fbg-sr'),
@@ -811,15 +820,19 @@ class Game {
     // backdrop plate (Blender), tilted to face the camera like rising stands, with a cheap crowd bounce
     this.bdTex = { fb: loader.load(assetURL(this.base, 'backdrop-fb.jpg')), vc: loader.load(assetURL(this.base, 'backdrop-vc.jpg')) };
     for (const k in this.bdTex) { this.bdTex[k].colorSpace = THREE.SRGBColorSpace; this.bdTex[k].anisotropy = 4; }
-    this.crowdT = { value: 0 }; this.crowdAmp = { value: 1 };
+    this.crowdT = { value: 0 }; this.crowdAmp = { value: 1 }; this.crowdMood = { value: 0 }; this.crowdExc = { value: 0 };
     this.bdMat = new THREE.MeshBasicMaterial({ map: this.bdTex.fb, color: '#d8ccd0' });
     this.bdMat.onBeforeCompile = (s) => {
-      s.uniforms.uT = this.crowdT; s.uniforms.uAmp = this.crowdAmp;
-      s.fragmentShader = 'uniform float uT; uniform float uAmp;\n' + s.fragmentShader.replace('#include <map_fragment>',
+      s.uniforms.uT = this.crowdT; s.uniforms.uAmp = this.crowdAmp; s.uniforms.uMood = this.crowdMood; s.uniforms.uExc = this.crowdExc;
+      s.fragmentShader = 'uniform float uT; uniform float uAmp; uniform float uMood; uniform float uExc;\n' + s.fragmentShader.replace('#include <map_fragment>',
         `vec2 cuv = vMapUv; float band = step(0.36, 1.0 - cuv.y) * step(1.0 - cuv.y, 0.95);
          float col = floor(cuv.x * 220.0); float h = fract(sin(col * 12.9898) * 43758.5453);
-         cuv.y += band * uAmp * 0.006 * max(0.0, sin(uT * (6.0 + h * 5.0) + h * 30.0));
-         vec4 sampledDiffuseColor = texture2D(map, cuv); diffuseColor *= sampledDiffuseColor;`);
+         float up = max(uMood, 0.0), dn = max(-uMood, 0.0);
+         cuv.y += band * uAmp * (0.006 + 0.022 * uExc * up) * (1.0 - 0.8 * dn) * max(0.0, sin(uT * (6.0 + h * 5.0 + 6.0 * uExc * up) + h * 30.0));
+         vec4 sampledDiffuseColor = texture2D(map, cuv); diffuseColor *= sampledDiffuseColor;
+         diffuseColor.rgb *= 1.0 + 0.2 * up - 0.38 * dn;
+         float fl = fract(sin(dot(floor(vMapUv * vec2(260.0, 70.0)) + floor(uT * 9.0), vec2(12.9898, 78.233))) * 43758.5453);
+         diffuseColor.rgb += band * uAmp * step(1.0 - 0.016 * uExc * up, fl) * vec3(1.3);`);
     };
     this.backdrop = new THREE.Mesh(GEO.plane, this.bdMat); S.add(this.backdrop);
     // light shafts and haze in front of the stands
@@ -1254,6 +1267,38 @@ class Game {
       sg.g.position.copy(p);
     });
   }
+  crowdReact(kind) {
+    // the home crowd backs FINAL BOSS: mood -1 (stunned) .. +1 (roaring), excitement 0..1
+    const K = { catch: [0.6, 0.6], oppcatch: [-0.5, 0.4], plus: [0.3, 0.35], bigplus: [0.65, 0.75], minus: [-0.25, 0.2], bigminus: [-0.5, 0.4],
+      clutch: [1, 1], tide: [1, 1], opptide: [-0.85, 0.6], lead: [0.95, 0.95], opplead: [-0.75, 0.5], gamewin: [0.9, 0.9], gamelose: [-0.7, 0.4], matchwin: [1, 1], matchlose: [-1, 0.3] }[kind];
+    if (!K) return;
+    this.mood = Math.max(-1, Math.min(1, (this.mood || 0) * 0.35 + K[0])); this.exc = Math.max(this.exc || 0, K[1]);
+    const S = this.sfx, big = Math.abs(K[0]) >= 0.85;
+    if (K[0] > 0) { S.roar(K[1]); if (big) { S.chant(); if (this.signs) for (const sg of this.signs) sg.wig = 1; } if (kind === 'bigplus') S.ooh(); }
+    else S.groan(Math.min(1, -K[0] + 0.2));
+    if (kind === 'tide') { this.popBrush('THE TIDE TURNS!', 'THE CROWD IS ON ITS FEET', '', 0.3, 1.8); this.ref('FINAL BOSS fights back'); }
+    if (kind === 'opptide') { this.popBrush('UH OH...', 'THE GLITCHES ARE COMING BACK', 'lime', 0.3, 1.6); }
+    if (kind === 'clutch') this.popBrush('CLUTCH!', 'LAST ONE STANDING', '', 0.3, 1.6);
+    if (big && K[0] > 0 && !this.rm) this.flash(0.12);
+  }
+  checkTide() {
+    // a swing of 2 or more live players back to level (or better) is a tide turn
+    if (this.phase !== 'play') return;
+    const t = this.tide || (this.tide = { low: 0, high: 0 });
+    const adv = this.liveCount(0) - this.liveCount(1);
+    t.low = Math.min(t.low, adv); t.high = Math.max(t.high, adv);
+    if (t.low <= -2 && adv >= 0 && this.liveCount(0) > 0) { t.low = t.high = adv; this.crowdReact('tide'); }
+    else if (t.high >= 2 && adv <= 0 && this.liveCount(1) > 0) { t.low = t.high = adv; this.crowdReact('opptide'); }
+  }
+  crowdTick() {
+    this.mood = (this.mood || 0) * 0.994; this.exc = (this.exc || 0) * 0.988;
+    const m = this.mood, e = this.exc;
+    this.crowdMood.value = m; this.crowdExc.value = e; this.crowdAmp.value = (this.rm || this.tier === 'low') ? 0 : 1;
+    if (!this.$.crowd) return;
+    const word = m > 0.6 ? 'CROWD ROARING' : m > 0.25 ? 'CROWD CHEERING' : m < -0.5 ? 'CROWD STUNNED' : m < -0.2 ? 'CROWD GROANING' : 'CROWD WATCHING';
+    if (word !== this.crowdWord) { this.crowdWord = word; this.$.crowdL.textContent = word; this.$.crowd.classList.toggle('up', m > 0.25); this.$.crowd.classList.toggle('down', m < -0.2); }
+    this.$.crowdB.style.left = (50 + 46 * m).toFixed(1) + '%';
+  }
   cheer(name) { if (!this.signs) return; for (const sg of this.signs) if (sg.def.who === name) sg.wig = 1; }
   updateStands() {
     if (!this.standsG) return;
@@ -1311,14 +1356,14 @@ class Game {
   resetMatch() {
     this.clock = RULES.match; this.points = [0, 0]; this.gameNo = 0; this.ot = false; this.otClock = RULES.ot; this.sudden = false; this.over = false;
     this.score = 0; this.combo = 0; this.stats = { hits: 0, catches: 0, power: 0, kos: 0, bestCombo: 0, headshots: 0, backIn: 0, blocks: 0 };
-    this.timeoutUsed = false; this.timeoutT = 0; this.result = null; this.lastBig = -1;
+    this.timeoutUsed = false; this.timeoutT = 0; this.result = null; this.lastBig = -1; this.lastCtl = -1;
     this.setupGame();
     this.updateHUD(true);
   }
   setupGame() {
     this.gameNo++; this.p2 = false; this.ctlTeam = -1; this.ctlT = 0; this.lastCtlSec = -1; this.gameEndT = 0; this.rushT = 999; this.falseStart = false;
     this.$.boss.classList.remove('on'); this.$.ctl.hidden = true;
-    this.queue = [[], []];
+    this.queue = [[], []]; this.tide = { low: 0, high: 0 };
     for (const t of [0, 1]) {
       const ps = this.teams[t];
       ps.forEach((a, i) => {
@@ -1333,6 +1378,7 @@ class Game {
     this.renderLive();
   }
   placeRushBalls(w) {
+    this.lastCtl = w;
     const z0 = w === 0 ? [1.0, 2.3, 3.6] : [1.7, 3.3];
     const z1 = w === 1 ? [-1.0, -2.3, -3.6] : [-1.7, -3.3];
     let i = 0;
@@ -1355,10 +1401,48 @@ class Game {
       <div class="fbg-vsp r"><small>Boss team</small><h3>THE GLITCHES</h3><ul class="two">${t1.map(a => `<li>${a.name}<span>#${a.num}</span></li>`).join('')}</ul></div><div class="fbg-vsx">VS</div>`;
     this.$.vs.hidden = false;
   }
+  startBrief() {
+    // the rules card before every game: what to do on GO, how you get out, and the controls
+    this.phase = 'brief'; this.briefT = 0; this.briefGo = false;
+    const touch = this.root.classList.contains('has-touch');
+    const title = this.ot ? 'OVERTIME' : 'GAME ' + this.gameNo;
+    const rules = [['rush', 'Rush right only', 'on GO, run only for the balls on your right as you face the other team'], ['line', 'Clear the line', 'carry a rushed ball past your attack line before you throw'], ['catch', 'Catch = back in', 'the thrower is out and your next teammate returns'],
+      ['head', 'No headshots', 'a standing headshot puts the thrower out'], ['clock', '15 s control', 'hold 3 of 5 balls and the clock runs'], ['back', 'Back line only', 'leave only out the back, 10 s to return']];
+    const ctl = touch ? 'Left pad moves (flick to dash). <b>THROW</b>, <b>CATCH</b> (hold to duck), <b>JUMP</b>, <b>PASS</b>.'
+      : '<span class="fbg-kbd">Arrows</span>/<span class="fbg-kbd">WASD</span> move, double-tap to dash. <span class="fbg-kbd">J</span> throw, <span class="fbg-kbd">K</span> catch (hold to duck), <span class="fbg-kbd">L</span> jump, <span class="fbg-kbd">Shift</span> pass, <span class="fbg-kbd">Q</span> switch.';
+    this.$.vs.innerHTML = `<div class="fbg-rps fbg-brief" role="dialog" aria-label="${title} rules"><h3>${title}</h3>
+      <p class="fbg-bwho">${this.lastCtl < 0 ? 'Ro-sham-bo decides who rushes the 3 balls. After that, the 3 balls alternate every game.' : (this.lastCtl === 1 ? 'FINAL BOSS rushes the 3 balls on its right this game. THE GLITCHES rush the 2 on theirs.' : 'THE GLITCHES rush the 3 balls on their right this game. FINAL BOSS rushes the 2 on its right.')}</p>
+      <p>Out by a live ball, a caught throw, or crossing the center or a side line. Clear the other team to win the game.</p>
+      <ul class="fbg-rules">${rules.map(r => `<li>${ruleIcon(r[0])}<b>${r[1]}</b><span>${r[2]}</span></li>`).join('')}</ul>
+      <p class="fbg-bctl">${ctl}</p>
+      <button type="button" class="fbg-btn fbg-bgo">READY <small>${touch ? 'tap' : 'Enter'}</small></button><i class="fbg-btime"></i></div>`;
+    this.$.vs.hidden = false; this.$.vs.classList.add('live');
+    const go = this.$.vs.querySelector('.fbg-bgo'); go.addEventListener('click', () => { this.briefGo = true; });
+    try { go.focus({ preventScroll: true }); } catch (e) {}
+  }
+  briefTick() {
+    this.briefT++;
+    for (const a of this.all) if (a.active) { a.tgt = this.poseIdle(a); this.blend(a, 0.2); this.place(a); }
+    // READY, Enter, Space or J moves on; after 20 s it moves on by itself so an unattended match never stalls
+    if (this.briefT > 20 && (this.briefGo || this.edge.enter || this.edge.throw)) this.briefGo = true;
+    this.edge = {};
+    // first game waits for READY (20 s safety); between games the card flashes for 6 s, READY skips it
+    const lim = this.lastCtl < 0 ? 1200 : 360;
+    if (lim === 360) { const bar = this.$.vs.querySelector('.fbg-btime'); if (bar) bar.style.transform = `scaleX(${Math.max(0, 1 - this.briefT / lim).toFixed(3)})`; }
+    if (this.briefGo || this.briefT > lim) { this.$.vs.classList.remove('live'); this.afterBrief(); }
+  }
+  afterBrief() {
+    // Sin City: ro-sham-bo for the first game only, then the 3 balls alternate every game
+    if (this.lastCtl < 0) return this.startRPS();
+    const w = 1 - this.lastCtl; this.rpsWinner = w;
+    this.$.vs.hidden = true; this.placeRushBalls(w);
+    this.phase = 'lineup'; this.lineT = 0;
+    this.popCenter('READY', 'big', 0.45, 0.75); this.ref((w === 0 ? 'FINAL BOSS' : 'THE GLITCHES') + ' has the 3 balls. Rush only your right'); this.showLanes(true);
+  }
   startRPS() {
     this.phase = 'rps'; this.rpsT = 0; this.rpsPick = null; this.rpsCPU = null; this.rpsDone = 0;
     const names = ['ROCK', 'PAPER', 'SCISSORS'];
-    this.$.vs.innerHTML = `<div class="fbg-rps"><h3>RO-SHAM-BO</h3><p>${this.gameNo === 1 && !this.ot ? 'Winner takes 3 balls on its right.' : (this.ot ? 'Overtime. Winner takes 3 balls.' : 'Game ' + this.gameNo + '. Winner takes 3 balls.')}</p>
+    this.$.vs.innerHTML = `<div class="fbg-rps"><h3>RO-SHAM-BO</h3><p>${this.gameNo === 1 && !this.ot ? 'Winner takes 3 balls on its right.' : (this.ot ? 'Overtime. Winner takes 3 balls.' : 'Game ' + this.gameNo + '. Winner takes 3 balls on its right.')}</p>
       <div class="fbg-rpsb">${names.map((n, i) => `<button type="button" data-r="${i}">${rpsIcon(i)}<b>${n}</b><small>${i + 1}</small></button>`).join('')}</div><div class="fbg-rpsr" aria-live="polite"></div></div>`;
     this.$.vs.hidden = false; this.$.vs.classList.add('live');
     this.$.vs.querySelectorAll('[data-r]').forEach(b => b.addEventListener('click', () => { if (this.rpsPick == null) this.rpsPick = +b.dataset.r; }));
@@ -1386,7 +1470,7 @@ class Game {
       this.$.vs.hidden = true; this.$.vs.classList.remove('live');
       this.placeRushBalls(this.rpsWinner);
       this.phase = 'lineup'; this.lineT = 0;
-      this.popCenter('READY', 'big', 0.45, 0.75);
+      this.popCenter('READY', 'big', 0.45, 0.75); this.ref('Rush only the balls on your right'); this.showLanes(true);
     }
   }
   lineupTick() {
@@ -1400,7 +1484,8 @@ class Game {
     for (const a of this.all) if (a.active) { a.tgt = this.poseSquat(a, 0.45); a.tgt.sq = 1; a.tgt.sh = [-0.6, 0.3, -0.6, 0.3]; this.blend(a, 0.25); this.place(a); }
     for (const b of this.balls) this.placeBallMesh(b);
     if (this.lineT === 45) this.popCenter('SET', 'big', 0.45, 0.75);
-    if (this.lineT === 90) { this.phase = 'play'; this.rushT = 0; this.cheer('*go'); this.popBrush('RUSH!', 'Ro-sham-bo: ' + (this.rpsWinner === 0 ? 'FINAL BOSS' : 'GLITCHES') + ' ball control', '', 0.3, 1.3); this.sfx.crowd(true); this.sfx.buzz(); }
+    if (this.lanes && this.lanesOn) for (const m of this.lanes) m.material.opacity = 0.34 + 0.1 * Math.sin(this.lineT * 0.15);
+    if (this.lineT === 90) { this.phase = 'play'; this.rushT = 0; this.cheer('*go'); this.popBrush('RUSH!', (this.rpsWinner === 0 ? 'FINAL BOSS' : 'GLITCHES') + ' rush 3 balls', '', 0.3, 1.3); this.sfx.crowd(true); this.sfx.buzz(); }
   }
   pause(auto) {
     if (this.phase === 'title' || this.phase === 'result' || this.dead) return;
@@ -1423,7 +1508,7 @@ class Game {
   resume() { if (!this.paused) return; this.paused = false; this.timeoutT = 0; this.$.ov.hidden = true; this.$.pause.textContent = this.timeoutUsed ? 'Pause' : 'Time out'; this.$.stage.focus({ preventScroll: true }); }
   endMatch(result) {
     if (this.over) return; this.over = true; this.phase = 'result'; this.resultT = 0; this.result = result;
-    this.sfx.buzz(); if (result.win) this.sfx.crowd(true);
+    this.sfx.buzz(); this.crowdReact(result.win ? 'matchwin' : 'matchlose');
     this.popCenter(result.win ? 'MATCH: FINAL BOSS' : 'MATCH: GLITCHES', result.win ? 'big gold' : 'big red');
     setTimeout(() => this.showResults(), this.rm ? 600 : 1600);
   }
@@ -1457,7 +1542,7 @@ class Game {
       <p>Sin City rules. 8 on 8, 5 balls, no sting. Most games in 3 minutes wins.</p>
       <ul class="fbg-rules">${rules.map(r => `<li>${ruleIcon(r[0])}<b>${r[1]}</b><span>${r[2]}</span></li>`).join('')}</ul>
       <details class="fbg-more"><summary>How Sin City plays</summary>
-        <p>Both teams start on their back line. Ro-sham-bo decides ball control: the winner's 3 balls sit on its right, the other team's 2 on its right. On GO, rush only your right side. Leave early and you lose those balls.</p>
+        <p>Both teams start on their back line. Ro-sham-bo decides the first game: the winner rushes the 3 balls on its right, the other team the 2 on its right. After that, the 3 balls alternate every game. On GO, rush only the balls on your right as you face the other team. Leave early and you lose those balls.</p>
         <p>You are out if a live ball hits you and nobody catches it, if your throw is caught, if you cross the center line or a side line, or if you stay out the back for more than 10 seconds. A ball held in your hands can block a throw.</p>
         <p>A ball is live once it crosses the center line, and dead once it touches the floor, a wall, or another ball. A game ends when a team is out, worth 1 point. Mercy at an 8 game lead. A tie goes to overtime, then sudden death. Play on the honor system.</p>
       </details>
@@ -1489,8 +1574,9 @@ class Game {
         this.introT++;
         for (const a of this.all) if (a.active) this.animate(a);
         if (this.introT === 112) this.popBrush('NO STING!', 'SIN CITY RULES', '', 0.5, 1.2);
-        if (this.introT === 150) { this.$.vs.hidden = true; this.startRPS(); }
+        if (this.introT === 150) { this.$.vs.hidden = true; this.startBrief(); }
         this.edge = {}; return;
+      case 'brief': this.briefTick(); return;
       case 'rps': this.rpsTick(); return;
       case 'lineup': this.lineupTick(); return;
       case 'gameover': this.gameOverTick(); return;
@@ -1529,7 +1615,7 @@ class Game {
       const lead = Math.abs(this.points[0] - this.points[1]);
       if (this.ot || this.sudden) return this.endMatch({ win: this.lastGameWinner === 0, msg: this.lastGameWinner === 0 ? 'Overtime goes to FINAL BOSS.' : 'Overtime goes to THE GLITCHES.' });
       if (lead >= RULES.mercy) return this.endMatch({ win: this.points[0] > this.points[1], msg: `Mercy rule at ${this.points[0]} to ${this.points[1]}.` });
-      this.setupGame(); this.startRPS();
+      this.setupGame(); this.startBrief();
     }
   }
 
@@ -1588,6 +1674,7 @@ class Game {
     }
     ai.dodgeAt = 0;
     if (ai.claimBall) { const b = ai.claimBall; const tx = b.state === 'rest' ? b.x + a.side * 0.35 : b.x; return this.seek(a, it, tx, b.z, true); }
+    if (this.phase === 'play' && this.rushT < RULES.rushF && !a.held && a.oob === 0) return this.seek(a, it, a.side * (HX - 0.45), a.z, false);
     if (a.oob > 0) return this.seek(a, it, a.side * (HX - 0.8), Math.max(-3.5, Math.min(3.5, a.z)), false);
     // formation: drift around home, back off when the other side holds more balls
     const foeHeld = this.balls.filter(b => b.holder && b.holder.team !== a.team).length;
@@ -1979,7 +2066,8 @@ class Game {
     f.set(clean ? 'catch' : 'bobble');
     f.x += f.side * 0.2; this.clampAthlete(f);
     this.hitstop = 6; this.flash(clean ? 0.3 : 0.14); this.ringFx(f, clean ? '#ffffff' : '#ffc83d'); this.catchFlash(f); if (f.team === 0 || f === this.user) this.punch(f.x, f.z, 1);
-    this.sfx.catch(); this.sfx.crowd();
+    this.sfx.catch();
+    this.crowdReact(f.team === 0 ? (this.liveCount(0) === 1 ? 'clutch' : 'catch') : 'oppcatch');
     if (f.team === 0) { this.stats.catches++; this.addScore(clean ? 150 : 90); } else this.breakCombo();
     if (thrower && thrower.role === 'in') this.eliminate(thrower, 'caught');
     // the first teammate in the outline comes back in
@@ -1990,6 +2078,7 @@ class Game {
       if (f.team === 0) this.stats.backIn++;
       this.layoutQueue(f.team);
     } else if (f.team === 0) this.popBrush(clean ? 'CATCH!' : 'BOBBLE!', thrower ? `${thrower.name} OUT` : '', ''); else this.pop(f, 'CATCH!', 'lime');
+    this.checkTide();
     this.renderLive();
     this.say(`${f.name} catches. ${thrower ? thrower.name + ' is out.' : ''}`);
   }
@@ -2019,6 +2108,8 @@ class Game {
     else if (why === 'hit') { a.knock = { dx: dir * 0.8, dz: 0 }; a.set('hitstun'); }
     else a.set('ko');
     if (a.team === 1) { this.stats.kos++; this.addScore(why === 'caught' ? 150 : 120); }
+    if (why !== 'caught') this.crowdReact(a.team === 1 ? (why === 'power' ? 'bigplus' : 'plus') : (why === 'power' ? 'bigminus' : 'minus'));
+    this.checkTide();
     if ((why === 'power' || why === 'hit') && (a.team === 1 || a === this.user)) this.punch(a.x, a.z, why === 'power' ? 1.2 : 0.7);
     const call = { hit: 'OUT!', power: 'OUT!', caught: 'CAUGHT: OUT', headshot: 'THROWER OUT', line: 'LINE: OUT', side: 'OUT OF BOUNDS', oob: 'OUT: 10 S' }[why] || 'OUT!';
     this.pop(a, call, a.team === 0 ? 'red' : 'lime');
@@ -2094,7 +2185,17 @@ class Game {
     const l0 = this.liveCount(0), l1 = this.liveCount(1);
     if (l0 === 0 || l1 === 0) this.gameOver(l0 === 0 ? 1 : 0);
   }
+  showLanes(on) {
+    // each team's right-hand side as it faces the other team: FINAL BOSS (left end) is the near half, THE GLITCHES (right end) the far half
+    if (!this.lanes) {
+      this.lanes = [0, 1].map(t => { const m = new THREE.Mesh(new THREE.PlaneGeometry(HX, HZ - 0.3), new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, opacity: 0 }));
+        m.rotation.x = -Math.PI / 2; m.position.set(t === 0 ? -HX / 2 : HX / 2, 0.009, t === 0 ? (HZ + 0.3) / 2 : -(HZ + 0.3) / 2); m.renderOrder = 2; m.visible = false; this.scene.add(m); return m; });
+    }
+    this.lanesOn = on; this.lanes[0].material.color.set(this.kit && this.kit.accent || '#ffc83d'); this.lanes[1].material.color.set('#a6f23a');
+    for (const m of this.lanes) m.visible = on;
+  }
   endRush() {
+    if (this.lanes) this.showLanes(false);
     this.rushT = RULES.rushF;
     for (const b of this.balls) if (b.state === 'rest') { b.state = 'loose'; b.vx = (b.rushTeam === 0 ? -1 : 1) * 2.6; b.vh = 1.5; }
   }
@@ -2115,10 +2216,15 @@ class Game {
   }
   gameOver(w) {
     if (this.phase !== 'play') return;
+    const before = this.points[0] - this.points[1];
     this.points[w]++; this.lastGameWinner = w;
+    const after = this.points[0] - this.points[1];
     this.phase = 'gameover'; this.gameEndT = 0;
     this.popBrush('GAME!', w === 0 ? 'POINT FINAL BOSS' : 'POINT GLITCHES', w === 0 ? '' : 'lime');
-    this.sfx.crowd(true); this.updateHUD(true);
+    if (before < 0 && after >= 0) { this.crowdReact('lead'); this.ref(after > 0 ? 'FINAL BOSS takes the lead' : 'All square'); }
+    else if (before > 0 && after <= 0) { this.crowdReact('opplead'); this.ref(after < 0 ? 'THE GLITCHES take the lead' : 'All square'); }
+    else this.crowdReact(w === 0 ? 'gamewin' : 'gamelose');
+    this.updateHUD(true);
   }
   timeUp() {
     this.popCenter('TIME! GAME VOID', 'big red'); this.sfx.buzz();
@@ -2127,7 +2233,7 @@ class Game {
     // tied: overtime game, then sudden death
     this.ot = true; this.otClock = RULES.ot;
     this.phase = 'gameover'; this.gameEndT = 100; this.lastGameWinner = -1;
-    setTimeout(() => { if (this.over) return; this.popCenter('OVERTIME', 'big red'); this.setupGame(); this.startRPS(); }, this.rm ? 300 : 900);
+    setTimeout(() => { if (this.over) return; this.popCenter('OVERTIME', 'big red'); this.setupGame(); this.startBrief(); }, this.rm ? 300 : 900);
     this.phase = 'ot-wait';
   }
   otExpire() {
@@ -2196,7 +2302,7 @@ class Game {
     const T = new THREE.Vector3(tX + sx, sy, tZ);
     this.camera.position.set(T.x, T.y + SINP * d, T.z + COSP * d); this.camera.lookAt(T);
     if (this.backdrop) { this.backdrop.position.x = v.cx * 0.3; if (this.standsG) this.standsG.position.x = v.cx * 0.3; }
-    this.crowdT.value = this.frame / 60; this.crowdAmp.value = (this.rm || this.tier === 'low') ? 0 : 1;
+    this.crowdT.value = this.frame / 60; this.crowdTick();
     if (this.mode === 'vc') { const t = this.frame / 60; this.caustics[0].material.map.offset.set(t * 0.02, t * 0.013); this.caustics[1].material.map.offset.set(-t * 0.017, t * 0.021); }
     if (this.glowMat) { const base = this.mode === 'vc' ? 0.75 : 0.45; this.glowMat.opacity = (this.ctlTeam >= 0 || this.ot) ? base + 0.3 * (0.5 + 0.5 * Math.sin(this.frame * 0.15)) : base; }
     for (const a of this.all) {

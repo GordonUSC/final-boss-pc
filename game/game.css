@@ -315,3 +315,24 @@
 .fbg-root.is-narrow .fbg-pop{font-size:24px} .fbg-root.is-narrow .fbg-pop.big{font-size:40px} .fbg-root.is-narrow .fbg-pop.small{font-size:18px}
 .fbg-root.is-narrow .fbg-brush b{font-size:52px} .fbg-root.is-narrow .fbg-brush span{font-size:14px}
 .fbg-root .fbg-score{display:none}
+
+/* rules card before every game */
+.fbg-brief{max-width:min(760px,94%); text-align:left}
+.fbg-brief h3{text-align:center}
+.fbg-brief > p{text-align:center}
+.fbg-brief .fbg-rules li:first-child{border-left-color:var(--fbg-red); background:#2a0f1c}
+.fbg-brief .fbg-bctl{font-size:13px; color:var(--fbg-bone); margin:6px 0 10px; text-align:center}
+.fbg-brief .fbg-bgo{display:block; margin:0 auto; min-width:180px}
+.fbg-brief .fbg-bgo small{font:600 11px var(--fbg-ui); opacity:.7; margin-left:6px}
+.fbg-root.is-narrow .fbg-brief{padding:10px 10px 12px; max-height:94%; overflow:auto}
+.fbg-root.is-narrow .fbg-brief .fbg-rules li:first-child span{display:block; font-size:11px}
+
+/* home crowd meter: groaning (left, red) to roaring (right, gold) */
+.fbg-crowd{position:absolute; z-index:4; left:50%; bottom:16px; transform:translateX(-50%); pointer-events:none; display:flex; align-items:center; gap:9px; padding:6px 12px 5px; background:#0a0810e6; border:2px solid #ffffff22; font:700 15px/1 var(--fbg-disp); letter-spacing:.1em; color:#fff; transition:color .2s}
+.fbg-crowd i{position:relative; width:110px; height:6px; background:linear-gradient(90deg,#e0473a,#3a3340 42%,#3a3340 58%,#ffc83d)}
+.fbg-crowd b{position:absolute; top:-3px; left:50%; width:4px; height:12px; margin-left:-2px; background:#fff; box-shadow:0 0 6px #fff; transition:left .25s}
+.fbg-crowd.up{color:var(--fbg-gold)} .fbg-crowd.down{color:#ff8a7a}
+.fbg-root.is-narrow .fbg-crowd{bottom:auto; top:58px; font-size:11px; padding:3px 7px 2px} .fbg-root.is-narrow .fbg-crowd i{width:56px}
+
+.fbg-brief .fbg-bwho{color:var(--fbg-gold); font-weight:700; font-size:15px; margin:6px 0 2px}
+.fbg-brief .fbg-btime{display:block; height:4px; margin:10px auto 0; width:60%; background:var(--fbg-gold); transform-origin:left; transform:scaleX(0)}
