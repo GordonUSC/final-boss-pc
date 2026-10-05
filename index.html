@@ -125,7 +125,7 @@ body[data-mode="vc"] #start{background:linear-gradient(180deg,#120a2e 0%,#2a0f52
 .stage{list-style:none;margin:18px 0 0;padding:0;font-weight:600}
 .stage li{display:flex;gap:12px;align-items:baseline;padding:8px 0;border-top:2px solid currentColor;border-top-color:color-mix(in srgb,currentColor 25%,transparent)}
 .stage li b{font:700 26px/1 var(--num);min-width:5.4em}
-.count{display:flex;gap:10px;margin-top:22px}
+.count{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
 .count div{background:var(--ink);color:var(--gold);padding:8px 12px;min-width:74px;text-align:center;clip-path:polygon(6px 0,100% 0,calc(100% - 6px) 100%,0 100%)}
 .count b{display:block;font:700 46px/.9 var(--num)}
 .count span{font-size:12px;color:var(--bone)}
@@ -406,7 +406,7 @@ body[data-mode="vc"] .alan .plaque b{font:700 20px/1 'Teko',sans-serif;color:#ff
   .title{font-size:clamp(64px,19vw,96px)}
   #vs{grid-template-columns:1fr}
   .side.us{clip-path:polygon(0 0,100% 0,100% 88%,0 100%);margin:0;min-height:70svh}
-  .side.them{clip-path:polygon(0 8%,100% 0,100% 100%,0 100%);margin:0;padding:clamp(60px,14vw,90px) 16px 48px}
+  .side.them{clip-path:none;margin:-12svh 0 0;min-height:0;justify-content:flex-start;padding:calc(12svh + 36px) 16px 48px}
   .vsmark{position:absolute;right:14px;left:auto;top:calc(70svh - 70px);font-size:96px}
   .selectwrap,.ninegrid,.kitrow{grid-template-columns:1fr}
   .card{grid-template-columns:1fr}
@@ -434,7 +434,7 @@ body[data-mode="vc"] .alan .plaque b{font:700 20px/1 'Teko',sans-serif;color:#ff
   .alan .plaque span{display:none}
   body{padding-bottom:112px}
 }
-@media (max-width:420px){.count div{min-width:60px}.count b{font-size:36px}.tags li{flex-basis:140px}.path .ln span{font-size:11px}}
+@media (max-width:420px){.count{gap:8px}.count div{min-width:0;flex:1 1 0;padding:8px 6px}.count b{font-size:34px}.tags li{flex-basis:140px}.path .ln span{font-size:11px}}
 @media (min-width:861px){.dockline{max-width:380px}}
 </style>
 <style>.pcnote{max-width:60ch;margin:.6em auto 0;font-size:.95rem;opacity:.9}.pc-phone{display:none}@media (pointer:coarse),(max-width:700px){.pc-phone{display:block}}</style>
@@ -494,7 +494,7 @@ body[data-mode="vc"] .alan .plaque b{font:700 20px/1 'Teko',sans-serif;color:#ff
       <li><b>Ball</b> Mixed No-Sting</li>
     </ul>
     <div class="count" id="count" aria-live="off" aria-label="Countdown to Saturday, January 16, 2027, 11 am Pacific">
-      <div><b data-u="d">--</b><span>days</span></div><div><b data-u="h">--</b><span>hours</span></div><div><b data-u="m">--</b><span>min</span></div>
+      <div><b data-u="d">--</b><span>days</span></div><div><b data-u="h">--</b><span>hours</span></div><div><b data-u="m">--</b><span>min</span></div><div><b data-u="s">--</b><span>sec</span></div>
     </div>
   </div>
 </section>
@@ -1019,8 +1019,8 @@ lb.addEventListener('click',e=>{if(e.target===lb||e.target.tagName==='IMG')lb.cl
 /* ---------- countdown ---------- */
 const target=Date.UTC(2027,0,16,19,0,0); // 11:00 am PST = 19:00 UTC
 function tick(){const d=Math.max(0,target-Date.now());const days=Math.floor(d/864e5),h=Math.floor(d/36e5)%24,m=Math.floor(d/6e4)%60;
-  const q=u=>document.querySelector(`#count [data-u="${u}"]`);q('d').textContent=days;q('h').textContent=String(h).padStart(2,'0');q('m').textContent=String(m).padStart(2,'0')}
-tick();setInterval(tick,30000);
+  const q=u=>document.querySelector(`#count [data-u="${u}"]`);q('d').textContent=days;q('h').textContent=String(h).padStart(2,'0');q('m').textContent=String(m).padStart(2,'0');q('s').textContent=String(Math.floor(d/1e3)%60).padStart(2,'0')}
+tick();setInterval(tick,1000);
 
 /* ---------- announcer ---------- */
 const vo=$('vo'),ab=$('announce');
