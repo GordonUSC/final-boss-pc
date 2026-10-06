@@ -609,6 +609,7 @@ class Athlete {
     this.wantPower = false; this.throwType = 'normal'; this.throwTarget = null; this.passTarget = null;
     this.visible = true; this.root.visible = true; this.shadow.visible = true; this.popScale = 1;
     this.lane = null; this.knock = null; this.happyT = 0;
+    this.boundaryRisk = null; this.balanceNX = this.balanceNZ = 0; this.stumbleT = 0; this.outOrder = null; this.greetT = 0;
     if (this.faceTex) this.setExpr('neutral');
   }
   get infield() { return this.role === 'in'; }
@@ -620,7 +621,7 @@ class Athlete {
 }
 
 const NOI = { mx: 0, mz: 0, dash: 0, holdRun: false, throw: false, catch: false, catchHeld: false, jump: false, pass: false };
-const LOCKED = new Set(['windup', 'release', 'recover', 'catch', 'bobble', 'hitstun', 'knock', 'down', 'getup', 'ko', 'tired', 'squat', 'land', 'walkin', 'drop', 'pwind', 'prel', 'prec', 'block']);
+const LOCKED = new Set(['balance', 'windup', 'release', 'recover', 'catch', 'bobble', 'hitstun', 'knock', 'down', 'getup', 'ko', 'tired', 'squat', 'land', 'walkin', 'drop', 'pwind', 'prel', 'prec', 'block']);
 
 // ---------------------------------------------------------------- audio
 class Sfx {
@@ -719,6 +720,7 @@ class Game {
   constructor(el, opts) {
     this.opts = Object.assign({ mode: 'fb', difficulty: 'normal', sound: false, look: null, control: 'BELLAMY', basePath: BASE }, opts || {});
     this.base = this.opts.basePath;
+    this.ruleRandom = Math.random; // Replace only in deterministic scenario tests; no per-frame rerolls.
     this.el = el;
     this.rm = this.opts.reducedMotion != null ? !!this.opts.reducedMotion : !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
     this.level = AI_LEVEL[this.opts.difficulty] || AI_LEVEL.normal;
@@ -1064,6 +1066,7 @@ class Game {
       if (!this.visible || !focusOK) return;
       if (e.target && /INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
       if (!inGame) { if (k === 'enter' && this.phase === 'title' && document.activeElement === this.$.stage) { this.start(); e.preventDefault(); } return; }
+      if (this.phase === 'handshake') { if (k === 'enter' || k === 'throw' || k === 'pause') this.finishHandshake(); e.preventDefault(); return; }
       if (k === 'pause') { this.paused ? this.resume() : this.pause(); e.preventDefault(); return; }
       if (this.paused) return;
       e.preventDefault();
@@ -1134,6 +1137,7 @@ class Game {
     let P;
     switch (s) {
       case 'idle': P = a.role === 'outline' ? this.poseBench(a) : (a.hasBall ? this.poseHold(a) : this.poseIdle(a)); k = 0.25; break;
+      case 'balance': P = this.poseBalance(a); k = 0.5; break;
       case 'block': P = this.poseCatch(a); k = a.st < 4 ? 0.9 : 0.3; break;
       case 'walk': P = this.poseWalk(a); k = 0.3; break;
       case 'run': P = this.poseRun(a); k = 0.45; break;
@@ -1158,10 +1162,12 @@ class Game {
       default: P = this.poseIdle(a);
     }
     a.setExpr(exprFor(a, this));
+    if (a.stumbleT > 0) { a.stumbleT--; P.side += Math.sin(a.stumbleT * 0.5) * 0.12; P.sh[1] = P.sh[3] = 0.8; }
     a.tgt = P; this.blend(a, k); this.place(a);
   }
   bp(a) { return a.blankPose(); }
   poseIdle(a) { const p = this.bp(a); const t = (this.frame + a.num.length * 17) * 0.09; if (a.role !== 'in') { p.hipY = -0.02; p.kn = [0.25, 0.25]; p.hp = [-0.12, -0.12]; p.sh = [-0.5, 0.2, -0.5, 0.2]; p.el = [-1.0, -1.0]; return p; } p.hipY = Math.sin(t) * 0.02 - 0.13; p.kn = [0.95, 0.95]; p.hp = [-0.62, -0.62]; p.spread = [0.2, 0.2]; p.lean = 0.30 + Math.sin(t) * 0.025; p.sh = [-0.85, 0.38, -0.85, 0.38]; p.el = [-0.95, -0.95]; p.head = -0.25 + Math.sin(t * 0.5) * 0.05; return p; }
+  poseBalance(a) { const p = this.poseIdle(a); p.lean = 0.12; p.side = Math.sin(a.st * 0.32) * 0.14; p.sh = [-0.7, 0.95, -0.7, 0.95]; p.el = [-0.45, -0.45]; p.spread = [0.25, 0.25]; p.kn = [0.75, 0.9]; return p; }
   poseHold(a) { const p = this.poseIdle(a); p.sh[2] = -0.9; p.sh[3] = 0.35; p.el[1] = -1.5; p.twist = -0.15; return p; }
   poseWalk(a) { const p = this.bp(a); const ph = a.st * 0.32 + (a.num.length); const s = Math.sin(ph); p.hp = [s * 0.55 - 0.1, -s * 0.55 - 0.1]; p.kn = [Math.max(0, -Math.cos(ph)) * 0.8 + 0.15, Math.max(0, Math.cos(ph)) * 0.8 + 0.15]; p.sh = [-s * 0.5 - 0.1, 0.15, s * 0.5 - 0.1, 0.15]; p.el = [-0.7, -0.7]; p.hipY = Math.abs(Math.cos(ph)) * 0.04 - 0.02; p.lean = 0.14; if (a.hasBall) { p.sh[2] = -0.9; p.el[1] = -1.5; } return p; }
   poseRun(a) { const p = this.bp(a); const ph = (a.runF / TUNE.stepF) * Math.PI; const s = Math.sin(ph); p.hp = [s * 1.0 - 0.25, -s * 1.0 - 0.25]; p.kn = [Math.max(0, -Math.cos(ph)) * 1.5 + 0.3, Math.max(0, Math.cos(ph)) * 1.5 + 0.3]; p.sh = [-s * 1.1, 0.12, s * 1.1, 0.12]; p.el = [-1.5, -1.5]; p.hipY = Math.abs(Math.sin(ph)) * 0.08 - 0.05; p.lean = 0.42; p.sq = 1 + Math.abs(Math.cos(ph)) * 0.04; if (a.hasBall) { p.sh[2] = -0.7 + s * 0.3; p.el[1] = -1.7; } return p; }
@@ -1437,6 +1443,7 @@ class Game {
     }
   }
   resetBall(b) {
+    b.mesh.visible = b.shadow.visible = b.glow.visible = true;
     Object.assign(b, { state: 'rest', x: 0, z: 0, h: 0.22, vx: 0, vz: 0, vh: 0, holder: null, thrower: null, team: -1, live: false, crossed: false, cleared: true, rushTeam: -1,
       type: 'normal', power: false, age: 0, hitSet: new Set(), target: null, pending: null, squash: 0, spin: b.spin || 0, trailC: '#ffffff', bounces: 0, claim: null, outF: 0, flash: 0, grav: 0, fromSide: 0, deflected: false, defSide: 0, forceHead: false, restF: 0 });
   }
@@ -1462,6 +1469,7 @@ class Game {
   resetMatch() {
     this.clock = RULES.match; this.points = [0, 0]; this.gameNo = 0; this.ot = false; this.otClock = RULES.ot; this.sudden = false; this.over = false;
     this.score = 0; this.combo = 0; this.stats = { hits: 0, catches: 0, power: 0, kos: 0, bestCombo: 0, headshots: 0, backIn: 0, blocks: 0 };
+    this.handshake = null; this.keys = {}; this.edge = {}; this.paused = false;
     this.timeoutUsed = false; this.timeoutT = 0; this.result = null; this.lastBig = -1; this.lastCtl = -1;
     this.setupGame();
     this.updateHUD(true);
@@ -1469,7 +1477,7 @@ class Game {
   setupGame() {
     this.gameNo++; this.p2 = false; this.ctlTeam = -1; this.ctlT = 0; this.lastCtlSec = -1; this.gameEndT = 0; this.rushT = 999; this.falseStart = false;
     this.$.boss.classList.remove('on'); this.$.ctl.hidden = true;
-    this.queue = [[], []]; this.tide = { low: 0, high: 0 };
+    this.queue = [[], []]; this.outSequence = 0; this.tide = { low: 0, high: 0 };
     for (const t of [0, 1]) {
       const ps = this.teams[t];
       ps.forEach((a, i) => {
@@ -1596,6 +1604,8 @@ class Game {
     if (this.lineT === 90) { this.phase = 'play'; this.rushT = 0; this.cheer('*go'); this.popBrush('RUSH!', (this.rpsWinner === 0 ? 'FINAL BOSS' : 'GLITCHES') + ' rush 3 balls', '', 0.3, 1.3); this.sfx.crowd(true); this.sfx.vo('vo_go', 3); this.sfx.whistle(); }
   }
   pause(auto) {
+    if (this.dead) return;
+    if (this.phase === 'handshake') { if (!auto) this.finishHandshake(); return; }
     if (this.phase === 'title' || this.phase === 'result' || this.dead) return;
     this.paused = true; this.$.pause.textContent = 'Resume';
     const timeout = !auto && !this.timeoutUsed;
@@ -1615,10 +1625,52 @@ class Game {
   }
   resume() { if (!this.paused) return; this.paused = false; this.timeoutT = 0; this.$.ov.hidden = true; this.$.pause.textContent = this.timeoutUsed ? 'Pause' : 'Time out'; this.$.stage.focus({ preventScroll: true }); }
   endMatch(result) {
-    if (this.over) return; this.over = true; this.phase = 'result'; this.resultT = 0; this.result = result;
+    if (this.over) return; this.over = true; this.phase = 'handshake'; this.resultT = 0; this.result = result;
+    this.paused = false; this.keys = {}; this.edge = {}; this.timeoutT = 0; this.hitstop = 0;
+    this.$.ov.hidden = true; this.$.vs.hidden = true; this.$.pause.textContent = 'View result';
+    this.handshake = { stage: 'assemble', frame: 0, pairs: new Set(), lines: this.teams.map(t => t.filter(a => a.active)) };
+    for (const a of this.all) { a.held = null; a.h = 0; a.vx = a.vz = a.vh = 0; a.popScale = 1; a.shake = 0; a.role = 'ceremony'; a.oob = 0; a.stumbleT = 0; a.set('walk'); a.root.visible = a.active; }
+    for (const b of this.balls) { this.resetBall(b); b.mesh.visible = b.shadow.visible = b.glow.visible = false; }
+    if (this.lanes) this.showLanes(false);
     this.sfx.buzz(); this.crowdReact(result.win ? 'matchwin' : 'matchlose'); this.sfx.vo(result.win ? 'vo_win' : 'vo_lose', 4);
-    this.popCenter(result.win ? 'MATCH: FINAL BOSS' : 'MATCH: GLITCHES', result.win ? 'big gold' : 'big red');
-    setTimeout(() => this.showResults(), this.rm ? 600 : 1600);
+    this.popCenter('GOOD GAME', 'big gold'); this.say('Match complete. Teams form a sportsmanship line. Press Enter or View result to skip.');
+  }
+  handshakeTick() {
+    const h = this.handshake; if (!h) return;
+    h.frame++;
+    const assembleFrames = this.rm ? 45 : 240, passFrames = 240;
+    for (let t = 0; t < 2; t++) h.lines[t].forEach((a, i) => {
+      const dir = t === 0 ? 1 : -1, lane = t === 0 ? 0.70 : -0.70;
+      const startX = -dir * (1.6 + i * 0.85);
+      if (h.stage === 'assemble') {
+        if (this.rm) { a.x = startX; a.z = lane; a.set('idle'); }
+        else this.walkTo(a, startX, lane, 5);
+      } else {
+        const travel = Math.min(1, h.frame / passFrames) * 9.15;
+        a.x = startX + dir * travel; a.z = lane;
+        if (a.state !== 'walk') a.set('walk'); else a.st++;
+      }
+      if (h.stage === 'pass' || a.state !== 'walk') a.yaw = dir * Math.PI / 2;
+      if (h.stage === 'assemble' && a.state === 'walk') a.st++;
+      a.tgt = a.state === 'walk' ? this.poseWalk(a) : a.blankPose();
+      if (a.greetT > 0) { a.greetT--; a.tgt.sh[2] = -1.2; a.tgt.sh[3] = 0.85; a.tgt.el[1] = -0.5; }
+      this.blend(a, 0.35); this.place(a); a.setExpr('happy');
+    });
+    if (h.stage === 'assemble' && h.frame >= assembleFrames) { h.stage = 'pass'; h.frame = 0; this.popCenter('GOOD GAME • WELL PLAYED', 'small gold', 0.5, 2); }
+    else if (h.stage === 'pass') {
+      for (let i = 0; i < h.lines[0].length; i++) for (let j = 0; j < h.lines[1].length; j++) {
+        const a = h.lines[0][i], b = h.lines[1][j], key = i + ':' + j;
+        if (Math.abs(a.x - b.x) < 0.22 && !h.pairs.has(key)) { h.pairs.add(key); a.greetT = b.greetT = 14; }
+      }
+      if (h.frame >= passFrames) this.finishHandshake();
+    }
+    this.edge = {};
+  }
+  finishHandshake() {
+    if (this.dead || this.phase !== 'handshake') return;
+    this.phase = 'result'; this.resultT = 0; this.$.pause.textContent = 'Time out';
+    for (const a of this.all) { a.greetT = 0; a.set('idle'); }
+    this.showResults();
   }
   showResults() {
     if (this.phase !== 'result') return;
@@ -1651,7 +1703,8 @@ class Game {
       <ul class="fbg-rules">${rules.map(r => `<li>${ruleIcon(r[0])}<b>${r[1]}</b><span>${r[2]}</span></li>`).join('')}</ul>
       <details class="fbg-more"><summary>How Sin City plays</summary>
         <p>Both teams start on their back line. Ro-sham-bo decides the first game: the winner rushes the 3 balls on its right, the other team the 2 on its right. After that, the 3 balls alternate every game. On GO, rush only the balls on your right as you face the other team. Leave early and you lose those balls.</p>
-        <p>You are out if a live ball hits you and nobody catches it, if your throw is caught, if you cross the center line or a side line, or if you stay out the back for more than 10 seconds. A ball held in your hands can block a throw.</p>
+        <p>You are out if a live ball hits you and nobody catches it, if your throw is caught, if you cross the center line or a side line, or if you stay out the back for more than 10 seconds. A ball held in your hands can block a throw. Deflected balls stay live until the floor. Catch one to put the original thrower out and return your first teammate in line.</p>
+        <p>Near an illegal boundary, grounded players may try to balance. Speed and momentum can still carry you out. After the match, both teams meet in a sportsmanship line.</p>
         <p>A ball is live once it crosses the center line, and dead once it touches the floor, a wall, or another ball. A game ends when a team is out, worth 1 point. Mercy at an 8 game lead. A tie goes to overtime, then sudden death. Play on the honor system.</p>
       </details>
       <ol class="fbg-how">${how}</ol>
@@ -1689,10 +1742,10 @@ class Game {
       case 'lineup': this.lineupTick(); return;
       case 'gameover': this.gameOverTick(); return;
       case 'ot-wait': for (const a of this.all) if (a.active) { this.control(a, NOI); this.physics(a); this.animate(a); } for (const b of this.balls) this.updateBall(b); this.edge = {}; return;
+      case 'handshake': this.handshakeTick(); return;
       case 'result':
         this.resultT++;
-        for (const a of this.all) if (a.active) { this.control(a, NOI); this.physics(a); this.animate(a); }
-        for (const b of this.balls) this.updateBall(b);
+        for (const a of this.all) if (a.active) { a.tgt = this.poseBench(a); this.blend(a, 0.2); this.place(a); }
         this.edge = {}; return;
     }
     if (this.hitstop > 0) { this.hitstop--; for (const a of this.all) if (a.shake > 0) a.shake--; return; }
@@ -1835,7 +1888,8 @@ class Game {
     if (t.held) p *= 0.6;
     if (Math.random() < p) {
       const d = Math.hypot(t.x - B.x, t.z - B.z); const sp = Math.hypot(B.vx, B.vz) || 10;
-      const eta = Math.round(d / sp * 60);
+      const fall = B.deflected ? (B.vh + Math.sqrt(Math.max(0, B.vh * B.vh + 2 * B.grav * (B.h - 1.2 * t.scale)))) / B.grav : 0;
+      const eta = Math.round(Math.max(d / sp, fall) * 60);
       t.ai.press = this.frame + Math.max(1, eta - (2 + ((Math.random() * 7) | 0)));
     } else t.ai.press = -1;
   }
@@ -1865,6 +1919,7 @@ class Game {
     if (a.oob > 0) { a.oob++; if (a.oob > RULES.oob * 60) { this.eliminate(a, 'oob'); this.ref('OUT: 10 SECONDS'); return; } }
     const st = a.state;
     switch (st) {
+      case 'balance': a.vx = a.balanceNX * 1.8; a.vz = a.balanceNZ * 1.8; if (a.st >= 18) { a.vx = a.vz = 0; a.set('idle'); } return;
       case 'squat': if (a.st >= 4) { a.set('air'); a.vh = GRAV * (TUNE.airF / 60) / 2; a.airF = 0; } return;
       case 'land': if (a.st >= 6) a.set('idle'); return;
       case 'windup': case 'pwind': { const n = st === 'pwind' ? TUNE.pWind : TUNE.wind; if (a.st >= (a.passing ? 4 : n)) { a.set(st === 'pwind' ? 'prel' : 'release'); this.release(a); } return; }
@@ -1991,6 +2046,7 @@ class Game {
   physics(a) {
     if (!a.active || a.role !== 'in') { this.faceIdle(a); return; }
     if (a.state === 'ko') return;
+    this.boundaryAwareness(a);
     if (a.state === 'knock') {
       a.vh -= GRAV * DT; a.h += a.vh * DT; a.x += a.vx * DT; a.z += a.vz * DT;
       if (a.h <= 0) { a.h = 0; a.vh = 0; a.vx *= 0.3; a.vz *= 0.3; a.set('down'); this.dust(a, 5); this.shakeScreen(this.rm ? 0 : 2, 6); }
@@ -2021,12 +2077,31 @@ class Game {
     a.yaw += Math.max(-Math.PI / TUNE.turnF, Math.min(Math.PI / TUNE.turnF, d));
   }
   faceIdle(a) { }
+  boundaryAwareness(a) {
+    if (this.phase !== 'play' || a.role !== 'in' || a.oob > 0) return;
+    // Only these two edges are immediate outs under the existing rules. Legal
+    // opening-rush crossings and back-line retrieval do not trigger a save.
+    const hazards = [];
+    if (this.rushT >= RULES.rushF) hazards.push({ key: 'center', d: a.x * a.side + 0.05, nx: a.side, nz: 0, out: -a.vx * a.side });
+    if (Math.abs(a.x) < HX) hazards.push({ key: 'side', d: HZ + 0.2 - Math.abs(a.z), nx: 0, nz: -Math.sign(a.z || 1), out: a.vz * Math.sign(a.z || 1) });
+    if (a.boundaryRisk && !hazards.some(h => h.key === a.boundaryRisk && h.d < 0.9)) a.boundaryRisk = null;
+    if (a.h > 0.02 || a.locked() || a.state === 'air') return;
+    const h = hazards.filter(h => h.d >= 0 && h.d <= Math.max(0.18, h.out * 0.1) && h.out > 0.3).sort((a, b) => a.d - b.d)[0];
+    if (!h || a.boundaryRisk === h.key) return;
+    a.boundaryRisk = h.key;
+    const chance = h.out > 4.5 ? 0.55 : 0.88;
+    if (this.ruleRandom() < chance) {
+      a.balanceNX = h.nx; a.balanceNZ = h.nz; a.vx = h.nx * 1.8; a.vz = h.nz * 1.8; a.set('balance');
+      this.pop(a, 'HOLD THE LINE', 'small cyan');
+    } else { a.stumbleT = 24; this.pop(a, 'OFF BALANCE', 'small'); }
+  }
   clampAthlete(a) {
     const s = a.side, rush = this.rushT < RULES.rushF;
     const backOK = this.backLineBallFor(a);
     const isUser = a === this.user;
-    // center line: CPU never crosses; the player may, and pays for it in rules()
-    const cen = isUser ? (rush ? -1.0 : -0.6) : (rush ? 0.05 : 0.4);
+    // Both sides can overstep; awareness attempts happen before integration,
+    // then rules() applies the same actual-crossing call to every player.
+    const cen = rush ? -1.0 : -0.6;
     if (s < 0) a.x = Math.min(-cen, a.x); else a.x = Math.max(cen, a.x);
     // back line: only to fetch a ball that is already out
     const maxX = backOK || a.oob > 0 ? HX + 1.6 : HX - 0.25;
@@ -2034,7 +2109,7 @@ class Game {
     const beyondBack = Math.abs(a.x) > HX;
     if (beyondBack && a.oob === 0 && a.role === 'in') { a.oob = 1; if (isUser) this.ref('OUT THE BACK: 10 S'); }
     if (!beyondBack && a.oob > 0) a.oob = 0;
-    const zl = beyondBack ? HZ + 1.2 : (isUser ? HZ + 0.6 : HZ - 0.25);
+    const zl = beyondBack ? HZ + 1.2 : HZ + 0.6;
     a.z = Math.max(-zl, Math.min(zl, a.z));
   }
   backLineBallFor(a) {
@@ -2060,9 +2135,8 @@ class Game {
       if (B.type === 'zig' && B.zigBase) { const w = Math.sin(B.age * 0.22) * 6.5; const bx = B.zigBase.vx, bz = B.zigBase.vz, l = Math.hypot(bx, bz) || 1; B.vx = bx - (bz / l) * w * 0.3; B.vz = bz + (bx / l) * w; }
       if (B.type === 'pass' && B.target) { const t = B.target; const dx = t.x - B.x, dz = t.z - B.z; if (Math.hypot(dx, dz) < 4) { B.vx += dx * 0.15; B.vz += dz * 0.15; } }
       B.vh -= (B.grav || 0) * DT; B.x += B.vx * DT; B.z += B.vz * DT; B.h += B.vh * DT;
-      // live once it crosses the center line; a deflection that comes back over is dead
+      // A blocked ball retains its original thrower and remains live over center.
       if (!B.crossed && B.x * B.fromSide < 0) { B.crossed = true; if (B.type !== 'pass') B.live = true; }
-      if (B.deflected && B.x * B.defSide < 0) this.killBall(B, 'over');
       if (B.type === 'hop' && B.h <= 0.22) { B.h = 0.22; B.vh = 3.2 + B.bounces * 0.6; B.bounces++; B.vx *= 1.12; B.vz *= 1.12; this.dustAt(B.x, B.z, 2); }
       if ((B.power || B.type === 'dash') && B.live) this.trail(B);
       if (B.type === 'pass') {
@@ -2070,7 +2144,12 @@ class Game {
       }
       if (B.type !== 'hop' && B.h <= 0.22) { B.h = 0.22; this.killBall(B, 'floor'); this.dustAt(B.x, B.z, 2); return; }
       if (B.type === 'hop' && B.bounces > 5) { this.killBall(B, 'floor'); return; }
-      if (Math.abs(B.x) > 12.3 || Math.abs(B.z) > 6.6) { this.killBall(B, 'wall'); return; }
+      if (Math.abs(B.x) > 12.3 || Math.abs(B.z) > 6.6) {
+        if (!B.deflected) { this.killBall(B, 'wall'); return; }
+        // Keep a lofted block in the arena until it reaches the floor.
+        if (Math.abs(B.x) > 12.3) { B.x = Math.sign(B.x) * 12.3; B.vx *= -0.35; }
+        if (Math.abs(B.z) > 6.6) { B.z = Math.sign(B.z) * 6.6; B.vz *= -0.35; }
+      }
       this.placeBallMesh(B); return;
     }
     // loose (dead) ball
@@ -2114,7 +2193,7 @@ class Game {
     for (const B of this.balls) {
       if (B.state !== 'flight' || B.type === 'pass' || B.pending) continue;
       for (const f of this.all) {
-        if (!f.active || f.role !== 'in' || f.team === B.team || f.oob > 0 || B.hitSet.has(f)) continue;
+        if (!f.active || f.role !== 'in' || (f.team === B.team && !B.deflected) || f.oob > 0 || B.hitSet.has(f)) continue;
         if (f.state === 'knock' || f.state === 'down' || f.state === 'ko' || f.state === 'hitstun') continue;
         const r = 0.4 * f.scale + 0.22;
         if (Math.hypot(f.x - B.x, f.z - B.z) > r) continue;
@@ -2135,6 +2214,12 @@ class Game {
   }
   contact(f, B) {
     const thrower = B.thrower;
+    // A returning deflection may be secured by the original throwing team,
+    // but is never a friendly-fire out or a catch/reentry reward.
+    if (f.team === B.team) {
+      if (B.deflected && B.live && !f.held && f.state === 'catchready' && this.frame - f.catchF <= TUNE.catchBobble) this.doCatch(f, B, true);
+      return;
+    }
     const crouched = f.state === 'duck';
     const headLine = f.h + (crouched ? 0.8 : 1.6) * f.scale;
     if (B.h > headLine || B.forceHead) {
@@ -2162,14 +2247,17 @@ class Game {
     this.applyHit(f, B);
   }
   block(f, B, timed) {
-    B.hitSet.add(f); B.vx = -B.vx * 0.3 + (Math.random() - 0.5) * 2; B.vz = -B.vz * 0.3 + (Math.random() - 0.5) * 2; B.vh = 5; B.grav = GRAV;
-    B.deflected = true; B.defSide = f.side; B.type = 'normal'; B.power = false;
+    B.hitSet.add(f); B.vx = -B.vx * 0.3 + (this.ruleRandom() - 0.5) * 2; B.vz = -B.vz * 0.3 + (this.ruleRandom() - 0.5) * 2;
+    const loft = timed || this.ruleRandom() < 0.45; B.vh = loft ? 6.5 : 3; B.grav = GRAV;
+    B.state = 'flight'; B.live = true; B.pending = null; B.deflected = true; B.defSide = f.side; B.type = 'normal'; B.power = false;
+    B.target = this.nearestFoe(B); this.scheduleCatches(B);
     f.set('block'); this.hitstop = 4; this.spark(B.x, B.h, B.z, 1.2); this.pop(f, 'BLOCK!', f.team === 0 ? 'gold' : 'lime'); this.sfx.hit(false);
     if (f.team === 0) { this.stats.blocks++; this.addScore(60); }
   }
   doCatch(f, B, clean) {
-    if (f.team === 0) this.cheer(f.name);
     const thrower = B.thrower;
+    if (thrower && thrower.team === f.team) { this.give(f, B); B.cleared = true; f.set('catch'); this.sfx.catch(); this.pop(f, 'SECURED', 'small cyan'); return; }
+    if (f.team === 0) this.cheer(f.name);
     this.give(f, B); B.squash = 1; B.cleared = true;
     f.set(clean ? 'catch' : 'bobble');
     f.x += f.side * 0.2; this.clampAthlete(f);
@@ -2181,7 +2269,7 @@ class Game {
     // the first teammate in the outline comes back in
     const q = this.queue[f.team];
     if (q.length) {
-      const r = q.shift(); r.role = 'returning'; r.backF = 0; r.set('walk');
+      const r = q.shift(); r.role = 'returning'; r.backF = 0; r.h = 0; r.vh = r.vx = r.vz = 0; r.popScale = 1; r.knock = null; r.shake = 0; r.set('walk');
       this.popBrush('CATCH!', `${r.name} ${r.num} BACK IN`, f.team === 0 ? '' : 'lime');
       if (f.team === 0) this.stats.backIn++;
       this.layoutQueue(f.team);
@@ -2210,6 +2298,7 @@ class Game {
   eliminate(a, why, dir) {
     if (a.role !== 'in') return;
     if (a.held) { const b = a.held; a.held = null; b.holder = null; b.state = 'loose'; b.live = false; b.vh = 4; b.vx = (dir || -a.side) * 1.5; b.vz = (Math.random() - 0.5) * 2; b.cleared = true; }
+    a.outOrder = ++this.outSequence; this.queue[a.team].push(a); this.layoutQueue(a.team);
     a.role = 'gone'; a.oob = 0; a.ai.press = -1; a.ai.claimBall = null; this.sfx.whistle();
     dir = dir || -a.side;
     if (why === 'power') { a.knock = {}; a.vx = dir * 7; a.vz = (Math.random() - 0.5) * 2; a.vh = 6; a.h = 0.05; a.set('knock'); }
@@ -2223,7 +2312,7 @@ class Game {
     this.pop(a, call, a.team === 0 ? 'red' : 'lime');
     if (a.team === 1 && (why === 'hit') && Math.random() < 0.35) setTimeout(() => { if (this.phase === 'play') this.pop(a, 'HONOR CALL', 'small lime'); }, 500);
     this.sfx.ko();
-    if (a === this.user) setTimeout(() => this.switchUser(false), 0);
+    if (a === this.user) setTimeout(() => { if (this.phase === 'play' && this.user === a && a.role !== 'in') this.switchUser(false); }, 0);
     if (this.sudden && !this.over) { this.lastGameWinner = 1 - a.team; this.points[1 - a.team]++; this.phase = 'gameover'; this.gameEndT = 0; this.popCenter('SUDDEN DEATH!', 'big red'); }
     this.renderLive();
   }
@@ -2241,8 +2330,8 @@ class Game {
     if (a.st === 36) { this.burst(a.x, a.h + 1, a.z, a.team === 0 ? '#ffc83d' : '#a6f23a', 20); }
     if (a.st > 36 && a.st <= 44) a.popScale = Math.max(0, 1 - (a.st - 36) / 8);
     if (a.st === 50) {
-      // join the outline queue in order of arrival, on the far side line beside our half
-      this.queue[a.team].push(a); a.role = 'outline'; a.h = 0; a.popScale = 1; a.vx = a.vz = 0;
+      // The FIFO slot was reserved at elimination, before varying KO animations.
+      a.role = 'outline'; a.h = 0; a.popScale = 1; a.vx = a.vz = 0;
       this.layoutQueue(a.team);
       a.x = a.qx; a.z = a.qz - 0.8; a.set('walkin'); this.burst(a.x, 1, a.z, '#ffffff', 8);
       this.renderLive();
@@ -2269,10 +2358,9 @@ class Game {
     // attack line clearing
     for (const b of this.balls) if (b.state === 'held' && !b.cleared && b.holder.x * b.holder.side >= ATK) { b.cleared = true; if (b.holder === this.user) this.pop(b.holder, 'CLEARED', 'small cyan'); }
     // player violations: center line after the rush, side lines
-    const u = this.user;
-    if (u && u.role === 'in' && u.oob === 0) {
-      if (this.rushT >= RULES.rushF && u.x * u.side < -0.05) { this.eliminate(u, 'line'); this.popCenter('CENTER LINE: OUT', 'big red', 0.36); }
-      else if (Math.abs(u.z) > HZ + 0.2 && Math.abs(u.x) < HX) { this.eliminate(u, 'side'); this.popCenter('SIDE LINE: OUT', 'big red', 0.36); }
+    for (const a of this.all) if (a.active && a.role === 'in' && a.oob === 0) {
+      if (this.rushT >= RULES.rushF && a.x * a.side < -0.05) { this.eliminate(a, 'line'); if (a === this.user) this.popCenter('CENTER LINE: OUT', 'big red', 0.36); }
+      else if (Math.abs(a.z) > HZ + 0.2 && Math.abs(a.x) < HX) { this.eliminate(a, 'side'); if (a === this.user) this.popCenter('SIDE LINE: OUT', 'big red', 0.36); }
     }
     // ball control countdown: 3 of 5 held by one team
     const held = [0, 0]; for (const b of this.balls) if (b.state === 'held') held[b.holder.team]++;
@@ -2388,7 +2476,7 @@ class Game {
     const c = this.ot ? this.otClock : this.clock; const txt = this.sudden ? 'SD' : fmtClock(Math.max(0, Math.ceil(c)));
     if (force || this.$.clock.textContent !== txt) this.$.clock.textContent = txt;
     this.$.clock.classList.toggle('fever', this.ot || c <= 10);
-    const sub = this.sudden ? 'SUDDEN DEATH' : (this.ot ? 'OVERTIME' : (this.phase === 'title' ? '3 MINUTES' : 'GAME ' + this.gameNo));
+    const sub = this.phase === 'handshake' ? 'SPORTSMANSHIP' : this.phase === 'result' ? 'FINAL' : this.sudden ? 'SUDDEN DEATH' : (this.ot ? 'OVERTIME' : (this.phase === 'title' ? '3 MINUTES' : 'GAME ' + this.gameNo));
     if (this.$.sub.textContent !== sub) this.$.sub.textContent = sub;
     if (this.$.g0.textContent !== String(this.points[0])) this.$.g0.textContent = this.points[0];
     if (this.$.g1.textContent !== String(this.points[1])) this.$.g1.textContent = this.points[1];
@@ -2398,7 +2486,7 @@ class Game {
     if (!this.renderer) return;
     const v = this.view;
     let tx = 0;
-    if (!v.wide) {
+    if (!v.wide && this.phase !== 'handshake') {
       const u = this.user; let focus = u ? u.x * 0.55 : 0;
       const fl = this.balls.filter(b => b.state === 'flight' && b.live); if (fl.length) focus = focus * 0.6 + fl[0].x * 0.4;
       tx = Math.max(-4.6, Math.min(4.6, focus));
@@ -2441,6 +2529,7 @@ class Game {
       const you = show && a === this.user && a.role === 'in';
       let note = '';
       if (show && a.role === 'in' && a.oob > 0) note = 'BACK IN ' + Math.max(0, Math.ceil(RULES.oob - a.oob / 60));
+      else if (show && a.state === 'balance') note = 'HOLD THE LINE';
       else if (show && a.role === 'returning') note = 'IN ' + Math.max(0, Math.ceil(RULES.back - a.backF / 60));
       else if (you && a.held && !a.held.cleared) note = 'CLEAR THE LINE';
       const vis = (you || note) && a.root.visible && (a.popScale ?? 1) > 0.5;
@@ -2468,6 +2557,7 @@ class Game {
     const pl = (a) => ({ name: a.name, num: a.num, team: a.team, role: a.role, state: a.state, x: +a.x.toFixed(2), z: +a.z.toFixed(2), h: +a.h.toFixed(2), hasBall: !!a.held, oob: a.oob > 0, boss: a.boss });
     return {
       phase: this.phase, paused: this.paused, timeout: this.timeoutT > 0, frame: this.frame, clock: +(this.clock || 0).toFixed(2), otClock: +(this.otClock || 0).toFixed(2), ot: this.ot, sudden: this.sudden, phaseTwo: this.p2,
+      sportsmanship: this.handshake ? { stage: this.handshake.stage, frame: this.handshake.frame, greetings: this.handshake.pairs.size } : null,
       points: this.points.slice(), gameNo: this.gameNo, live: [this.liveCount(0), this.liveCount(1)], rush: this.rushT < RULES.rushF && this.phase === 'play',
       control: { team: this.ctlTeam, t: +(this.ctlT || 0).toFixed(2) }, queue: [this.queue[0].map(a => a.num), this.queue[1].map(a => a.num)],
       score: this.score, combo: this.combo, stats: Object.assign({}, this.stats), mode: this.mode, look: this.look && this.look.name, lookId: this.look && this.look.id,
