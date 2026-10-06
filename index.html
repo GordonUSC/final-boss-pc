@@ -706,7 +706,7 @@ body[data-mode="vc"] .alan .plaque b{font:700 20px/1 'Teko',sans-serif;color:#ff
   <div class="playhead head">
     <h2 id="t-play" data-vc="Boss Rush">BOSS RUSH</h2>
     <p>Catch to put the thrower out. Throw to win the round. Your kit pick dresses the court.</p>
-    <p class="pcnote"><strong>PC Edition.</strong> Ultra graphics: supersampled, 4096-pixel shadow maps, full-resolution floor reflections, arena lighting on every player. Built for a desktop or laptop with a keyboard. The Quality button steps down if your machine needs it.</p>
+    <p class="pcnote"><strong>PC Edition.</strong> Arena lighting, detailed jerseys and crisp ball markings. Built for a desktop or laptop with a keyboard. Auto quality adapts to your machine; choose Ultra for extra lighting detail or a lower setting for lighter rendering.</p>
     <p class="pcnote pc-phone">On a phone? <a href="https://gordonusc.github.io/final-boss/">Play the regular edition</a>, tuned for mobile.</p>
   </div>
   <div class="gamemount" id="fbgame"><p class="loading">Loading the arena...</p></div>
@@ -1072,7 +1072,7 @@ function startFallback(){
   if(fallbackOn)return; fallbackOn=true; $('fbgame').hidden=true; $('fallback').hidden=false; fb=bossRush();
 }
 (function loadGame(){
-  const mount=$('fbgame'), s=document.createElement('script'); s.src='game/game.bundle.js?v=20261005c';
+  const mount=$('fbgame'), s=document.createElement('script'); s.src='game/game.bundle.js?v=pc-broadcast-20261006';
   setTimeout(()=>{ if(!gameMounted&&!fallbackOn) startFallback() },9000);
   s.onload=()=>{ if(window.FBGame&&typeof FBGame.mount==='function'){ try{ mount.innerHTML=''; if(fallbackOn)return; FBGame.mount(mount,{look:payload(look),mode,control:(cards.find(c=>c.dataset.id===chosen)||{dataset:{}}).dataset.name||'BELLAMY'}); gameMounted=true }catch(e){ console.warn('FBGame.mount failed, using the built-in game',e); startFallback() } } else startFallback() };
   s.onerror=startFallback;

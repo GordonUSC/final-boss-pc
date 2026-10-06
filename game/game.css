@@ -336,3 +336,12 @@
 
 .fbg-brief .fbg-bwho{color:var(--fbg-gold); font-weight:700; font-size:15px; margin:6px 0 2px}
 .fbg-brief .fbg-btime{display:block; height:4px; margin:10px auto 0; width:60%; background:var(--fbg-gold); transform-origin:left; transform:scaleX(0)}
+
+/* Broadcast Arena: preserve the spectacle around a clean playing field. */
+.fbg-vignette{background:radial-gradient(120% 100% at 50% 55%,transparent 70%,rgba(8,2,14,.32) 100%)}
+.fbg-you{font:700 15px/1 var(--fbg-ui);height:25px;min-width:42px;padding:3px 7px 6px;filter:drop-shadow(0 2px 1px #000)}
+.fbg-root.is-wide .fbg-team{filter:drop-shadow(0 2px 2px #0008)}
+.fbg-root.no-webgl .fbg-poster{z-index:20;background-size:cover}
+.fbg-root.no-webgl .fbg-poster p{bottom:68px;background:#0c0612ed}
+.fbg-reload{position:absolute;bottom:16px;left:16px}
+.fbg-root.no-webgl .fbg-hud,.fbg-root.no-webgl .fbg-btns,.fbg-root.no-webgl .fbg-touch,.fbg-root.no-webgl .fbg-ov,.fbg-root.no-webgl .fbg-vs,.fbg-root.no-webgl .fbg-world{display:none!important}
