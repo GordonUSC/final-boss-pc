@@ -210,7 +210,9 @@ function ballTex() {
     c.fillStyle = '#e0262b'; c.fillRect(0, 0, w, h);
     for (let i = 0; i < 1400; i++) { const x = Math.random() * w, y = Math.random() * h, r = 1 + Math.random() * 2.2; c.fillStyle = Math.random() < 0.5 ? 'rgba(120,0,10,.35)' : 'rgba(255,140,140,.25)'; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill(); }
     c.fillStyle = 'rgba(80,0,20,.55)'; c.fillRect(0, h / 2 - 3, w, 6);
-    c.fillStyle = '#ffc83d'; c.fillRect(w * 0.18, h / 2 - 16, 36, 8);
+    // Broad ivory seams make the red ball readable in motion and against the maple.
+    c.fillStyle = '#fff6dc'; c.fillRect(0, h * .23, w, 6); c.fillRect(0, h * .72, w, 6);
+    c.fillRect(w * .18, h / 2 - 16, 36, 8);
   });
 }
 
@@ -799,7 +801,7 @@ class Game {
     try {
       this.renderer = new THREE.WebGLRenderer({ canvas: this.$.canvas, antialias: true, alpha: false, powerPreference: 'high-performance' });
       if (!this.renderer.getContext()) throw new Error('no gl');
-    } catch (e) { this.root.classList.add('no-webgl'); this.dead = true; return false; }
+    } catch (e) { this.graphicsFallback('WebGL is unavailable. The team file still works; try another browser to play.'); return false; }
     const R = this.renderer;
     R.outputColorSpace = THREE.SRGBColorSpace;
     R.shadowMap.enabled = true; R.shadowMap.type = THREE.PCFSoftShadowMap; R.shadowMap.autoUpdate = false;
@@ -809,15 +811,29 @@ class Game {
     this.limbMat = rimify(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.62, metalness: 0 }));
     const coarse = window.matchMedia && matchMedia('(pointer: coarse)').matches;
     this.qMode = this.opts.quality || 'auto';
-    this.tier = this.qMode === 'auto' ? (coarse ? 'high' : 'ultra') : this.qMode;
+    this.tier = this.qMode === 'auto' ? (coarse ? 'med' : 'high') : this.qMode;
     this.frameMs = 16; this.qFrames = 0; this.qDrops = 0;
     this.ro = new ResizeObserver(() => this.resize()); this.ro.observe(this.root);
     this.io = new IntersectionObserver((es) => { for (const e of es) this.visible = e.isIntersecting; if (!this.visible && this.phase === 'play' && !this.paused) this.pause(true); }, { threshold: 0.05 });
     this.io.observe(this.root);
-    this.$.canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); this.root.classList.add('no-webgl'); });
+    this.$.canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); this.graphicsFallback('The graphics connection was interrupted. Reload to return to the court.'); });
     return true;
   }
+  graphicsFallback(message) {
+    this.dead = true; this.paused = true;
+    cancelAnimationFrame(this.raf);
+    this.sfx.enable(false); this.sfx.mood(0, 0, false);
+    if (this.sfx.ctx) this.sfx.ctx.suspend().catch(() => {});
+    this.root.classList.add('no-webgl');
+    this.$.poster.querySelector('p').textContent = message;
+    const retry = document.createElement('button');
+    retry.type = 'button'; retry.className = 'fbg-btn fbg-reload'; retry.textContent = 'Reload game';
+    retry.addEventListener('click', () => location.reload());
+    this.$.poster.appendChild(retry);
+    this.say(message);
+  }
   resize() {
+    if (this.dead) return;
     const w = this.root.clientWidth;
     const narrow = w < 700;
     this.root.classList.toggle('is-narrow', narrow); this.root.classList.toggle('is-wide', !narrow);
@@ -941,6 +957,15 @@ class Game {
         c.globalAlpha = 1;
       }
       c.restore();
+      if (!vc) {
+        c.fillStyle = 'rgba(13,58,67,.22)'; c.fillRect(cx0, cz0, cw/2, ch);
+        c.fillStyle = 'rgba(24,37,55,.15)'; c.fillRect(X(0), cz0, cw/2, ch);
+        // Baseline hash marks read as a sporting surface at oblique camera angles.
+        c.strokeStyle = 'rgba(255,255,255,.45)'; c.lineWidth = 3;
+        for (let z = -3; z <= 3; z++) for (const x of [-HX, HX]) {
+          c.beginPath(); c.moveTo(X(x), Z(z)); c.lineTo(X(x + (x < 0 ? .18 : -.18)), Z(z)); c.stroke();
+        }
+      }
       const line = '#fbf6ee';
       c.strokeStyle = line; c.lineWidth = 9; c.strokeRect(cx0, cz0, cw, ch);
       c.beginPath(); c.moveTo(X(0), cz0); c.lineTo(X(0), cz0 + ch); c.stroke();
@@ -992,18 +1017,19 @@ class Game {
     this.bdMat.map = this.bdTex[this.mode]; this.bdMat.color.set(vc ? '#e6dcef' : '#d8ccd0'); this.bdMat.needsUpdate = true;
     this.scene.background = new THREE.Color(vc ? '#0a0618' : '#0b0608');
     this.palms.forEach(p => p.visible = false);
-    this.floorMat.map = vc ? this.waterTex : this.mapleTex; this.floorMat.color.set(vc ? '#ffffff' : '#ffcf98'); this.floorMat.roughness = vc ? 0.18 : 0.32; this.floorMat.needsUpdate = true;
+    this.floorMat.map = vc ? this.waterTex : this.mapleTex; this.floorMat.color.set(vc ? '#ffffff' : '#dce0d4'); this.floorMat.roughness = vc ? 0.28 : 0.58; this.floorMat.needsUpdate = true;
     this.caustics.forEach(c => c.visible = vc);
-    this.hemi.color.set(vc ? '#d8b8ff' : '#ffe2c4'); this.hemi.groundColor.set(vc ? '#1a4a6a' : '#3a1e14'); this.hemi.intensity = vc ? 1.35 : 1.5;
-    this.key.color.set(vc ? '#ffe6f4' : '#fff0dc'); this.key.intensity = vc ? 2.4 : 2.8;
-    this.rimL.color.set(vc ? '#ff3fa1' : '#ff7a3a'); this.rimR.color.set(vc ? '#3ff0ff' : '#9a6bff');
+    this.hemi.color.set(vc ? '#d8b8ff' : '#e4f1ff'); this.hemi.groundColor.set(vc ? '#1a4a6a' : '#263b47'); this.hemi.intensity = vc ? 1.35 : 1.5;
+    this.key.color.set(vc ? '#ffe6f4' : '#fff7ea'); this.key.intensity = vc ? 2.4 : 2.35;
+    this.rimL.color.set(vc ? '#ff3fa1' : '#ff7a3a'); this.rimR.color.set(vc ? '#3ff0ff' : '#77b9e8');
+    this.rimL.intensity = vc ? 1.6 : 0.85; this.rimR.intensity = vc ? 1.5 : 1.0;
     RIM_U.color.value.set(vc ? '#ff6fd0' : '#ffb070');
     this.pools.forEach((p, i) => p.material.color.set(vc ? (i % 2 ? '#ff8cc2' : '#7ff3ff') : '#ffe6c8'));
     this.streaks.forEach((s, i) => s.material.color.set(vc ? (i % 2 ? '#ff6fd0' : '#6ff3ff') : '#ffd9a0'));
     this.shafts.forEach(s => s.material.color.set(vc ? '#c48cff' : '#ffd6a0'));
     this.haze.material.color.set(vc ? '#b06cff' : '#ffb070');
-    this.glossMat.uniforms.tint.value.set(vc ? '#e0f6ff' : '#ffe8d0'); this.glossMat.uniforms.strength.value = vc ? 0.5 : 0.38;
-    this.glowMat.opacity = vc ? 0.75 : 0.45;
+    this.glossMat.uniforms.tint.value.set(vc ? '#e0f6ff' : '#ffe8d0'); this.glossMat.uniforms.strength.value = vc ? 0.24 : 0.12;
+    this.glowMat.opacity = vc ? 0.4 : 0.16;
     if (this.kit) { this.paintCourt(); this.paintRibbon(); }
     if (this.drawBanner) this.drawBanner();
   }
@@ -2453,12 +2479,14 @@ class Game {
   applyTier(fromResize) {
     const R = this.renderer, t = this.tier;
     const dev = window.devicePixelRatio || 1;
-    // ultra supersamples: 1.5x the screen's own density, capped near 14 megapixels
-    const dpr = t === 'ultra' ? Math.min(dev * 1.5, 3, Math.sqrt(14e6 / Math.max(1, (this.W || 1280) * (this.H || 720)))) : Math.min(t === 'high' ? 2 : t === 'med' ? 1.5 : 1, dev);
+    // Bound pixel cost at large PC resolutions; quality adds detail, not unbounded supersampling.
+    const budget = t === 'ultra' ? 4e6 : t === 'high' ? 3e6 : t === 'med' ? 2e6 : 1.2e6;
+    const cap = t === 'ultra' ? 2 : t === 'high' ? 1.5 : t === 'med' ? 1.25 : 1;
+    const dpr = Math.min(dev, cap, Math.sqrt(budget / Math.max(1, (this.W || 1280) * (this.H || 720))));
     R.setPixelRatio(dpr); if (this.W) R.setSize(this.W, this.H, false);
     R.shadowMap.enabled = t !== 'low';
-    if (this.key) { const ms = t === 'ultra' ? 4096 : t === 'high' ? 2048 : 1024; if (this.key.shadow.mapSize.x !== ms) { this.key.shadow.mapSize.set(ms, ms); if (this.key.shadow.map) { this.key.shadow.map.dispose(); this.key.shadow.map = null; } } this.key.castShadow = t !== 'low'; }
-    this.useRefl = t !== 'low'; this.useBloom = (t === 'high' || t === 'ultra') && !this.rm; this.ultra = t === 'ultra';
+    if (this.key) { const ms = t === 'ultra' || t === 'high' ? 2048 : 1024; if (this.key.shadow.mapSize.x !== ms) { this.key.shadow.mapSize.set(ms, ms); if (this.key.shadow.map) { this.key.shadow.map.dispose(); this.key.shadow.map = null; } } this.key.castShadow = t !== 'low'; }
+    this.useRefl = t !== 'low'; this.useBloom = (t === 'high' || t === 'ultra') && !this.rm && this.hdrSupported !== false; this.ultra = t === 'ultra';
     if (this.scene) this.applyEnv();
     if (this.glossMesh) this.glossMesh.visible = this.useRefl;
     if (this.W) this.sizePost();
@@ -2485,7 +2513,7 @@ class Game {
     if (this.floorMat && this.floorMat.map) { this.floorMat.map.anisotropy = this.ultra ? this.renderer.capabilities.getMaxAnisotropy() : 8; this.floorMat.map.needsUpdate = true; }
   }
   setQuality(q) {
-    this.qMode = q; if (q !== 'auto') this.tier = q; else { this.tier = 'ultra'; this.qDrops = 0; this.qFrames = 0; }
+    this.qMode = q; if (q !== 'auto') this.tier = q; else { this.tier = matchMedia('(pointer: coarse)').matches ? 'med' : 'high'; this.qDrops = 0; this.qFrames = 0; }
     this.applyTier(false);
   }
   autoQuality(dt) {
@@ -2558,9 +2586,11 @@ class Game {
   }
   initPost() {
     const isGL2 = this.renderer.capabilities.isWebGL2;
+    this.hdrSupported = isGL2 && this.renderer.extensions.has('EXT_color_buffer_float');
+    const targetType = this.hdrSupported ? THREE.HalfFloatType : THREE.UnsignedByteType;
     this.post = {
-      main: new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, samples: isGL2 ? Math.min(8, this.renderer.capabilities.maxSamples || 4) : 0 }),
-      a: new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType }), b: new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType }),
+      main: new THREE.WebGLRenderTarget(4, 4, { type: targetType, samples: isGL2 ? Math.min(4, this.renderer.capabilities.maxSamples || 4) : 0 }),
+      a: new THREE.WebGLRenderTarget(4, 4, { type: targetType }), b: new THREE.WebGLRenderTarget(4, 4, { type: targetType }),
       cam: new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), scene: new THREE.Scene(),
     };
     const vs = 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }';
@@ -2573,11 +2603,11 @@ class Game {
         vec3 c;
         if (grade > 0.5) {
           vec2 d = vUv - 0.5; float r2 = dot(d, d);
-          vec2 off = d * r2 * 0.006;
+          vec2 off = vec2(0.0); // No chromatic fringing on small athletes or boundary lines.
           c = vec3(texture2D(t, vUv + off).r, texture2D(t, vUv).g, texture2D(t, vUv - off).b) + texture2D(bl, vUv).rgb * k;
           c = mix(c, aces(c * 1.08), 0.45);
-          c *= mix(1.0, smoothstep(0.85, 0.18, r2 * 1.6), 0.38);
-          c += (hash(vUv * res + fract(time) * 37.0) - 0.5) * 0.018;
+          c *= 1.0 - smoothstep(0.18, 0.85, r2 * 1.6) * 0.12;
+          c += (hash(vUv * res + fract(time) * 37.0) - 0.5) * 0.004;
         } else { c = texture2D(t, vUv).rgb + texture2D(bl, vUv).rgb * k; }
         gl_FragColor = vec4(c, 1.0);
         #include <colorspace_fragment>
@@ -2586,9 +2616,9 @@ class Game {
   }
   sizePost() {
     const R = this.renderer, pr = R.getPixelRatio(), W = Math.max(4, Math.floor(this.W * pr)), H = Math.max(4, Math.floor(this.H * pr));
-    const sh = this.tier === 'ultra' ? 1 : 2;
+    const sh = 2;
     if (this.post) { this.post.main.setSize(W, H); this.post.a.setSize(Math.max(4, W >> sh), Math.max(4, H >> sh)); this.post.b.setSize(Math.max(4, W >> sh), Math.max(4, H >> sh)); }
-    const rs = this.tier === 'ultra' ? 1 : this.tier === 'high' ? 0.5 : 0.33;
+    const rs = this.tier === 'ultra' ? 0.5 : 0.33;
     if (this.reflRT) { const rw = Math.max(4, Math.floor(this.W * pr * rs)), rh = Math.max(4, Math.floor(this.H * pr * rs)); this.reflRT.setSize(rw, rh); this.glossMat.uniforms.texel.value.set(1 / rw, 1 / rh); }
   }
   pass(mat, target) { const P = this.post; P.quad.material = mat; this.renderer.setRenderTarget(target); this.renderer.render(P.scene, P.cam); }
@@ -2602,11 +2632,11 @@ class Game {
       R.setRenderTarget(P.main); R.clear(); R.render(this.scene, this.camera);
       P.bright.uniforms.t.value = P.main.texture; this.pass(P.bright, P.a);
       const tw = 1 / P.a.width, th = 1 / P.a.height;
-      for (let i = 0, n = this.ultra ? 4 : 2; i < n; i++) {
+      for (let i = 0, n = this.ultra ? 3 : 2; i < n; i++) {
         P.blur.uniforms.t.value = P.a.texture; P.blur.uniforms.dir.value.set(tw * (1 + i), 0); this.pass(P.blur, P.b);
         P.blur.uniforms.t.value = P.b.texture; P.blur.uniforms.dir.value.set(0, th * (1 + i)); this.pass(P.blur, P.a);
       }
-      P.comp.uniforms.t.value = P.main.texture; P.comp.uniforms.bl.value = P.a.texture; P.comp.uniforms.k.value = (this.mode === 'vc' ? 0.6 : 0.32) * (this.ultra ? 0.8 : 1); P.comp.uniforms.grade.value = this.ultra ? 1 : 0; P.comp.uniforms.time.value = (performance.now() % 100000) / 1000; P.comp.uniforms.res.value.set(P.main.width, P.main.height);
+      P.comp.uniforms.t.value = P.main.texture; P.comp.uniforms.bl.value = P.a.texture; P.comp.uniforms.k.value = (this.mode === 'vc' ? 0.25 : 0.10) * (this.ultra ? 0.8 : 1); P.comp.uniforms.grade.value = this.ultra ? 1 : 0; P.comp.uniforms.time.value = (performance.now() % 100000) / 1000; P.comp.uniforms.res.value.set(P.main.width, P.main.height);
       this.pass(P.comp, null);
     } else { R.setRenderTarget(null); R.render(this.scene, this.camera); }
   }
@@ -2694,11 +2724,11 @@ const API = {
   setMode(m) { if (!G || G.dead) return; G.applyMode(m); },
   setSquad(names, control) { if (!G || G.dead) return; const k = rosterKey(control) || rosterKey((names || [])[0]); if (k) { G.controlKey = k; if (G.phase === 'title') { G.resetMatch(); G.showTitle(); } } },
   setPlayer(name) { API.setSquad(null, name); },
-  start() { if (G) G.start(); },
+  start() { if (G && !G.dead) G.start(); },
   pause() { if (G) G.pause(); },
   resume() { if (G) G.resume(); },
   sound(on) { if (G) G.toggleSound(!!on); },
-  state() { return G ? G.snapshot() : null; },
+  state() { return G ? (G.dead ? { phase: 'unavailable', paused: true } : G.snapshot()) : null; },
   roster: ROSTER.map(r => ({ name: r.key, num: r.num })),
   rules: RULES,
   stage(name) { return G && !G.dead ? G.stage(name) : false; },
