@@ -355,6 +355,8 @@ footer ol{padding-left:20px}
 footer li{margin:4px 0}
 .guideline{font-weight:700;font-size:16px}
 
+/* Mobile controls live in the page; desktop retains the fixed dock. */
+.kit-controls{display:contents}.mobile-kit-link{display:none}
 /* look dock: a hotbar of jersey swatches, keys 1 to 0 */
 .dock{position:fixed;left:12px;bottom:12px;z-index:50;background:var(--void);padding:8px 10px 10px;box-shadow:inset 0 0 0 2px var(--plum),0 10px 30px #0008;clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,0 100%);max-width:calc(100vw - 24px)}
 body[data-mode="vc"] .dock{clip-path:none;border-radius:6px;box-shadow:inset 0 0 0 2px var(--neonteal),0 0 24px #3ef2e055;background:#140a30}
@@ -423,26 +425,30 @@ body[data-mode="vc"] .alan .plaque b{font:700 20px/1 'Teko',sans-serif;color:#ff
   .till span{font-size:12px;display:block;line-height:1.2}
   .path{grid-template-columns:auto 1fr auto 1fr auto 1.6fr auto}
   .path .n{font-size:12px}
-  .dock{left:0;right:0;bottom:0;max-width:none;clip-path:none;padding:12px 12px calc(8px + env(safe-area-inset-bottom));min-height:calc(104px + env(safe-area-inset-bottom))}
-  .dockline{margin-bottom:18px;max-width:calc(100% - 226px);flex-wrap:wrap;row-gap:2px}
+  .kit-controls{display:grid;gap:22px;padding:24px 20px 28px;background:var(--void);scroll-margin-top:12px}
+  .mobile-kit-link{display:inline-flex;align-items:center;min-height:44px;margin-top:8px}
+  .dock{position:static;max-width:none;min-width:0;clip-path:none;padding:18px;box-shadow:inset 0 0 0 2px var(--plum)}
+  .dockline{margin-bottom:18px;max-width:none;white-space:normal;flex-wrap:wrap;row-gap:2px}
   body[data-mode="vc"] .dock{border-radius:0}
-  .hotbar{justify-content:space-between}
-  .hot{width:31px;height:36px}
-  .alan{bottom:calc(52px + env(safe-area-inset-bottom));right:10px;gap:8px}
+  .hotbar{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px 8px}
+  .hot{width:100%;height:48px}
+  .alan{position:static;justify-self:end;gap:12px;margin-right:5px}
   .alan .bezel{width:50px;height:50px;box-shadow:0 4px 0 #000,0 0 0 2px #222,0 0 18px #ff6ec7aa}
   .alan .cap{width:36px;height:36px}
   .alan .cap::after{inset:-4px}
   .alan .plaque{padding:5px 8px}
   .alan .plaque b{font-size:17px}
-  .alan .plaque span{display:none}
-  body{padding-bottom:112px}
+  .alan .plaque span{display:block}
+  body{padding-bottom:0}
 }
+@media (max-width:360px){.kit-controls{padding-inline:12px}.dock{padding:12px}}
 @media (max-width:420px){.count{gap:8px}.count div{min-width:0;flex:1 1 0;padding:8px 6px}.count b{font-size:34px}.tags li{flex-basis:140px}.path .ln span{font-size:11px}}
 @media (min-width:861px){.dockline{max-width:380px}}
 </style>
-<style>.pcnote{max-width:60ch;margin:.6em auto 0;font-size:.95rem;opacity:.9}.pc-controls{max-width:70ch;margin:1rem auto;text-align:left;border:1px solid var(--gold);padding:1rem}.pc-controls summary{cursor:pointer;min-height:44px;font-weight:700}.pc-controls p{font-size:1rem;line-height:1.7}.pc-status{max-width:70ch;margin:1rem auto;font-size:.95rem}.pc-status:empty{display:none}</style>
+<style>.pcnote{max-width:60ch;margin:.6em auto 0;font-size:.95rem;opacity:.9}.pc-controls{max-width:70ch;margin:1rem auto;text-align:left;border:1px solid var(--gold);padding:1rem}.pc-controls summary{cursor:pointer;min-height:44px;font-weight:700}.pc-controls p{font-size:1rem;line-height:1.7}.pc-status{max-width:70ch;margin:1rem auto;font-size:.95rem}.pc-status:empty,#pc-load-game[hidden]{display:none!important}</style>
 </head>
 <body data-mode="fb">
+<noscript><style>.kit-controls,#announce,#hero-flat-btn,.mobile-kit-link{display:none!important}</style></noscript>
 <a class="skip" href="#play">Skip to the game</a>
 <script>document.documentElement.classList.add('js');document.body.classList.add('js')</script>
 
@@ -479,6 +485,15 @@ body[data-mode="vc"] .alan .plaque b{font:700 20px/1 'Teko',sans-serif;color:#ff
     </figure>
   </div>
 </section>
+
+<div class="kit-controls" id="kit-controls">
+<!-- look dock and the secret button -->
+<nav class="dock" aria-label="Kit looks">
+  <p class="dockline" aria-live="polite"><b id="dock-rank">1</b><span id="dock-name">Phase Two</span><i id="dock-score">95</i></p>
+  <div class="hotbar" id="hotbar" role="radiogroup" aria-label="Kit look, ranked. Keys 1 to 0, or left and right arrows."></div>
+</nav>
+<button class="alan" id="alan" type="button" aria-pressed="false"><span class="plaque"><b>Alan's Secret Button</b><span id="alan-sub">Press for Vice</span></span><span class="bezel"><span class="cap"></span></span></button>
+</div>
 
 <!-- 02 VERSUS -->
 <section id="vs" aria-label="Versus: FINAL BOSS against Sin City Classic 2027">
@@ -649,6 +664,7 @@ body[data-mode="vc"] .alan .plaque b{font:700 20px/1 'Teko',sans-serif;color:#ff
     <h2 id="t-kit" class="kith" data-vc="The Kit">THE KIT</h2>
     <p class="kitsub" id="kit-sub" aria-live="polite">#1 Phase Two</p>
     <p class="vnote" id="kit-vn" hidden></p>
+    <a class="mobile-kit-link" href="#kit-controls" data-vc="Choose a look or switch to FINAL BOSS ↑">Choose a look or switch to Vice ↑</a>
   </div>
   <button class="flatbig" id="flat-open" type="button" aria-label="Zoom into the craft sheet"><img id="kit-craft" src="assets/kits/fb02-craft.jpg" alt="" width="1800" height="1018" loading="lazy"><span class="zoom" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="10" cy="10" r="7"/><path d="M15 15l7 7M10 7v6M7 10h6"/></svg></span></button>
   <div class="kitrow">
@@ -710,8 +726,10 @@ body[data-mode="vc"] .alan .plaque b{font:700 20px/1 'Teko',sans-serif;color:#ff
     <p class="pcnote pc-phone">Prefer a lighter arena or touch controls? <a href="https://gordonusc.github.io/final-boss/#play">Play the regular edition</a>.</p>
   </div>
   <details class="pc-controls" id="pc-controls"><summary>Keyboard guide for the 3D arena</summary><p><kbd>W A S D</kbd> or arrow keys move. <kbd>J</kbd> or <kbd>Space</kbd> throws. <kbd>K</kbd> catches. <kbd>L</kbd> jumps. <kbd>Shift</kbd> passes. <kbd>Q</kbd> switches player.</p><p><kbd>P</kbd> or <kbd>Esc</kbd> calls time out. Your first time out resumes after 30 seconds; later pauses wait for you. Sound starts off. Choose your lineup, then enter the court.</p></details>
-  <p class="pc-status" id="pc-game-status" role="status"></p>
-  <div class="gamemount" id="fbgame"><p class="loading">Loading the arena...</p></div>
+  <p class="pc-status" id="pc-game-status" role="status">The 3D arena loads when you choose. A keyboard and WebGL are required.</p>
+  <p><button type="button" class="btn" id="pc-load-game" hidden>Load 3D arena</button></p>
+  <noscript><p class="pcnote">The arena needs JavaScript. The team, kits and source notes remain available below.</p></noscript>
+  <div class="gamemount" id="fbgame"></div>
   <div class="arena" id="fallback" hidden>
     <div class="hud" aria-live="polite">
       <span>Playing as <b id="hud-who">BELLAMY</b></span>
@@ -771,12 +789,6 @@ body[data-mode="vc"] .alan .plaque b{font:700 20px/1 'Teko',sans-serif;color:#ff
   </ol>
 </footer>
 
-<!-- look dock and the secret button -->
-<nav class="dock" aria-label="Kit looks">
-  <p class="dockline" aria-live="polite"><b id="dock-rank">1</b><span id="dock-name">Phase Two</span><i id="dock-score">95</i></p>
-  <div class="hotbar" id="hotbar" role="radiogroup" aria-label="Kit look, ranked. Keys 1 to 0, or left and right arrows."></div>
-</nav>
-<button class="alan" id="alan" type="button" aria-pressed="false"><span class="plaque"><b>Alan's Secret Button</b><span id="alan-sub">Press for Vice</span></span><span class="bezel"><span class="cap"></span></span></button>
 <div id="wipe" aria-hidden="true"><div class="wsun"></div><p id="wipe-word">Vice</p></div>
 <dialog id="lb" aria-label="Zoomed kit image"><button type="button" id="lb-close">Close</button><img id="lb-img" src="" alt=""></dialog>
 
@@ -1084,15 +1096,49 @@ let ballTint=()=>{};
 let gameMounted=false, fallbackOn=false, fb=null;
 function fbRunning(){ if(fb&&fb.running())return true; try{ if(gameMounted&&window.FBGame&&FBGame.state){const s=FBGame.state(); return !!(s&&s.phase&&!/title|over|result|end|menu/i.test(s.phase)&&!s.paused)} }catch(e){} return false }
 function startFallback(){
-  if(fallbackOn)return; fallbackOn=true; $('fbgame').hidden=true; $('fallback').hidden=false; $('pc-controls').hidden=true; $('pc-game-status').textContent='The 3D arena could not start. The lighter arena is ready below, with its own controls.'; fb=bossRush();
+  if(fallbackOn)return;
+  fallbackOn=true;gameMounted=false;
+  try{if(window.FBGame){FBGame.sound(false);FBGame.destroy()}}catch(e){}
+  $('pc-load-game').hidden=true;$('fbgame').hidden=true;$('fallback').hidden=false;$('pc-controls').hidden=true;
+  $('pc-game-status').textContent='The 3D arena could not start. The lighter arena is ready below, with its own controls.';
+  fb=bossRush();$('ov-go').focus();
 }
-(function loadGame(){
-  const mount=$('fbgame'), s=document.createElement('script'); s.src='game/game.bundle.js?v=pc-broadcast-20261006';
-  setTimeout(()=>{ if(!gameMounted&&!fallbackOn) startFallback() },9000);
-  s.onload=()=>{ if(window.FBGame&&typeof FBGame.mount==='function'){ try{ mount.innerHTML=''; if(fallbackOn)return; FBGame.mount(mount,{look:payload(look),mode,control:(cards.find(c=>c.dataset.id===chosen)||{dataset:{}}).dataset.name||'BELLAMY'}); if(mount.querySelector('.no-webgl')){startFallback();return;} gameMounted=true; $('pc-game-status').textContent='3D arena ready. Choose your lineup to start.' }catch(e){ console.warn('FBGame.mount failed, using the built-in game',e); startFallback() } } else startFallback() };
-  s.onerror=startFallback;
-  document.body.appendChild(s);
-})();
+let gameLoading=false;
+function mountArena(quality){
+  if(fallbackOn)return;
+  const mount=$('fbgame');
+  try{
+    if(!window.FBGame||typeof FBGame.mount!=='function'){startFallback();return;}
+    // mount destroys the prior instance; a lost WebGL instance is never restarted.
+    FBGame.mount(mount,{look:payload(look),mode,quality:quality||'auto',control:(cards.find(c=>c.dataset.id===chosen)||{dataset:{}}).dataset.name||'BELLAMY'});
+    if(mount.querySelector('.no-webgl')){startFallback();return;}
+    gameMounted=true;$('pc-load-game').hidden=true;
+    $('pc-game-status').textContent=quality==='low'?'A fresh 3D arena is ready at Low quality. Choose your lineup to start.':'3D arena ready. Choose your lineup to start.';
+    mount.querySelector('.fbg-stage')?.focus();
+  }catch(e){console.warn('FBGame.mount failed, using the built-in game',e);startFallback()}
+}
+$('pc-load-game').addEventListener('click',()=>{
+  if(gameLoading||gameMounted||fallbackOn)return;
+  gameLoading=true;$('pc-load-game').disabled=true;$('pc-load-game').textContent='Loading arena…';
+  $('pc-game-status').textContent='Loading the 3D arena. If it cannot start, the lighter arena will open.';
+  const s=document.createElement('script');s.src='game/game.bundle.js?v=pc-broadcast-20261006';
+  const timer=setTimeout(()=>{if(!gameMounted&&!fallbackOn)startFallback()},9000);
+  s.onload=()=>{clearTimeout(timer);mountArena()};s.onerror=()=>{clearTimeout(timer);startFallback()};document.body.appendChild(s);
+});
+$('pc-load-game').hidden=false;
+$('fbgame').addEventListener('webglcontextlost',()=>{
+  gameMounted=false;
+  // Let the game's own poster become the single recovery surface first.
+  queueMicrotask(()=>{
+    const retry=$('fbgame').querySelector('.fbg-reload');
+    if(retry){retry.textContent='Try a fresh arena at Low quality';retry.focus()}
+    $('pc-game-status').textContent='The graphics connection was interrupted. The game is stopped; try a fresh arena at Low quality below.';
+  });
+},true);
+$('fbgame').addEventListener('click',e=>{
+  if(!e.target.closest('.fbg-reload'))return;
+  e.preventDefault();e.stopImmediatePropagation();mountArena('low');
+},true);
 
 function bossRush(){
 const sb=$('sfx');
