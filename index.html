@@ -440,7 +440,7 @@ body[data-mode="vc"] .alan .plaque b{font:700 20px/1 'Teko',sans-serif;color:#ff
 @media (max-width:420px){.count{gap:8px}.count div{min-width:0;flex:1 1 0;padding:8px 6px}.count b{font-size:34px}.tags li{flex-basis:140px}.path .ln span{font-size:11px}}
 @media (min-width:861px){.dockline{max-width:380px}}
 </style>
-<style>.pcnote{max-width:60ch;margin:.6em auto 0;font-size:.95rem;opacity:.9}.pc-phone{display:none}@media (pointer:coarse),(max-width:700px){.pc-phone{display:block}}</style>
+<style>.pcnote{max-width:60ch;margin:.6em auto 0;font-size:.95rem;opacity:.9}.pc-controls{max-width:70ch;margin:1rem auto;text-align:left;border:1px solid var(--gold);padding:1rem}.pc-controls summary{cursor:pointer;min-height:44px;font-weight:700}.pc-controls p{font-size:1rem;line-height:1.7}.pc-status{max-width:70ch;margin:1rem auto;font-size:.95rem}.pc-status:empty{display:none}</style>
 </head>
 <body data-mode="fb">
 <a class="skip" href="#play">Skip to the game</a>
@@ -707,8 +707,10 @@ body[data-mode="vc"] .alan .plaque b{font:700 20px/1 'Teko',sans-serif;color:#ff
     <h2 id="t-play" data-vc="Boss Rush">BOSS RUSH</h2>
     <p>Catch to put the thrower out. Throw to win the round. Your kit pick dresses the court.</p>
     <p class="pcnote"><strong>PC Edition.</strong> Arena lighting, detailed jerseys and crisp ball markings. Built for a desktop or laptop with a keyboard. Auto quality adapts to your machine; choose Ultra for extra lighting detail or a lower setting for lighter rendering.</p>
-    <p class="pcnote pc-phone">On a phone? <a href="https://gordonusc.github.io/final-boss/">Play the regular edition</a>, tuned for mobile.</p>
+    <p class="pcnote pc-phone">Prefer a lighter arena or touch controls? <a href="https://gordonusc.github.io/final-boss/#play">Play the regular edition</a>.</p>
   </div>
+  <details class="pc-controls" id="pc-controls"><summary>Keyboard guide for the 3D arena</summary><p><kbd>W A S D</kbd> or arrow keys move. <kbd>J</kbd> or <kbd>Space</kbd> throws. <kbd>K</kbd> catches. <kbd>L</kbd> jumps. <kbd>Shift</kbd> passes. <kbd>Q</kbd> switches player.</p><p><kbd>P</kbd> or <kbd>Esc</kbd> calls time out. Your first time out resumes after 30 seconds; later pauses wait for you. Sound starts off. Choose your lineup, then enter the court.</p></details>
+  <p class="pc-status" id="pc-game-status" role="status"></p>
   <div class="gamemount" id="fbgame"><p class="loading">Loading the arena...</p></div>
   <div class="arena" id="fallback" hidden>
     <div class="hud" aria-live="polite">
@@ -819,12 +821,12 @@ function palette(L,mode){
 let TOK={};
 
 /* ---------- state ---------- */
-const store={get(){try{return JSON.parse(localStorage.getItem('fb-dossier-v3')||'{}')}catch(e){return {}}},set(v){try{localStorage.setItem('fb-dossier-v3',JSON.stringify(v))}catch(e){}}};
+const store={get(){try{const value=JSON.parse(localStorage.getItem('fb-dossier-v3')||'{}');return value&&typeof value==='object'&&!Array.isArray(value)?value:{}}catch(e){return {}}},set(v){try{localStorage.setItem('fb-dossier-v3',JSON.stringify(v))}catch(e){}}};
 const saved=store.get();
 const qs=new URLSearchParams(location.search);
 let mode=qs.get('mode')==='vc'?'vc':qs.get('mode')==='fb'?'fb':(saved.mode==='vc'?'vc':'fb');
-const cur={fb:saved.fb&&LOOKS.some(l=>l.id===saved.fb)?saved.fb:byMode('fb')[0].id, vc:saved.vc&&LOOKS.some(l=>l.id===saved.vc)?saved.vc:byMode('vc')[0].id};
-const ql=qs.get('look'); if(ql){const L=LOOKS.find(l=>l.id===ql); if(L){cur[L.m]=L.id; if(!qs.get('mode'))mode=L.m}}
+const cur={fb:saved.fb&&LOOKS.some(l=>l.id===saved.fb&&l.m==='fb')?saved.fb:byMode('fb')[0].id, vc:saved.vc&&LOOKS.some(l=>l.id===saved.vc&&l.m==='vc')?saved.vc:byMode('vc')[0].id};
+const ql=qs.get('look'); if(ql){const L=LOOKS.find(l=>l.id===ql); if(L){cur[L.m]=L.id; mode=L.m}}
 let look=null;
 
 /* ---------- jersey back svg, in the active kit's colors ---------- */
@@ -1031,9 +1033,22 @@ tick();setInterval(tick,1000);
 
 /* ---------- announcer ---------- */
 const vo=$('vo'),ab=$('announce');
+let announceRequest=0;
 function announceReset(){ab.setAttribute('aria-pressed','false');ab.textContent='Hear the announcer'}
-ab.addEventListener('click',()=>{if(vo.paused){vo.play().catch(()=>{});ab.setAttribute('aria-pressed','true');ab.textContent='Stop the announcer'}else{vo.pause();vo.currentTime=0;announceReset()}});
-vo.addEventListener('ended',announceReset);
+ab.addEventListener('click',()=>{
+  const request=++announceRequest;
+  if(vo.paused){
+    vo.play().then(()=>{
+      if(request!==announceRequest||vo.paused)return;
+      ab.setAttribute('aria-pressed','true');ab.textContent='Stop the announcer';
+    }).catch(()=>{
+      if(request!==announceRequest)return;
+      announceReset();ab.textContent='Try the announcer again';
+    });
+  }else{vo.pause();vo.currentTime=0;announceReset()}
+});
+vo.addEventListener('ended',()=>{announceRequest++;announceReset()});
+vo.addEventListener('error',()=>{announceRequest++;announceReset();ab.textContent='Try the announcer again'});
 
 /* ---------- sound (opt-in) ---------- */
 function blip(f,d,type){if(!sound||!ac)return;const o=ac.createOscillator(),g=ac.createGain();o.type=type||'square';o.frequency.value=f;g.gain.value=.06;g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+d);o.connect(g).connect(ac.destination);o.start();o.stop(ac.currentTime+d)}
@@ -1069,12 +1084,12 @@ let ballTint=()=>{};
 let gameMounted=false, fallbackOn=false, fb=null;
 function fbRunning(){ if(fb&&fb.running())return true; try{ if(gameMounted&&window.FBGame&&FBGame.state){const s=FBGame.state(); return !!(s&&s.phase&&!/title|over|result|end|menu/i.test(s.phase)&&!s.paused)} }catch(e){} return false }
 function startFallback(){
-  if(fallbackOn)return; fallbackOn=true; $('fbgame').hidden=true; $('fallback').hidden=false; fb=bossRush();
+  if(fallbackOn)return; fallbackOn=true; $('fbgame').hidden=true; $('fallback').hidden=false; $('pc-controls').hidden=true; $('pc-game-status').textContent='The 3D arena could not start. The lighter arena is ready below, with its own controls.'; fb=bossRush();
 }
 (function loadGame(){
   const mount=$('fbgame'), s=document.createElement('script'); s.src='game/game.bundle.js?v=pc-broadcast-20261006';
   setTimeout(()=>{ if(!gameMounted&&!fallbackOn) startFallback() },9000);
-  s.onload=()=>{ if(window.FBGame&&typeof FBGame.mount==='function'){ try{ mount.innerHTML=''; if(fallbackOn)return; FBGame.mount(mount,{look:payload(look),mode,control:(cards.find(c=>c.dataset.id===chosen)||{dataset:{}}).dataset.name||'BELLAMY'}); gameMounted=true }catch(e){ console.warn('FBGame.mount failed, using the built-in game',e); startFallback() } } else startFallback() };
+  s.onload=()=>{ if(window.FBGame&&typeof FBGame.mount==='function'){ try{ mount.innerHTML=''; if(fallbackOn)return; FBGame.mount(mount,{look:payload(look),mode,control:(cards.find(c=>c.dataset.id===chosen)||{dataset:{}}).dataset.name||'BELLAMY'}); if(mount.querySelector('.no-webgl')){startFallback();return;} gameMounted=true; $('pc-game-status').textContent='3D arena ready. Choose your lineup to start.' }catch(e){ console.warn('FBGame.mount failed, using the built-in game',e); startFallback() } } else startFallback() };
   s.onerror=startFallback;
   document.body.appendChild(s);
 })();
