@@ -96,7 +96,8 @@ function kitFrom(colors) {
   const base = c[0];
   const others = [c[1], c[2], c[3]];
   let num = c[1];
-  if (contrast(num, base) < 2.6) num = others.slice().sort((a, b) => contrast(b, base) - contrast(a, base))[0];
+  // Numbers need stronger contrast than decorative kit panels at gameplay scale.
+  if (contrast(num, base) < 4.5) num = others.concat(['#fff8e8', '#151922']).sort((a, b) => contrast(b, base) - contrast(a, base))[0];
   let trim = c[1]; if (contrast(trim, base) < 1.4) trim = c[3];
   let shorts = c[1]; if (contrast(shorts, base) < 1.3) shorts = c[3];
   let accent = c[2]; if (contrast(accent, base) < 1.3) accent = c[3];
@@ -118,8 +119,8 @@ function drawJersey(ctx, w, h, kit, name, num, boss) {
   ctx.clearRect(0, 0, w, h);
   ctx.fillStyle = kit.base; ctx.fillRect(0, 0, w, h);
   // subtle sublimated texture: diagonal pinstripes
-  ctx.save(); ctx.globalAlpha = 0.07; ctx.strokeStyle = lum(kit.base) > 0.5 ? '#000' : '#fff'; ctx.lineWidth = 3;
-  for (let x = -h; x < w; x += 14) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + h, h); ctx.stroke(); }
+  ctx.save(); ctx.globalAlpha = 0.035; ctx.strokeStyle = lum(kit.base) > 0.5 ? '#000' : '#fff'; ctx.lineWidth = 3;
+  for (let x = -h; x < w; x += 22) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + h, h); ctx.stroke(); }
   ctx.restore();
   // side panels at u=0.25 and 0.75
   ctx.fillStyle = kit.trim;
@@ -129,18 +130,22 @@ function drawJersey(ctx, w, h, kit, name, num, boss) {
   // collar and hem
   ctx.fillStyle = kit.trim; ctx.fillRect(0, 0, w, 14); ctx.fillRect(0, h - 16, w, 16);
   ctx.fillStyle = kit.accent; ctx.fillRect(0, 14, w, 4); ctx.fillRect(0, h - 20, w, 4);
+  // Fine seams and an inset collar remain in the existing jersey texture.
+  ctx.strokeStyle = kit.accent; ctx.globalAlpha = 0.45; ctx.lineWidth = 2;
+  for (const cx of [w * 0.25, w * 0.75]) { ctx.strokeRect(cx - 26, 24, 52, h - 52); }
+  ctx.globalAlpha = 1;
   // back: nameplate (arched, auto-fit) and big number, centered at u = 0.5
   const cx = w * 0.5;
   ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
   ctx.lineJoin = 'round';
   const nm = name.toUpperCase();
-  let fs = 46; ctx.font = font(fs);
+  let fs = 36; ctx.font = font(fs);
   const maxW = w * 0.34;
   let tw = ctx.measureText(nm).width;
   const sx = tw > maxW ? maxW / tw : 1;
   // arc the letters
   const arc = Math.min(0.5, nm.length * 0.035);
-  ctx.save(); ctx.translate(cx, 64);
+  ctx.save(); ctx.translate(cx, 100);
   const letters = nm.split('');
   const widths = letters.map(l => ctx.measureText(l).width * sx);
   const total = widths.reduce((a, b) => a + b, 0);
@@ -153,19 +158,19 @@ function drawJersey(ctx, w, h, kit, name, num, boss) {
     ctx.fillStyle = kit.num; ctx.fillText(l, 0, 0); ctx.restore();
   });
   ctx.restore();
-  fs = num.length > 2 ? 120 : 150; ctx.font = font(fs);
+  fs = num.length > 2 ? 108 : 128; ctx.font = font(fs);
   let nw = ctx.measureText(num).width; const nsx = nw > w * 0.3 ? (w * 0.3) / nw : 1;
-  ctx.save(); ctx.translate(cx, h - 34); ctx.scale(nsx, 1);
+  ctx.save(); ctx.translate(cx, h - 25); ctx.scale(nsx, 1);
   ctx.lineWidth = 12; ctx.strokeStyle = kit.outline; ctx.strokeText(num, 0, 0);
   ctx.lineWidth = 5; ctx.strokeStyle = kit.accent; ctx.strokeText(num, 0, 0);
   ctx.fillStyle = kit.num; ctx.fillText(num, 0, 0);
   ctx.restore();
-  // front (u = 0 and 1): small number plus crown mark
-  ctx.font = font(72);
+  // front (u = 0 and 1): readable chest number plus crown mark
+  ctx.font = font(num.length > 2 ? 90 : 106);
   for (const fx of [0, w]) {
-    ctx.lineWidth = 7; ctx.strokeStyle = kit.outline; ctx.strokeText(num, fx, h - 46);
-    ctx.fillStyle = kit.num; ctx.fillText(num, fx, h - 46);
-    crown(ctx, fx, 64, 22, kit.accent, kit.outline);
+    ctx.lineWidth = 7; ctx.strokeStyle = kit.outline; ctx.strokeText(num, fx, h - 66);
+    ctx.fillStyle = kit.num; ctx.fillText(num, fx, h - 66);
+    crown(ctx, fx, 58, 18, kit.accent, kit.outline);
   }
   if (boss) { ctx.fillStyle = '#ff3fa1'; ctx.globalAlpha = 0.85; for (let i = 0; i < 9; i++) ctx.fillRect(Math.random() * w, Math.random() * h, 18 + Math.random() * 40, 4); ctx.globalAlpha = 1; }
 }
@@ -398,7 +403,10 @@ function hifiGeos() {
   const lathe = (pts, seg = 44) => new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), seg);
   HG.torsoM = lathe([[0.001, -0.03], [0.255, -0.02], [0.265, 0.1], [0.285, 0.24], [0.33, 0.4], [0.36, 0.52], [0.335, 0.6], [0.22, 0.67], [0.1, 0.705], [0.001, 0.71]]);
   HG.torsoF = lathe([[0.001, -0.03], [0.27, -0.02], [0.25, 0.12], [0.255, 0.26], [0.3, 0.4], [0.32, 0.5], [0.3, 0.6], [0.2, 0.665], [0.09, 0.7], [0.001, 0.705]]);
-  HG.shorts = lathe([[0.001, 0.12], [0.27, 0.12], [0.3, 0.0], [0.315, -0.12], [0.001, -0.12]], 40);
+  HG.shorts = lathe([[0.001, 0.045], [0.26, 0.045], [0.27, -0.015], [0.26, -0.075], [0.001, -0.075]].reverse(), 32);
+  // Continuous anatomical contours replace overlapping capsule bulges. Shared geometry, same merged draw calls.
+  HG.upperArm = lathe([[0.001, -0.08], [0.085, -0.10], [0.092, -0.17], [0.078, -0.24], [0.068, -0.31], [0.001, -0.325]].reverse(), 20);
+  HG.forearm = lathe([[0.001, 0.015], [0.075, 0], [0.086, -0.075], [0.065, -0.17], [0.053, -0.25], [0.001, -0.265]].reverse(), 20);
   HG.sph = new THREE.SphereGeometry(1, 40, 28);
   HG.sphLo = new THREE.SphereGeometry(1, 12, 9);
   HG.head = new THREE.SphereGeometry(0.27, 56, 40);
@@ -417,7 +425,7 @@ function drawFace(c, a, expr) {
   c.fillStyle = A.skin; c.fillRect(0, 0, W, H);
   c.fillStyle = '#ffffff'; c.fillRect(0, 0, 6, 6);
   const cx = W * 0.25, ey = 120, dx = 22;
-  c.save(); c.translate(cx, 124); c.scale(1.62, 1.62); c.translate(-cx, -124);
+  c.save(); c.translate(cx, 124); c.scale(1.48, 1.48); c.translate(-cx, -124);
   const dark = shade(A.skin, -0.55), lip = shade(A.skin, -0.32);
   // cheeks
   c.fillStyle = 'rgba(255,90,90,.16)'; for (const s of [-1, 1]) { c.beginPath(); c.ellipse(cx + s * 30, 150, 11, 7, 0, 0, 7); c.fill(); }
@@ -473,8 +481,8 @@ class Athlete {
     this.jerseyTex = canvasTex(512, JERSEY_H, () => { });
     this.faceTex = canvasTex(FACE_W, FACE_H, () => { });
     this.mats = {
-      torso: rimify(new THREE.MeshStandardMaterial({ map: this.jerseyTex, vertexColors: true, roughness: 0.72, normalMap: fabricNormal(), normalScale: new THREE.Vector2(0.35, 0.35) })),
-      head: rimify(new THREE.MeshStandardMaterial({ map: this.faceTex, vertexColors: true, roughness: 0.55 })),
+      torso: rimify(new THREE.MeshStandardMaterial({ map: this.jerseyTex, vertexColors: true, roughness: 0.88, normalMap: fabricNormal(), normalScale: new THREE.Vector2(0.12, 0.12) })),
+      head: rimify(new THREE.MeshStandardMaterial({ map: this.faceTex, vertexColors: true, roughness: 0.78 })),
       limb: game.limbMat,
     };
     const mk = (parts, mat, parent, white) => { const geo = mergeParts(parts, white || WHITE_UV); const m = new THREE.Mesh(geo, mat); m.castShadow = true; parent.add(m); this.geos.push(geo); return m; };
@@ -488,10 +496,11 @@ class Athlete {
     const jv = (u, v) => [u, 16 / JERSEY_H + v * 256 / JERSEY_H];
     L1 = []; P(L1, fem ? G.torsoF : G.torsoM, { scl: [bw * sh, 1, 0.72], key: 'white', uv: 'own', uvMap: jv });
     P(L1, G.cyl, { pos: [0, 0.68, 0.0], scl: [0.1, 0.16, 0.1], key: 'skin' });
+    P(L1, G.cyl, { pos: [0, 0.66, 0], scl: [0.135, 0.035, 0.105], key: 'trim' });
     for (const s of [-1, 1]) P(L1, G.sph, { pos: [s * 0.31 * bw * sh, 0.55, 0], scl: [0.15, 0.12, 0.14], key: 'sleeve' });
     mk(L1, this.mats.torso, this.torso);
     // head with face canvas, hair, ears, nose, band or glasses
-    this.headG = new THREE.Group(); this.headG.position.y = 0.72; this.torso.add(this.headG);
+    this.headG = new THREE.Group(); this.headG.position.y = 0.73; this.headG.scale.setScalar(0.94); this.torso.add(this.headG);
     L1 = []; P(L1, G.head, { pos: [0, 0.22, 0], scl: [1, 1.06, 1], key: 'white', uv: 'own' });
     for (const s of [-1, 1]) P(L1, G.sphLo, { pos: [s * 0.265, 0.2, -0.01], scl: [0.028, 0.06, 0.045], key: 'skin' });
     P(L1, G.sphLo, { pos: [0, 0.175, 0.272], scl: [0.03, 0.034, 0.03], key: 'skinD' });
@@ -511,13 +520,13 @@ class Athlete {
     for (const s of [-1, 1]) {
       const shg = new THREE.Group(); shg.position.set(s * 0.36 * bw * sh, 0.53, 0); this.torso.add(shg);
       L1 = []; P(L1, G.cylT, { pos: [0, -0.05, 0], scl: [0.122, 0.15, 0.118], key: 'sleeve' }); P(L1, G.cyl, { pos: [0, -0.125, 0], scl: [0.11, 0.022, 0.106], key: 'trim' });
-      const am = (fem ? 0.9 : 1.08) * Math.sqrt(bw); P(L1, G.cap1, { pos: [0, -0.18, 0], scl: [0.09 * am, 0.12, 0.09 * am], key: 'skin' }); P(L1, G.sph, { pos: [0, -0.17, 0.03], scl: [0.085 * am, 0.105, 0.085 * am], key: 'skin' });
+      const am = (fem ? 0.9 : 1.08) * Math.sqrt(bw); P(L1, G.upperArm, { scl: [am, 1, am], key: 'skin' });
       mk(L1, this.mats.limb, shg);
       const el = new THREE.Group(); el.position.y = -0.31; shg.add(el);
-      const fm = (fem ? 0.92 : 1.06) * Math.sqrt(bw); L1 = []; P(L1, G.cap1, { pos: [0, -0.12, 0], scl: [0.076 * fm, 0.1, 0.076 * fm], key: 'skin' }); P(L1, G.sph, { pos: [0, -0.06, 0.01], scl: [0.084 * fm, 0.095, 0.082 * fm], key: 'skin' });
-      P(L1, G.cyl, { pos: [0, -0.235, 0], scl: [0.082, 0.07, 0.082], key: 'band' });
-      P(L1, G.sph, { pos: [0, -0.31, 0.005], scl: [0.072, 0.085, 0.05], key: 'skin' }); P(L1, G.sph, { pos: [0, -0.385, 0.012], scl: [0.066, 0.055, 0.045], key: 'skin' });
-      P(L1, G.sphLo, { pos: [s * -0.0, -0.3, 0.06], scl: [0.03, 0.05, 0.03], key: 'skin' });
+      const fm = (fem ? 0.92 : 1.06) * Math.sqrt(bw); L1 = []; P(L1, G.forearm, { scl: [fm, 1, fm], key: 'skin' }); P(L1, G.sphLo, { scl: [0.071 * fm, 0.064, 0.071 * fm], key: 'skin' });
+      P(L1, G.cyl, { pos: [0, -0.235, 0], scl: [0.064, 0.052, 0.064], key: 'band' });
+      P(L1, G.sph, { pos: [0, -0.325, 0.005], scl: [0.072, 0.095, 0.045], key: 'skin' });
+      P(L1, G.sphLo, { pos: [s * -0.058, -0.30, 0.012], rot: [0, 0, -s * 0.35], scl: [0.029, 0.049, 0.03], key: 'skin' });
       mk(L1, this.mats.limb, el);
       const hand = new THREE.Object3D(); hand.position.set(0, -0.34, 0.01); el.add(hand);
       this.arm.push({ sh: shg, el, hand });
@@ -1139,28 +1148,28 @@ class Game {
     a.tgt = P; this.blend(a, k); this.place(a);
   }
   bp(a) { return a.blankPose(); }
-  poseIdle(a) { const p = this.bp(a); const t = (this.frame + a.num.length * 17) * 0.09; if (a.role !== 'in') { p.hipY = -0.02; p.kn = [0.25, 0.25]; p.hp = [-0.12, -0.12]; p.sh = [-0.5, 0.2, -0.5, 0.2]; p.el = [-1.0, -1.0]; return p; } p.hipY = Math.sin(t) * 0.02 - 0.13; p.kn = [0.95, 0.95]; p.hp = [-0.62, -0.62]; p.spread = [0.2, 0.2]; p.lean = 0.42 + Math.sin(t) * 0.025; p.sh = [-0.85, 0.38, -0.85, 0.38]; p.el = [-0.95, -0.95]; p.head = -0.25 + Math.sin(t * 0.5) * 0.05; return p; }
+  poseIdle(a) { const p = this.bp(a); const t = (this.frame + a.num.length * 17) * 0.09; if (a.role !== 'in') { p.hipY = -0.02; p.kn = [0.25, 0.25]; p.hp = [-0.12, -0.12]; p.sh = [-0.5, 0.2, -0.5, 0.2]; p.el = [-1.0, -1.0]; return p; } p.hipY = Math.sin(t) * 0.02 - 0.13; p.kn = [0.95, 0.95]; p.hp = [-0.62, -0.62]; p.spread = [0.2, 0.2]; p.lean = 0.30 + Math.sin(t) * 0.025; p.sh = [-0.85, 0.38, -0.85, 0.38]; p.el = [-0.95, -0.95]; p.head = -0.25 + Math.sin(t * 0.5) * 0.05; return p; }
   poseHold(a) { const p = this.poseIdle(a); p.sh[2] = -0.9; p.sh[3] = 0.35; p.el[1] = -1.5; p.twist = -0.15; return p; }
   poseWalk(a) { const p = this.bp(a); const ph = a.st * 0.32 + (a.num.length); const s = Math.sin(ph); p.hp = [s * 0.55 - 0.1, -s * 0.55 - 0.1]; p.kn = [Math.max(0, -Math.cos(ph)) * 0.8 + 0.15, Math.max(0, Math.cos(ph)) * 0.8 + 0.15]; p.sh = [-s * 0.5 - 0.1, 0.15, s * 0.5 - 0.1, 0.15]; p.el = [-0.7, -0.7]; p.hipY = Math.abs(Math.cos(ph)) * 0.04 - 0.02; p.lean = 0.14; if (a.hasBall) { p.sh[2] = -0.9; p.el[1] = -1.5; } return p; }
   poseRun(a) { const p = this.bp(a); const ph = (a.runF / TUNE.stepF) * Math.PI; const s = Math.sin(ph); p.hp = [s * 1.0 - 0.25, -s * 1.0 - 0.25]; p.kn = [Math.max(0, -Math.cos(ph)) * 1.5 + 0.3, Math.max(0, Math.cos(ph)) * 1.5 + 0.3]; p.sh = [-s * 1.1, 0.12, s * 1.1, 0.12]; p.el = [-1.5, -1.5]; p.hipY = Math.abs(Math.sin(ph)) * 0.08 - 0.05; p.lean = 0.42; p.sq = 1 + Math.abs(Math.cos(ph)) * 0.04; if (a.hasBall) { p.sh[2] = -0.7 + s * 0.3; p.el[1] = -1.7; } return p; }
   poseSquat(a, f = 1) { const p = this.bp(a); p.hipY = -0.2 * f; p.kn = [1.3 * f, 1.3 * f]; p.hp = [-0.9 * f, -0.9 * f]; p.lean = 0.45 * f; p.sh = [0.5 * f, 0.2, 0.5 * f, 0.2]; p.sq = 1 - 0.14 * f; if (a.cheer) { p.sh = [-2.8, 0.3, -2.8, 0.3]; } return p; }
-  poseAir(a) { const p = this.bp(a); const up = a.vh > 0; p.kn = up ? [0.4, 1.4] : [1.2, 0.6]; p.hp = up ? [-0.3, -1.0] : [-0.9, -0.3]; p.sh = [-2.4, 0.4, -2.4, 0.4]; p.el = [-0.4, -0.4]; p.lean = 0.1; p.sq = up ? 1.12 : 1.04; if (a.hasBall) { p.sh = [-1.2, 0.3, 2.6, 0.2]; p.el = [-0.5, -1.2]; p.twist = -0.6; } if (a.state === 'air' && a.airF > 26) p.sq = 1; if (a.boss && this.phase === 'p2intro') { p.sh = [-1.4, 1.2, -1.4, 1.2]; } return p; }
+  poseAir(a) { const p = this.bp(a); const up = a.vh > 0; p.kn = up ? [0.4, 1.4] : [1.2, 0.6]; p.hp = up ? [-0.3, -1.0] : [-0.9, -0.3]; p.sh = [-2.4, 0.4, -2.4, 0.4]; p.el = [-0.4, -0.4]; p.lean = 0.1; p.sq = up ? 1.12 : 1.04; if (a.hasBall) { p.sh = [-1.2, 0.3, -2.1, 0.6]; p.el = [-0.5, -1.1]; p.twist = -0.6; } if (a.state === 'air' && a.airF > 26) p.sq = 1; if (a.boss && this.phase === 'p2intro') { p.sh = [-1.4, 1.2, -1.4, 1.2]; } return p; }
   poseWind(a, power) {
     const p = this.bp(a); const n = power ? TUNE.pWind : TUNE.wind; const f = Math.min(1, a.st / n);
     const e = 1 - Math.pow(1 - f, 3);
     if (a.passing) { p.sh = [-0.9 * e, 0.2, -0.9 * e, -0.2]; p.el = [-0.9, -0.9]; p.lean = 0.05; p.kn = [0.3, 0.3]; return p; }
-    p.twist = -0.9 * e * (power ? 1.25 : 1); p.lean = -0.18 * e - (power ? 0.12 : 0); p.side = -0.08 * e;
-    p.sh = [-1.3 * e, 0.3, 2.5 * e + (power ? 0.4 : 0), 0.35]; p.el = [-0.3, -1.4 * e];
+    p.twist = -0.58 * e * (power ? 1.15 : 1); p.lean = -0.10 * e; p.side = -0.06 * e;
+    p.sh = [-1.1 * e, 0.32, -2.1 * e, 0.60]; p.el = [-0.45, -1.1 * e];
     p.hp = [-0.6 * e, 0.35 * e]; p.kn = [0.3, 0.75 * e]; p.hipY = -0.08 * e; p.sq = 1 - 0.07 * e;
     if (a.state === 'air' || a.h > 0) { p.hp = [-0.8, -0.2]; p.kn = [1.0, 0.6]; }
     return p;
   }
-  poseRelease(a, power) { const p = this.bp(a); if (a.passing) { p.sh = [-1.6, 0.1, -1.6, -0.1]; p.el = [-0.2, -0.2]; p.lean = 0.25; return p; } p.twist = 0.85; p.lean = 0.45; p.sh = [0.6, 0.3, -1.9, 0.15]; p.el = [-0.6, -0.15]; p.hp = [0.35, -0.85]; p.kn = [0.7, 0.2]; p.hipY = -0.05; p.sq = power ? 1.12 : 1.07; return p; }
-  poseRecover(a) { const p = this.bp(a); const f = Math.min(1, a.st / 10); p.twist = 0.9 * (1 - f) + 0.1; p.lean = 0.45 * (1 - f) + 0.12; p.sh = [0.3, 0.3, -0.9 + 0.5 * f, -0.4 * (1 - f)]; p.el = [-0.8, -0.6]; p.hp = [0.25 * (1 - f), -0.6 * (1 - f)]; p.kn = [0.5, 0.3]; return p; }
+  poseRelease(a, power) { const p = this.bp(a); if (a.passing) { p.sh = [-1.6, 0.1, -1.6, -0.1]; p.el = [-0.2, -0.2]; p.lean = 0.25; return p; } p.twist = 0.50; p.lean = 0.33; p.sh = [0.35, 0.32, -1.55, 0.12]; p.el = [-0.8, -0.18]; p.hp = [0.35, -0.85]; p.kn = [0.7, 0.2]; p.hipY = -0.05; p.sq = power ? 1.12 : 1.07; return p; }
+  poseRecover(a) { const p = this.bp(a); const f = Math.min(1, a.st / 10); p.twist = 0.55 * (1 - f); p.lean = 0.30 * (1 - f) + 0.12; p.sh = [0.3, 0.3, -0.9 + 0.5 * f, -0.4 * (1 - f)]; p.el = [-0.8, -0.6]; p.hp = [0.25 * (1 - f), -0.6 * (1 - f)]; p.kn = [0.5, 0.3]; return p; }
   poseCatchReady(a) { const p = this.bp(a); p.sh = [-1.45, 0.45, -1.45, 0.45]; p.el = [-0.35, -0.35]; p.kn = [0.6, 0.6]; p.hp = [-0.4, -0.4]; p.lean = 0.28; p.hipY = -0.07; p.head = 0.15; return p; }
   poseCatch(a) { const p = this.bp(a); const f = Math.min(1, a.st / 5); p.sh = [-0.85, -0.1, -0.85, -0.1]; p.el = [-1.9, -1.9]; p.lean = -0.3 * (1 - f) + 0.1; p.kn = [0.7, 0.7]; p.hp = [-0.3, -0.3]; p.sq = a.st < 3 ? 0.88 : 1; p.hipY = -0.05; return p; }
   poseBobble(a) { const p = this.bp(a); const w = Math.sin(a.st * 0.9); p.sh = [-1.9 + w * 0.6, 0.4, -1.9 - w * 0.6, 0.4]; p.el = [-0.6, -0.6]; p.lean = -0.1; p.head = -0.25; p.kn = [0.5, 0.5]; return p; }
-  poseDuck(a) { const p = this.bp(a); p.hipY = -0.42; p.kn = [1.9, 1.9]; p.hp = [-1.4, -1.4]; p.lean = 0.75; p.sh = [-2.4, 0.6, -2.4, 0.6]; p.el = [-1.9, -1.9]; p.head = 0.4; return p; }
+  poseDuck(a) { const p = this.bp(a); p.hipY = -0.36; p.kn = [1.76, 1.76]; p.hp = [-1.22, -1.22]; p.lean = 0.58; p.spread = [0.22, 0.22]; p.sh = [-0.75, 0.40, -0.75, 0.40]; p.el = [-1.15, -1.15]; p.head = 0.25; return p; }
   poseHit(a) { const p = this.bp(a); const f = Math.min(1, a.st / 10); p.lean = -0.55 * (1 - f * 0.6); p.head = -0.5 * (1 - f); p.sh = [-1.6, 0.9, -1.4, 0.9]; p.el = [-0.3, -0.5]; p.kn = [0.5, 0.2]; p.hp = [0.25, -0.3]; p.sq = a.st < 3 ? 0.9 : 1; return p; }
   poseKnock(a) { const p = this.bp(a); p.lean = -1.0; p.roll = -Math.min(1.45, a.st * 0.09); p.sh = [-2.6, 1.1, -2.2, 1.0]; p.el = [-0.2, -0.3]; p.hp = [-0.8, 0.2]; p.kn = [0.9, 0.3]; p.head = -0.4; return p; }
   poseDown(a) { const p = this.bp(a); p.roll = -1.5; p.lean = 0; p.sh = [-2.9, 1.0, -2.9, 1.1]; p.el = [-0.2, -0.2]; p.hp = [-0.1, 0.1]; p.kn = [0.2, 0.4]; p.hipY = -0.62; const b = a.st < 8 ? Math.sin(a.st / 8 * Math.PI) * 0.12 : 0; p.hipY += b; return p; }
@@ -1172,7 +1181,7 @@ class Game {
     const c = a.pose, t = a.tgt;
     for (const key of ['lean', 'twist', 'side', 'head', 'hipY', 'sq', 'roll', 'flip']) c[key] += (t[key] - c[key]) * k;
     for (let i = 0; i < 4; i++) c.sh[i] += (t.sh[i] - c.sh[i]) * k;
-    for (let i = 0; i < 2; i++) { c.el[i] += (t.el[i] - c.el[i]) * k; c.hp[i] += (t.hp[i] - c.hp[i]) * k; c.kn[i] += (t.kn[i] - c.kn[i]) * k; }
+    for (let i = 0; i < 2; i++) { c.el[i] += (t.el[i] - c.el[i]) * k; c.hp[i] += (t.hp[i] - c.hp[i]) * k; c.kn[i] += (t.kn[i] - c.kn[i]) * k; c.spread[i] += (t.spread[i] - c.spread[i]) * k; }
   }
   place(a) {
     const p = a.pose;
