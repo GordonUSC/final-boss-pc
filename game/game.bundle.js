@@ -905,6 +905,7 @@ class Game {
     return true;
   }
   graphicsFallback(message) {
+    if (this.full) this.setFull(false); // hand recovery back to the page, where its status line and Low-quality retry live
     this.dead = true; this.paused = true;
     cancelAnimationFrame(this.raf);
     this.sfx.enable(false); this.sfx.mood(0, 0, false);
