@@ -12,6 +12,7 @@ const DEG = Math.PI / 180;
 const PITCH = 27 * DEG;            // spec said 32; lowered to match Gordon's approved mockups
 const SINP = Math.sin(PITCH), COSP = Math.cos(PITCH);
 const DT = 1 / 60;
+const TRAIL_N = 14;               // ball ribbon trail length in ticks
 const HX = 9, HZ = 4.5;            // court half extents (18 x 9 m)
 const OUTX = 10.25;                // back outfield lane x
 const SIDEZ = 5.35;                // side outfield lane z
@@ -106,10 +107,11 @@ function kitFrom(colors) {
 }
 
 // ---------------------------------------------------------------- canvas textures
-function canvasTex(w, h, draw) {
-  const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
-  const ctx = cv.getContext('2d'); draw(ctx, w, h);
-  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+function canvasTex(w, h, draw, q = 1) {
+  // q > 1 backs the texture with a denser canvas (PC native: crowd signs and banners stay sharp at 1440p and 4K); draw code keeps logical w x h
+  const cv = document.createElement('canvas'); cv.width = Math.round(w * q); cv.height = Math.round(h * q);
+  const ctx = cv.getContext('2d'); if (q !== 1) ctx.scale(q, q); draw(ctx, w, h);
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = q > 1 ? 8 : 4;
   t.userData.redraw = (fn) => { fn(ctx, w, h); t.needsUpdate = true; };
   return t;
 }
@@ -338,9 +340,11 @@ const FACE_W = 512, FACE_H = 256, JERSEY_H = 272;
 const WHITE_UV = [0.5, 6 / JERSEY_H];
 const FACE_WHITE_UV = [3 / FACE_W, 1 - 3 / FACE_H];
 const RIM_U = { color: { value: new THREE.Color('#9a6bff') }, strength: { value: 0.75 }, warm: { value: new THREE.Color('#ffb070') } };
-function rimify(m) {
+// per-team rim light: the home side keeps the arena's warm rim, the Glitches get a cool lime edge, so the two teams separate at a glance
+const RIM_T1 = { color: { value: new THREE.Color('#b6ff5a') }, strength: { value: 0.8 } };
+function rimify(m, U = RIM_U) {
   m.onBeforeCompile = (s) => {
-    s.uniforms.rimColor = RIM_U.color; s.uniforms.rimStrength = RIM_U.strength;
+    s.uniforms.rimColor = U.color; s.uniforms.rimStrength = U.strength;
     s.fragmentShader = 'uniform vec3 rimColor; uniform float rimStrength;\n' + s.fragmentShader.replace('#include <opaque_fragment>',
       'float rimF = pow(1.0 - clamp(dot(normalize(vViewPosition), normal), 0.0, 1.0), 2.4);\noutgoingLight += rimColor * rimF * rimStrength;\n#include <opaque_fragment>');
   };
@@ -481,9 +485,9 @@ class Athlete {
     this.jerseyTex = canvasTex(512, JERSEY_H, () => { });
     this.faceTex = canvasTex(FACE_W, FACE_H, () => { });
     this.mats = {
-      torso: rimify(new THREE.MeshStandardMaterial({ map: this.jerseyTex, vertexColors: true, roughness: 0.88, normalMap: fabricNormal(), normalScale: new THREE.Vector2(0.12, 0.12) })),
-      head: rimify(new THREE.MeshStandardMaterial({ map: this.faceTex, vertexColors: true, roughness: 0.78 })),
-      limb: game.limbMat,
+      torso: rimify(new THREE.MeshStandardMaterial({ map: this.jerseyTex, vertexColors: true, roughness: 0.88, normalMap: fabricNormal(), normalScale: new THREE.Vector2(0.12, 0.12) }), team === 1 ? RIM_T1 : RIM_U),
+      head: rimify(new THREE.MeshStandardMaterial({ map: this.faceTex, vertexColors: true, roughness: 0.78 }), team === 1 ? RIM_T1 : RIM_U),
+      limb: team === 1 ? game.limbMat1 : game.limbMat,
     };
     const mk = (parts, mat, parent, white) => { const geo = mergeParts(parts, white || WHITE_UV); const m = new THREE.Mesh(geo, mat); m.castShadow = true; parent.add(m); this.geos.push(geo); return m; };
     this.geos = [];
@@ -721,6 +725,10 @@ class Game {
     this.shakeAmp = 0; this.shakeF = 0; this.shakeMax = 1; this.fever = false;
     this.fx = []; this.queue = [[], []]; this.rushT = 999;
     this.stats = { hits: 0, catches: 0, power: 0, kos: 0, bestCombo: 0, headshots: 0, backIn: 0, blocks: 0 };
+    // PC native: a page opts in with { native: true }; it only takes effect with a fine pointer (mouse or trackpad), never on touch
+    const finePtr = !!(window.matchMedia && matchMedia('(pointer: fine)').matches);
+    this.native = !!this.opts.native && finePtr && !this.opts.touch;
+    this.texQ = this.native ? 2 : 1; this.full = false; this.rs = 1; this.dts = [];
     this.buildDOM();
     if (!this.initGL()) return;
     this.buildWorld();
@@ -771,7 +779,8 @@ class Game {
   <div class="fbg-ctl" hidden></div>
   <div class="fbg-bossbar"><span>GLITCH KING</span><i></i></div>
   <div class="fbg-meter"><b>STEPS</b><div class="fbg-steps"></div></div>
-  <div class="fbg-btns"><button class="fbg-btn ghost fbg-qual" type="button">Quality: Auto</button><button class="fbg-btn ghost fbg-sound" type="button" aria-pressed="false">Sound off</button><button class="fbg-btn ghost fbg-pause" type="button">Time out</button></div>
+  <div class="fbg-keys" aria-hidden="true"><span><i>WASD</i>Move</span><span class="k-throw"><i>J</i><i class="m">LMB</i>Throw</span><span class="k-catch"><i>K</i><i class="m">RMB</i>Catch</span><span><i>L</i>Jump</span><span class="k-pass"><i>Shift</i>Pass</span><span><i>Q</i>Switch</span><span><i>Esc</i>Time out</span><span><i>M</i>Menu</span></div>
+  <div class="fbg-btns"><button class="fbg-btn ghost fbg-qual" type="button">Quality: Auto</button><button class="fbg-btn ghost fbg-menu" type="button" hidden>Menu <span class="fbg-kbd">M</span></button><button class="fbg-btn ghost fbg-sound" type="button" aria-pressed="false">Sound off</button><button class="fbg-btn ghost fbg-pause" type="button">Time out</button></div>
   <div class="fbg-vs" hidden></div>
   <div class="fbg-poster"><p>Boss Rush needs WebGL. This is a still from the game.</p></div>
   <div class="fbg-sr" aria-live="polite"></div>
@@ -792,15 +801,66 @@ class Game {
       looknm: q('.fbg-looknm') || document.createElement('div'), chip: q('.fbg-chip'), l0: q('.fbg-live[data-t="0"]'), l1: q('.fbg-live[data-t="1"]'), q0: q('.fbg-q[data-t="0"]'), q1: q('.fbg-q[data-t="1"]'),
       g0: q('.fbg-g0'), g1: q('.fbg-g1'), sub: q('.fbg-sub'), ctl: q('.fbg-ctl'), boss: q('.fbg-bossbar'), bossI: q('.fbg-bossbar i'),
       meter: q('.fbg-meter'), steps: q('.fbg-steps'), vs: q('.fbg-vs'), ov: q('.fbg-ov'), card: q('.fbg-card'), sound: q('.fbg-sound'), qual: q('.fbg-qual'), pause: q('.fbg-pause'), sr: q('.fbg-sr'),
-      poster: q('.fbg-poster'), touch: q('.fbg-touch'), knob: q('.fbg-knob'), stick: q('.fbg-stick') };
+      poster: q('.fbg-poster'), touch: q('.fbg-touch'), knob: q('.fbg-knob'), stick: q('.fbg-stick'), keys: q('.fbg-keys'), menu: q('.fbg-menu') };
     this.$.poster.style.backgroundImage = `url(${assetURL(this.base, 'poster.jpg')})`;
     for (let i = 1; i <= 9; i++) { const c = document.createElement('i'); this.$.steps.appendChild(c); }
     if (this.rm) r.classList.add('rm');
     const coarse = window.matchMedia && matchMedia('(pointer: coarse)').matches;
     if (coarse || this.opts.touch) r.classList.add('has-touch');
+    if (this.native) { r.classList.add('is-native'); this.$.menu.hidden = false; this.$.qual.hidden = true; }
+    // settings buttons live inside whichever card is open (title, menu, results); one delegated handler serves them all
+    this.$.card.addEventListener('click', (e) => {
+      const b = e.target.closest && e.target.closest('[data-q],[data-d]'); if (!b) return;
+      if (b.dataset.q) this.setQuality(b.dataset.q);
+      else if (b.dataset.d === 'full') this.setFull(!this.full);
+      else if (b.dataset.d === 'fs') this.toggleFullscreen();
+      this.syncMenu();
+    });
+    this.$.menu.addEventListener('click', () => { if (this.paused) this.resume(); else this.pause('menu'); });
+    this.onFs = () => { this.syncMenu(); if (!(document.fullscreenElement || document.webkitFullscreenElement)) this.$.stage.focus({ preventScroll: true }); };
+    document.addEventListener('fullscreenchange', this.onFs); document.addEventListener('webkitfullscreenchange', this.onFs);
     this.$.sound.addEventListener('click', () => this.toggleSound());
     this.$.qual.addEventListener('click', () => { const order = ['auto', 'ultra', 'high', 'med', 'low']; this.setQuality(order[(order.indexOf(this.qMode) + 1) % 5]); });
     this.$.pause.addEventListener('click', () => { if (this.phase === 'title' || this.phase === 'result') return; this.paused ? this.resume() : this.pause(); });
+  }
+  settingsHTML() {
+    if (!this.native) return '';
+    const q = (k, n) => `<button type="button" class="fbg-sb" data-q="${k}" aria-pressed="${this.qMode === k}">${n}</button>`;
+    return `<div class="fbg-set"><div class="fbg-seg" role="group" aria-label="Quality"><span>Quality</span>${q('auto', 'Auto')}${q('high', 'High')}${q('ultra', 'Ultra')}</div>
+      <div class="fbg-seg" role="group" aria-label="Display"><span>Display</span><button type="button" class="fbg-sb" data-d="full"></button><button type="button" class="fbg-sb" data-d="fs"></button></div>
+      <p class="fbg-setnote"></p></div>`;
+  }
+  syncMenu() {
+    const c = this.$ && this.$.card; if (!c || !this.native) return;
+    const fs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    c.querySelectorAll('[data-q]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.q === this.qMode)));
+    c.querySelectorAll('[data-d="full"]').forEach(b => { b.textContent = this.full ? 'Back to the page' : 'Full window'; });
+    c.querySelectorAll('[data-d="fs"]').forEach(b => { b.setAttribute('aria-pressed', String(fs)); b.innerHTML = (fs ? 'Exit fullscreen' : 'Fullscreen') + ' <span class="fbg-kbd">F</span>'; });
+    const n = c.querySelector('.fbg-setnote'), cv = this.$.canvas;
+    if (n && cv) { const dev = window.devicePixelRatio || 1; n.textContent = `Drawing ${cv.width} x ${cv.height} for a ${Math.round(this.W * dev)} x ${Math.round(this.H * dev)} view. ${this.qMode === 'auto' ? 'Auto is on ' + this.tier + (this.rs < 1 ? ' at ' + Math.round(this.rs * 100) + '% scale' : '') + ' and adapts to hold 60 fps.' : this.tier[0].toUpperCase() + this.tier.slice(1) + ' is fixed.'}`; }
+  }
+  setFull(on) {
+    // full window: the arena takes the whole browser window like a desktop game; the page keeps a placeholder so nothing jumps
+    on = !!on && this.native && !this.dead; if (this.full === on) return; this.full = on;
+    if (on) {
+      this.ph = this.ph || document.createElement('div'); this.ph.className = 'fbg-ph'; this.ph.style.height = this.root.offsetHeight + 'px';
+      this.root.parentNode.insertBefore(this.ph, this.root); document.body.appendChild(this.root);
+    } else {
+      const d = document; if (d.fullscreenElement || d.webkitFullscreenElement) { const p = (d.exitFullscreen || d.webkitExitFullscreen).call(d); if (p && p.catch) p.catch(() => {}); }
+      if (this.ph && this.ph.parentNode) { this.ph.parentNode.insertBefore(this.root, this.ph); this.ph.remove(); }
+    }
+    this.root.classList.toggle('is-full', on); document.documentElement.classList.toggle('fbg-lock', on);
+    this.resize(); this.syncMenu();
+    try { this.$.stage.focus({ preventScroll: true }); } catch (e) {}
+    if (!on) try { this.root.scrollIntoView({ block: 'center' }); } catch (e) {}
+  }
+  toggleFullscreen() {
+    if (!this.native) return;
+    const d = document;
+    if (d.fullscreenElement || d.webkitFullscreenElement) { const p = (d.exitFullscreen || d.webkitExitFullscreen).call(d); if (p && p.catch) p.catch(() => {}); return; }
+    this.setFull(true);
+    const req = this.root.requestFullscreen || this.root.webkitRequestFullscreen;
+    if (req) { try { const p = req.call(this.root, { navigationUI: 'hide' }); if (p && p.catch) p.catch(() => {}); } catch (e) {} }
   }
   toggleSound(v) {
     const on = v != null ? v : !this.sfx.on; this.sfx.enable(on);
@@ -820,6 +880,7 @@ class Game {
     this.camera = new THREE.PerspectiveCamera(34, 16 / 9, 0.5, 220);
     this.view = { cx: 0, d: 20, tz: -1.8, fov: 34, wide: true, punch: 0, px: 0, pz: 0 };
     this.limbMat = rimify(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.62, metalness: 0 }));
+    this.limbMat1 = rimify(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.62, metalness: 0 }), RIM_T1);
     const coarse = window.matchMedia && matchMedia('(pointer: coarse)').matches;
     this.qMode = this.opts.quality || 'auto';
     this.tier = this.qMode === 'auto' ? (coarse ? 'med' : 'high') : this.qMode;
@@ -856,7 +917,12 @@ class Game {
     v.fov = v.wide ? 27 : 40;
     const halfW = v.wide ? 10.6 : 8.2;
     v.d = halfW / (Math.tan(v.fov / 2 * DEG) * aspect);
+    // wide screens keep a 16:9 safe frame: on 21:9 or 32:9 the court depth sets the distance, so nothing is cropped top or bottom
+    if (v.wide && aspect > 16 / 9) v.d = Math.max(v.d, halfW / (Math.tan(v.fov / 2 * DEG) * (16 / 9)));
     v.tz = v.wide ? -2.3 : -1.4;
+    // desktop HUD type scale: the HUD was drawn for a ~600 px tall stage; in full window it grows with the screen (1080p about 1.45x, 1440p about 1.9x)
+    const z = this.full ? Math.max(1, Math.min(2.4, H / 745)) : 1;
+    this.root.style.setProperty('--fbg-z', z.toFixed(3));
     this.camera.fov = v.fov; this.camera.aspect = aspect; this.camera.updateProjectionMatrix();
     this.pxPerUnit = H / (2 * v.d * Math.tan(v.fov / 2 * DEG));
     this.placeBackdrop();
@@ -920,11 +986,11 @@ class Game {
     // light shafts and haze in front of the stands
     const shaftTex = canvasTex(128, 512, (c, w, h) => { const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, 'rgba(255,255,255,0.7)'); g.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = g; c.beginPath(); c.moveTo(w * 0.42, 0); c.lineTo(w * 0.58, 0); c.lineTo(w, h); c.lineTo(0, h); c.closePath(); c.fill(); });
     this.shafts = [];
-    for (const [x, r] of [[-9, 0.35], [-3, 0.1], [3, -0.1], [9, -0.35]]) { const m = new THREE.Mesh(GEO.plane, new THREE.MeshBasicMaterial({ map: shaftTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, color: '#ffd6a0', opacity: 0.1 })); m.scale.set(4.5, 7, 1); m.position.set(x, 3.6, -7.3); m.rotation.set(-PITCH, 0, r); m.renderOrder = 3; S.add(m); this.shafts.push(m); }
+    for (const [x, r] of [[-9, 0.35], [-3, 0.1], [3, -0.1], [9, -0.35]]) { const m = new THREE.Mesh(GEO.plane, new THREE.MeshBasicMaterial({ map: shaftTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, color: '#ffd6a0', opacity: 0.1 })); m.scale.set(4.5, 7, 1); m.position.set(x, 3.6, -7.3); m.rotation.set(-PITCH, 0, r); m.userData.r0 = r; m.renderOrder = 3; S.add(m); this.shafts.push(m); }
     this.hazeTex = radialTex([[0, 'rgba(255,255,255,0.5)'], [1, 'rgba(255,255,255,0)']]);
     this.haze = new THREE.Mesh(GEO.plane, new THREE.MeshBasicMaterial({ map: this.hazeTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, color: '#ffb070', opacity: 0.12 })); this.haze.scale.set(40, 5, 1); this.haze.position.set(0, 1.2, -7.4); this.haze.rotation.x = -PITCH; this.haze.renderOrder = 3; S.add(this.haze);
     // LED ribbon boards along the far edge
-    this.ribbonTex = canvasTex(2048, 64, () => { });
+    this.ribbonTex = canvasTex(2048, 64, () => { }, this.texQ);
     this.ribbonMat = new THREE.MeshBasicMaterial({ map: this.ribbonTex });
     const rb = new THREE.Mesh(new THREE.BoxGeometry(26, 0.85, 0.14), [this.darkMat = new THREE.MeshStandardMaterial({ color: '#111' }), this.darkMat, this.darkMat, this.darkMat, this.ribbonMat, this.darkMat]);
     rb.position.set(0, 0.43, -7.15); S.add(rb); this.ribbon = rb;
@@ -940,6 +1006,9 @@ class Game {
     this.tex = { star: starTex(), sparkle: sparkleTex(), ring: ringTex(), speed: speedTex(), glow: radialTex([[0, 'rgba(255,255,255,1)'], [0.3, 'rgba(255,255,255,0.6)'], [1, 'rgba(255,255,255,0)']], 64), dust: radialTex([[0, 'rgba(255,240,220,0.9)'], [1, 'rgba(255,240,220,0)']], 64) };
     this.spritePool = [];
     for (let i = 0; i < 180; i++) { const m = new THREE.SpriteMaterial({ map: this.tex.glow, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }); const s = new THREE.Sprite(m); s.visible = false; s.renderOrder = 5; S.add(s); this.spritePool.push(s); }
+    // floor decals: shock rings that spread from hits and catches (laid flat on the court, not camera-facing sprites)
+    this.decals = [];
+    for (let i = 0; i < 10; i++) { const m = new THREE.Mesh(GEO.plane, new THREE.MeshBasicMaterial({ map: this.tex.ring, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 })); m.rotation.x = -Math.PI / 2; m.renderOrder = 2; m.visible = false; S.add(m); this.decals.push({ m, t: 0, life: 1, s0: 1, s1: 1, a0: 1 }); }
     this.initPost();
     this.resize();
   }
@@ -1034,7 +1103,8 @@ class Game {
     this.key.color.set(vc ? '#ffe6f4' : '#fff7ea'); this.key.intensity = vc ? 2.4 : 2.35;
     this.rimL.color.set(vc ? '#ff3fa1' : '#ff7a3a'); this.rimR.color.set(vc ? '#3ff0ff' : '#77b9e8');
     this.rimL.intensity = vc ? 1.6 : 0.85; this.rimR.intensity = vc ? 1.5 : 1.0;
-    RIM_U.color.value.set(vc ? '#ff6fd0' : '#ffb070');
+    RIM_U.color.value.set(vc ? '#ff6fd0' : '#ffb070'); RIM_U.strength.value = 0.85;
+    RIM_T1.color.value.set(vc ? '#6ff3ff' : '#b6ff5a'); RIM_T1.strength.value = vc ? 0.7 : 0.55;
     this.pools.forEach((p, i) => p.material.color.set(vc ? (i % 2 ? '#ff8cc2' : '#7ff3ff') : '#ffe6c8'));
     this.streaks.forEach((s, i) => s.material.color.set(vc ? (i % 2 ? '#ff6fd0' : '#6ff3ff') : '#ffd9a0'));
     this.shafts.forEach(s => s.material.color.set(vc ? '#c48cff' : '#ffd6a0'));
@@ -1045,13 +1115,20 @@ class Game {
     if (this.drawBanner) this.drawBanner();
   }
   bindInput() {
-    const map = { ArrowLeft: 'left', a: 'left', A: 'left', ArrowRight: 'right', d: 'right', D: 'right', ArrowUp: 'up', w: 'up', W: 'up', ArrowDown: 'down', s: 'down', S: 'down', j: 'throw', J: 'throw', ' ': 'throw', k: 'catch', K: 'catch', l: 'jump', L: 'jump', Shift: 'pass', q: 'switch', Q: 'switch', Escape: 'pause', p: 'pause', P: 'pause', Enter: 'enter', '1': 'rock', '2': 'paper', '3': 'scissors' };
+    const map = { ArrowLeft: 'left', a: 'left', A: 'left', ArrowRight: 'right', d: 'right', D: 'right', ArrowUp: 'up', w: 'up', W: 'up', ArrowDown: 'down', s: 'down', S: 'down', j: 'throw', J: 'throw', ' ': 'throw', k: 'catch', K: 'catch', l: 'jump', L: 'jump', Shift: 'pass', q: 'switch', Q: 'switch', Escape: 'pause', p: 'pause', P: 'pause', Enter: 'enter', '1': 'rock', '2': 'paper', '3': 'scissors', f: 'fs', F: 'fs', m: 'menu', M: 'menu' };
     this.onKeyDown = (e) => {
       const k = map[e.key]; if (!k) return;
       const inGame = this.phase !== 'title' && this.phase !== 'result';
       const focusOK = this.root.contains(document.activeElement) || document.activeElement === document.body;
       if (!this.visible || !focusOK) return;
       if (e.target && /INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
+      if (k === 'fs' || k === 'menu') {
+        if (!this.native) return; e.preventDefault(); if (e.repeat) return;
+        if (k === 'fs') this.toggleFullscreen(); else if (inGame && this.phase !== 'handshake') { this.paused ? this.resume() : this.pause('menu'); }
+        return;
+      }
+      // in full window, Esc on the title or results card goes back to the page
+      if (!inGame && k === 'pause' && this.full) { this.setFull(false); e.preventDefault(); return; }
       if (!inGame) { if (k === 'enter' && this.phase === 'title' && document.activeElement === this.$.stage) { this.start(); e.preventDefault(); } return; }
       if (this.phase === 'handshake') { if (k === 'enter' || k === 'throw' || k === 'pause') this.finishHandshake(); e.preventDefault(); return; }
       if (k === 'pause') { this.paused ? this.resume() : this.pause(); e.preventDefault(); return; }
@@ -1091,6 +1168,14 @@ class Game {
       b.addEventListener('pointerup', off); b.addEventListener('pointercancel', off); b.addEventListener('contextmenu', e => e.preventDefault());
     });
     this.$.stage.addEventListener('pointerdown', () => { this.$.stage.focus({ preventScroll: true }); });
+    // PC native mouse: left button throws, right button catches (hold to duck), mirroring J and K
+    this.$.stage.addEventListener('mousedown', (e) => {
+      if (!this.native || this.paused || this.phase !== 'play' || (e.target.closest && e.target.closest('button,.fbg-ov,.fbg-vs,.fbg-btns'))) return;
+      if (e.button === 0) { this.edge.throw = true; e.preventDefault(); } else if (e.button === 2) { this.edge.catch = true; this.keys.catch = true; e.preventDefault(); }
+    });
+    this.onMouseUp = (e) => { if (e.button === 2) this.keys.catch = false; };
+    window.addEventListener('mouseup', this.onMouseUp);
+    this.$.stage.addEventListener('contextmenu', (e) => { if (this.native) e.preventDefault(); });
   }
   userIntent() {
     const k = this.keys, t = this.touch, e = this.edge;
@@ -1220,7 +1305,24 @@ class Game {
     this.fx.push(Object.assign({ sp: s, life: o.life || 20, t: 0, vx: 0, vy: 0, vz: 0, g: 0, s0: o.s, s1: o.s1 ?? o.s, a0: o.alpha ?? 1, spin: 0 }, o));
     return s;
   }
+  decal(x, z, s0, s1, life, color, alpha) {
+    const d = this.decals && (this.decals.find(o => !o.m.visible) || this.decals.reduce((a, b) => (a.t / a.life > b.t / b.life ? a : b))); if (!d) return;
+    Object.assign(d, { t: 0, life, s0, s1, a0: alpha }); d.m.visible = true; d.m.position.set(x, 0.02, z); d.m.scale.set(s0, s0 * 0.62, 1); d.m.material.color.set(color); d.m.material.opacity = alpha;
+  }
+  impact(x, y, z, power, team) {
+    // hit VFX: a white-hot core, a floor shock ring in the thrower's team color, and debris; reduced motion keeps only a soft glow
+    if (this.rm) { this.spawnSprite({ tex: this.tex.glow, x, y, z, s: 1.2, s1: 1.6, life: 8, color: '#ffffff', alpha: 0.6 }); return; }
+    const col = team === 1 ? '#a6f23a' : '#ffc83d';
+    this.spawnSprite({ tex: this.tex.glow, x, y, z, s: power ? 2.2 : 1.4, s1: power ? 4.8 : 3.0, life: power ? 9 : 7, color: '#ffffff', alpha: 1, fade: 0.8 });
+    this.decal(x, z, power ? 0.6 : 0.4, power ? 5.4 : 3.4, power ? 24 : 16, col, power ? 0.95 : 0.7);
+    if (power) this.decal(x, z, 0.3, 2.6, 14, '#ffffff', 0.8);
+    this.burst(x, y, z, col, power ? 14 : 8);
+  }
   updateFX() {
+    if (this.decals) for (const d of this.decals) {
+      if (!d.m.visible) continue; d.t++; const k = d.t / d.life, e = 1 - Math.pow(1 - Math.min(1, k), 3), sc = d.s0 + (d.s1 - d.s0) * e;
+      d.m.scale.set(sc, sc * 0.62, 1); d.m.material.opacity = d.a0 * Math.pow(Math.max(0, 1 - k), 1.4); if (d.t >= d.life) d.m.visible = false;
+    }
     for (let i = this.fx.length - 1; i >= 0; i--) {
       const f = this.fx[i]; f.t++;
       const k = f.t / f.life;
@@ -1261,12 +1363,13 @@ class Game {
   // ------------------------------------------------ stands: SIN CITY CLASSIC banner and fan signs (CanvasTexture planes, crisp text)
   buildStands() {
     this.standsG = new THREE.Group(); this.scene.add(this.standsG);
-    this.bannerTex = [canvasTex(1024, 192, () => { }), canvasTex(1024, 192, () => { })];
-    this.neonTex = canvasTex(1024, 300, () => { });
+    const tq = this.texQ;
+    this.bannerTex = [canvasTex(1024, 192, () => { }, tq), canvasTex(1024, 192, () => { }, tq)];
+    this.neonTex = canvasTex(1024, 300, () => { }, tq);
     this.bannerMat = new THREE.MeshBasicMaterial({ map: this.bannerTex[0], transparent: true, depthWrite: false });
     this.banner = new THREE.Mesh(GEO.plane, this.bannerMat); this.banner.rotation.x = -PITCH; this.banner.renderOrder = 3; this.standsG.add(this.banner);
     this.signs = SIGNS.map((s, i) => {
-      const tex = canvasTex(256, 216, () => { });
+      const tex = canvasTex(256, 216, () => { }, tq);
       const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false });
       const g = new THREE.Group(); const m = new THREE.Mesh(GEO.plane, mat); m.position.y = -0.18; g.add(m); g.rotation.x = -PITCH;
       this.standsG.add(g);
@@ -1405,6 +1508,12 @@ class Game {
     const t = this.frame / 60, rm = this.rm;
     if (this.mode !== 'vc') { if (!rm && this.frame % 14 === 0) { this.bannerPh = 1 - (this.bannerPh || 0); this.bannerMat.map = this.bannerTex[this.bannerPh]; } }
     else this.bannerMat.opacity = rm ? 1 : (Math.sin(t * 37) > 0.985 ? 0.55 : 1);
+    // arena life: the rig's light shafts drift slowly and brighten with the crowd; the haze breathes with excitement
+    if (this.shafts && !rm) {
+      const ex = this.crowdExc ? this.crowdExc.value : 0, up = this.crowdMood ? Math.max(0, this.crowdMood.value) : 0;
+      this.shafts.forEach((m, i) => { m.rotation.z = m.userData.r0 + Math.sin(t * 0.35 + i * 1.9) * 0.045; m.material.opacity = 0.085 + 0.05 * ex * (0.5 + up) + 0.015 * Math.sin(t * 0.8 + i); });
+      this.haze.material.opacity = 0.11 + 0.06 * ex;
+    }
     for (const sg of this.signs) {
       if (!sg.g.visible) continue;
       if (rm) { sg.g.position.y = sg.by; sg.g.rotation.z = 0; sg.wig = 0; continue; }
@@ -1425,11 +1534,44 @@ class Game {
       const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.tex.glow, color: '#ff8a5a', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 }));
       glow.renderOrder = 4; this.scene.add(glow);
       const shadow = new THREE.Mesh(GEO.plane, this.shadowMat); shadow.rotation.x = -Math.PI / 2; shadow.renderOrder = 1; this.scene.add(shadow);
-      const b = { id: i, mesh, mat, glow, shadow };
+      const b = { id: i, mesh, mat, glow, shadow, trail: this.makeTrail(), hist: [] };
       this.resetBall(b); this.balls.push(b);
     }
   }
+  makeTrail() {
+    // camera-facing ribbon behind a ball in flight: tapers to the tail, fades by age, additive
+    const N = TRAIL_N, geo = new THREE.BufferGeometry(), idx = [];
+    geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(N * 6), 3).setUsage(THREE.DynamicDrawUsage));
+    geo.setAttribute('a', new THREE.BufferAttribute(new Float32Array(N * 2), 1).setUsage(THREE.DynamicDrawUsage));
+    for (let i = 0; i < N - 1; i++) { const j = i * 2; idx.push(j, j + 1, j + 2, j + 1, j + 3, j + 2); }
+    geo.setIndex(idx);
+    const mat = new THREE.ShaderMaterial({ uniforms: { col: { value: new THREE.Color('#ffffff') }, op: { value: 1 } }, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+      vertexShader: 'attribute float a; varying float vA; void main(){ vA = a; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: 'uniform vec3 col; uniform float op; varying float vA; void main(){ gl_FragColor = vec4(col * vA * op, 1.0);\n#include <colorspace_fragment>\n}' });
+    const m = new THREE.Mesh(geo, mat); m.frustumCulled = false; m.renderOrder = 4; m.visible = false; this.scene.add(m); return m;
+  }
+  updateTrails() {
+    const cp = this.camera.position, tmp = this._tv || (this._tv = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()]);
+    for (const B of this.balls) {
+      const H = B.hist, m = B.trail;
+      if (B.state !== 'flight' && H.length) H.shift();
+      if (H.length < 3) { m.visible = false; continue; }
+      const pos = m.geometry.attributes.position, al = m.geometry.attributes.a, n = H.length, N = TRAIL_N;
+      const pow = B.power || B.type === 'zig' || B.type === 'comet', w0 = (pow ? 0.3 : 0.15) * (this.rm ? 0.7 : 1);
+      for (let i = 0; i < N; i++) {
+        const k = Math.min(i, n - 1), p = H[k], q = H[Math.min(n - 1, k + 1)], o = H[Math.max(0, k - 1)];
+        tmp[0].set(q.x - o.x, q.h - o.h, q.z - o.z); tmp[1].set(cp.x - p.x, cp.y - p.h, cp.z - p.z); tmp[2].crossVectors(tmp[0], tmp[1]).normalize();
+        const f = k / (n - 1), w = w0 * (0.15 + 0.85 * f);
+        pos.setXYZ(i * 2, p.x + tmp[2].x * w, p.h + tmp[2].y * w, p.z + tmp[2].z * w); pos.setXYZ(i * 2 + 1, p.x - tmp[2].x * w, p.h - tmp[2].y * w, p.z - tmp[2].z * w);
+        const av = i < n ? Math.pow(f, 1.6) : 0; al.setX(i * 2, av); al.setX(i * 2 + 1, av);
+      }
+      pos.needsUpdate = true; al.needsUpdate = true;
+      m.material.uniforms.col.value.set(pow ? B.trailC : (B.type === 'pass' ? '#bfe9ff' : '#fff1d6')); m.material.uniforms.op.value = pow ? 0.95 : (B.type === 'pass' ? 0.25 : 0.5);
+      m.visible = true;
+    }
+  }
   resetBall(b) {
+    if (b.hist) b.hist.length = 0;
     b.mesh.visible = b.shadow.visible = b.glow.visible = true;
     Object.assign(b, { state: 'rest', x: 0, z: 0, h: 0.22, vx: 0, vz: 0, vh: 0, holder: null, thrower: null, team: -1, live: false, crossed: false, cleared: true, rushTeam: -1,
       type: 'normal', power: false, age: 0, hitSet: new Set(), target: null, pending: null, squash: 0, spin: b.spin || 0, trailC: '#ffffff', bounces: 0, claim: null, outF: 0, flash: 0, grav: 0, fromSide: 0, deflected: false, defSide: 0, forceHead: false, restF: 0 });
@@ -1441,12 +1583,16 @@ class Game {
     for (const def of ROSTER) { const a = new Athlete(this, def, 0); a.drawKit(k0); this.teams[0].push(a); this.all.push(a); }
     for (const def of BOSS_TEAM.players) { const a = new Athlete(this, def, 1); a.drawKit(k1); this.teams[1].push(a); this.all.push(a); }
     const b = new Athlete(this, Object.assign({ isBoss: true }, BOSS_TEAM.boss), 1); b.drawKit(k1); this.boss = b; this.teams[1].splice(3, 0, b); this.all.push(b);
+    this.footTex = radialTex([[0, 'rgba(255,255,255,0)'], [0.5, 'rgba(255,255,255,0.08)'], [0.78, 'rgba(255,255,255,0.75)'], [0.9, 'rgba(255,255,255,0.25)'], [1, 'rgba(255,255,255,0)']]);
     this.ringTex = canvasTex(128, 128, (c) => { c.strokeStyle = '#fff'; c.lineWidth = 9; c.beginPath(); c.arc(64, 64, 50, 0, Math.PI * 2); c.stroke(); c.globalAlpha = 0.25; c.fillStyle = '#fff'; c.beginPath(); c.arc(64, 64, 46, 0, Math.PI * 2); c.fill(); });
     for (const a of this.all) {
       const t = document.createElement('div'); t.className = 'fbg-tag t' + a.team; t.innerHTML = `<div class="fbg-you" hidden>YOU</div><div class="fbg-note" hidden></div>`;
       this.$.world.appendChild(t); a.tag = t; a.tagYou = t.querySelector('.fbg-you'); a.tagNote = t.querySelector('.fbg-note');
       const ring = new THREE.Mesh(GEO.plane, new THREE.MeshBasicMaterial({ map: this.ringTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, color: '#ffc83d', opacity: 0.9 }));
       ring.rotation.x = -Math.PI / 2; ring.renderOrder = 2; ring.visible = false; this.scene.add(ring); a.ring = ring;
+      // a soft team-color disc under every player in the court: the 16-player scrum reads by side even when bodies overlap
+      const foot = new THREE.Mesh(GEO.plane, new THREE.MeshBasicMaterial({ map: this.footTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, color: a.team === 0 ? '#ffc83d' : '#a6f23a', opacity: 0.3 }));
+      foot.rotation.x = -Math.PI / 2; foot.renderOrder = 1; foot.visible = false; this.scene.add(foot); a.foot = foot;
     }
   }
   inPlayers(team) { return this.teams[team].filter(a => a.active && a.role === 'in'); }
@@ -1491,6 +1637,7 @@ class Game {
     this.sfx.enable(this.sfx.on);
     this.resetMatch();
     this.paused = false; this.$.ov.hidden = true; this.$.pause.textContent = 'Time out';
+    if (this.native && this.opts.autoFull !== false) this.setFull(true);
     this.phase = 'intro'; this.introT = 0;
     this.showVS();
     this.sfx.stinger(); this.sfx.vo('vo_open', 3);
@@ -1511,7 +1658,7 @@ class Game {
     const rules = [['rush', 'Rush right only', 'on GO, run only for the balls on your right as you face the other team'], ['line', 'Clear the line', 'carry a rushed ball past your attack line before you throw'], ['catch', 'Catch = back in', 'the thrower is out and your next teammate returns'],
       ['head', 'No headshots', 'a standing headshot puts the thrower out'], ['clock', '15 s control', 'hold 3 of 5 balls and the clock runs'], ['back', 'Back line only', 'leave only out the back, 10 s to return']];
     const ctl = touch ? 'Left pad moves (flick to dash). <b>THROW</b>, <b>CATCH</b> (hold to duck), <b>JUMP</b>, <b>PASS</b>.'
-      : '<span class="fbg-kbd">Arrows</span>/<span class="fbg-kbd">WASD</span> move, double-tap to dash. <span class="fbg-kbd">J</span> throw, <span class="fbg-kbd">K</span> catch (hold to duck), <span class="fbg-kbd">L</span> jump, <span class="fbg-kbd">Shift</span> pass, <span class="fbg-kbd">Q</span> switch.';
+      : '<span class="fbg-kbd">Arrows</span>/<span class="fbg-kbd">WASD</span> move, double-tap to dash. <span class="fbg-kbd">J</span>' + (this.native ? '/<span class="fbg-kbd">Left click</span>' : '') + ' throw, <span class="fbg-kbd">K</span>' + (this.native ? '/<span class="fbg-kbd">Right click</span>' : '') + ' catch (hold to duck), <span class="fbg-kbd">L</span> jump, <span class="fbg-kbd">Shift</span> pass, <span class="fbg-kbd">Q</span> switch.';
     this.$.vs.innerHTML = `<div class="fbg-rps fbg-brief" role="dialog" aria-label="${title} rules"><h3>${title}</h3>
       <p class="fbg-bwho">${this.lastCtl < 0 ? 'Ro-sham-bo decides who rushes the 3 balls. After that, the 3 balls alternate every game.' : (this.lastCtl === 1 ? 'FINAL BOSS rushes the 3 balls on its right this game. THE GLITCHES rush the 2 on theirs.' : 'THE GLITCHES rush the 3 balls on their right this game. FINAL BOSS rushes the 2 on its right.')}</p>
       <p>Out by a live ball, a caught throw, or crossing the center or a side line. Clear the other team to win the game.</p>
@@ -1595,10 +1742,11 @@ class Game {
     if (this.phase === 'handshake') { if (!auto) this.finishHandshake(); return; }
     if (this.phase === 'title' || this.phase === 'result' || this.dead) return;
     this.paused = true; this.$.pause.textContent = 'Resume';
-    const timeout = !auto && !this.timeoutUsed;
+    const timeout = !auto && !this.timeoutUsed, menu = auto === 'menu';
     if (timeout) { this.timeoutUsed = true; this.timeoutT = RULES.timeout * 60; }
     else this.timeoutT = 0;
-    this.$.card.innerHTML = `<h2>${timeout ? 'TIME <em>OUT</em>' : 'PAUSED'}</h2><p class="fbg-to">${timeout ? 'Your one 30 second time out. Play resumes on its own at 0.' : (auto ? 'The game paused while it was off screen.' : 'Your time out is used, so this is a plain pause.')}</p><div class="fbg-row"><button class="fbg-btn fbg-res-go" type="button">RESUME</button><button class="fbg-btn ghost fbg-restart" type="button">RESTART</button><button class="fbg-btn ghost fbg-snd" type="button">${this.sfx.on ? 'Sound on' : 'Sound off'}</button></div>`;
+    this.$.card.innerHTML = `<h2>${timeout ? 'TIME <em>OUT</em>' : menu ? '<em>MENU</em>' : 'PAUSED'}</h2><p class="fbg-to">${timeout ? 'Your one 30 second time out. Play resumes on its own at 0.' : menu ? 'The clock is stopped. Your time out is saved for when you need it.' : (auto ? 'The game paused while it was off screen.' : 'Your time out is used, so this is a plain pause.')}</p>${this.settingsHTML()}<div class="fbg-row"><button class="fbg-btn fbg-res-go" type="button">RESUME</button><button class="fbg-btn ghost fbg-restart" type="button">RESTART</button><button class="fbg-btn ghost fbg-snd" type="button">${this.sfx.on ? 'Sound on' : 'Sound off'}</button></div>`;
+    this.syncMenu();
     this.$.card.querySelector('.fbg-res-go').addEventListener('click', () => this.resume());
     this.$.card.querySelector('.fbg-restart').addEventListener('click', () => this.start());
     this.$.card.querySelector('.fbg-snd').addEventListener('click', () => this.toggleSound());
@@ -1666,7 +1814,7 @@ class Game {
       <div class="fbg-res"><div><b>${this.points[0]} to ${this.points[1]}</b><span>Games</span></div><div><b>${this.score.toLocaleString()}</b><span>Score</span></div><div><b>${s.kos}</b><span>Outs you made</span></div>
       <div><b>${s.catches}</b><span>Catches</span></div><div><b>${s.backIn}</b><span>Teammates back in</span></div><div><b>${s.headshots}</b><span>Headshot calls</span></div></div>
       <p style="color:var(--fbg-ash)">Look: ${esc(this.look.name || '')}. Honor system, always.</p>
-      <div class="fbg-row"><button class="fbg-btn fbg-go" type="button">REMATCH</button><button class="fbg-btn ghost fbg-lineup-b" type="button">PICK A PLAYER</button></div>`;
+      <div class="fbg-row"><button class="fbg-btn fbg-go" type="button">REMATCH</button><button class="fbg-btn ghost fbg-lineup-b" type="button">PICK A PLAYER</button>${this.full ? '<button class="fbg-btn ghost" type="button" data-d="full">Back to the page</button>' : ''}</div>`;
     this.$.card.querySelector('.fbg-go').addEventListener('click', () => this.start());
     this.$.card.querySelector('.fbg-lineup-b').addEventListener('click', () => { this.resetMatch(); this.phase = 'title'; this.showTitle(); });
     this.$.ov.hidden = false;
@@ -1680,8 +1828,8 @@ class Game {
          <li data-n="2"><b>THROW</b>. Dash 4 to 7 steps first for a <b>power shot</b>.</li>
          <li data-n="3"><b>CATCH</b> right before impact (hold to duck). <b>JUMP</b>, <b>PASS</b>.</li>`
       : `<li data-n="1"><span class="fbg-kbd">Arrows</span> or <span class="fbg-kbd">WASD</span> move. Double-tap to <b>dash</b>. <span class="fbg-kbd">Q</span> switches player.</li>
-         <li data-n="2"><span class="fbg-kbd">J</span> or <span class="fbg-kbd">Space</span> throws. Throw on dash steps 4 to 7 for a <b>power shot</b>.</li>
-         <li data-n="3"><span class="fbg-kbd">K</span> catches or blocks right before impact (hold to duck). <span class="fbg-kbd">L</span> jumps, <span class="fbg-kbd">Shift</span> passes.</li>`;
+         <li data-n="2"><span class="fbg-kbd">J</span>${this.native ? ', <span class="fbg-kbd">Left click</span>' : ''} or <span class="fbg-kbd">Space</span> throws. Throw on dash steps 4 to 7 for a <b>power shot</b>.</li>
+         <li data-n="3"><span class="fbg-kbd">K</span>${this.native ? ' or <span class="fbg-kbd">Right click</span>' : ''} catches or blocks right before impact (hold to duck). <span class="fbg-kbd">L</span> jumps, <span class="fbg-kbd">Shift</span> passes.</li>`;
     const rules = [['rush', 'Rush right', 'grab only the balls on your right'], ['line', 'Clear the line', 'carry it past your attack line first'], ['catch', 'Catch = back in', 'thrower out, your next teammate returns'],
       ['head', 'No headshots', 'a standing headshot puts the thrower out'], ['clock', '15 s control', 'hold 3 of 5 balls and the clock runs'], ['back', 'Back line only', 'leave only out the back, 10 s to return']];
     this.$.card.innerHTML = `
@@ -1696,8 +1844,8 @@ class Game {
       </details>
       <ol class="fbg-how">${how}</ol>
       <div class="fbg-lineup"><h3>PICK YOUR PLAYER</h3><div class="fbg-pool"></div></div>
-      <div class="fbg-row"><button class="fbg-btn fbg-go" type="button">PLAY</button><button class="fbg-btn ghost fbg-snd" type="button">${this.sfx.on ? 'Sound on' : 'Sound off'}</button></div>`;
-    this.renderPicker();
+      ${this.settingsHTML()}<div class="fbg-row"><button class="fbg-btn fbg-go" type="button">PLAY</button><button class="fbg-btn ghost fbg-snd" type="button">${this.sfx.on ? 'Sound on' : 'Sound off'}</button></div>`;
+    this.renderPicker(); this.syncMenu();
     this.$.card.querySelector('.fbg-go').addEventListener('click', () => this.start());
     this.$.card.querySelector('.fbg-snd').addEventListener('click', () => this.toggleSound());
     this.$.ov.hidden = false;
@@ -2272,7 +2420,7 @@ class Game {
     this.hitstop = this.rm ? 4 : (power ? TUNE.hsPower : TUNE.hsKO);
     f.shake = this.hitstop + 6; f.shakeMax = f.shake;
     if (!this.rm) { if (power) this.shakeScreen(7, 16); else this.shakeScreen(4, 10); }
-    this.spark(B.x, B.h, B.z, power ? 2.6 : 1.8);
+    this.spark(B.x, B.h, B.z, power ? 2.6 : 1.8); this.impact(B.x, B.h, B.z, power, B.thrower ? B.thrower.team : 1 - f.team);
     if (!this.rm && power) this.flash(0.22, true);
     this.sfx.hit(power);
     const dir = Math.sign(B.vx) || -f.side;
@@ -2437,6 +2585,7 @@ class Game {
       const fv = a.facingVec(); B.x = v.x + fv[0] * 0.1; B.z = v.z + fv[1] * 0.1; B.h = v.y + 0.04;
     }
     m.position.set(B.x, B.h, B.z);
+    if (B.state === 'flight') { const H = B.hist, l = H[H.length - 1]; if (!l || Math.abs(l.x - B.x) + Math.abs(l.z - B.z) + Math.abs(l.h - B.h) > 0.01) { H.push({ x: B.x, h: B.h, z: B.z }); if (H.length > TRAIL_N) H.shift(); } }
     const sp = Math.hypot(B.vx, B.vz);
     B.spin += sp * DT * 2; m.rotation.set(B.spin, 0, B.spin * 0.3);
     let sx = 1, sy = 1;
@@ -2468,6 +2617,13 @@ class Game {
     if (this.$.g0.textContent !== String(this.points[0])) this.$.g0.textContent = this.points[0];
     if (this.$.g1.textContent !== String(this.points[1])) this.$.g1.textContent = this.points[1];
     const sc = this.score.toLocaleString(); if (this.$.score.textContent !== sc) this.$.score.textContent = sc;
+    if (this.native && this.$.keys) {
+      // on-screen key prompts light up with the moment: holding a ball lights Throw and Pass, an incoming throw lights Catch
+      const u = this.user, live = this.phase === 'play' && !this.paused && u && u.role === 'in';
+      if (this.frame % 6 === 0) this._kInc = !!(live && !u.held && this.incomingFor(u));
+      const st = (live ? 'on' : '') + (live && u.held ? ' hold' : '') + (live && this._kInc ? ' inc' : '');
+      if (this._kSt !== st) { this._kSt = st; this.$.keys.className = 'fbg-keys ' + st; }
+    }
   }
   render() {
     if (!this.renderer) return;
@@ -2478,14 +2634,22 @@ class Game {
       const fl = this.balls.filter(b => b.state === 'flight' && b.live); if (fl.length) focus = focus * 0.6 + fl[0].x * 0.4;
       tx = Math.max(-4.6, Math.min(4.6, focus));
     }
-    v.cx += (tx - v.cx) * 0.08;
-    let sx = 0, sy = 0;
-    if (this.shakeF > 0) { this.shakeF--; const k = this.shakeF / this.shakeMax; const amp = this.shakeAmp * k * k / this.pxPerUnit; sx = (Math.random() * 2 - 1) * amp; sy = (Math.random() * 2 - 1) * amp; if (this.shakeF <= 0) this.shakeAmp = 0; }
+    // render-time step: shake and punch decay in seconds, so they last the same on 60, 120 and 144 Hz screens
+    const nowMs = performance.now(), rf = Math.min(3, Math.max(0, (nowMs - (this._rt || nowMs)) / (1000 / 60))); this._rt = nowMs;
+    v.cx += (tx - v.cx) * (1 - Math.pow(0.92, rf));
+    let sx = 0, sy = 0, roll = 0;
+    if (this.shakeF > 0) {
+      // smooth, decaying trauma (k squared) from layered sines instead of per-frame white noise
+      this.shakeF = Math.max(0, this.shakeF - rf); const k = this.shakeF / this.shakeMax; const amp = this.shakeAmp * k * k / this.pxPerUnit; const q = nowMs / 1000 * 88;
+      sx = amp * (Math.sin(q + 0.3) * 0.65 + Math.sin(q * 2.37 + 1.7) * 0.35); sy = amp * (Math.sin(q * 1.13 + 2.1) * 0.65 + Math.sin(q * 2.71 + 0.4) * 0.35);
+      roll = amp * 0.02 * Math.sin(q * 0.91 + 4.0);
+      if (this.shakeF <= 0) this.shakeAmp = 0;
+    }
     // camera punch-in on catches and knockouts
     let d = v.d, tX = v.cx, tZ = v.tz;
-    if (v.punch > 0) { v.punch--; const t = v.punch / 26; const e = Math.sin(Math.min(1, (1 - t) * 3) * Math.PI / 2) * Math.min(1, t * 2.2); d *= 1 - 0.3 * e * Math.min(1.3, v.pk || 1); tX += (v.px - tX) * 0.35 * e; tZ += (v.pz - tZ) * 0.35 * e; }
+    if (v.punch > 0) { v.punch = Math.max(0, v.punch - rf); const t = v.punch / 26; const e = Math.sin(Math.min(1, (1 - t) * 3) * Math.PI / 2) * Math.min(1, t * 2.2); d *= 1 - 0.3 * e * Math.min(1.3, v.pk || 1); tX += (v.px - tX) * 0.35 * e; tZ += (v.pz - tZ) * 0.35 * e; }
     const T = new THREE.Vector3(tX + sx, sy, tZ);
-    this.camera.position.set(T.x, T.y + SINP * d, T.z + COSP * d); this.camera.lookAt(T);
+    this.camera.position.set(T.x, T.y + SINP * d, T.z + COSP * d); this.camera.lookAt(T); if (roll) this.camera.rotateZ(roll);
     if (this.backdrop) { this.backdrop.position.x = v.cx * 0.3; if (this.standsG) this.standsG.position.x = v.cx * 0.3; }
     this.crowdT.value = this.frame / 60; this.crowdTick();
     if (this.mode === 'vc') { const t = this.frame / 60; this.caustics[0].material.map.offset.set(t * 0.02, t * 0.013); this.caustics[1].material.map.offset.set(-t * 0.017, t * 0.021); }
@@ -2497,6 +2661,8 @@ class Game {
       if (this.hitstop <= 0 && a.shake > 0) a.shake--;
       const you = a === this.user && a.role === 'in' && this.phase !== 'title';
       const holder = !!a.held && a.role === 'in';
+      a.foot.visible = a.role === 'in' && a.root.visible && this.phase !== 'title' && !a.ring.visible;
+      if (a.foot.visible) { const s = 1.05 * a.scale; a.foot.scale.set(s, s * 0.62, 1); a.foot.position.set(a.x, 0.016, a.z); }
       a.ring.visible = (you || holder) && a.root.visible;
       if (a.ring.visible) {
         const pulse = you ? 1 + 0.08 * Math.sin(this.frame * 0.2) : 1;
@@ -2505,6 +2671,7 @@ class Game {
       }
     }
     this.updateStands();
+    this.updateTrails();
     this.renderFrame();
     this.updateTags();
     this.updateHUD();
@@ -2579,9 +2746,17 @@ class Game {
     const R = this.renderer, t = this.tier;
     const dev = window.devicePixelRatio || 1;
     // Bound pixel cost at large PC resolutions; quality adds detail, not unbounded supersampling.
-    const budget = t === 'ultra' ? 4e6 : t === 'high' ? 3e6 : t === 'med' ? 2e6 : 1.2e6;
-    const cap = t === 'ultra' ? 2 : t === 'high' ? 1.5 : t === 'med' ? 1.25 : 1;
-    const dpr = Math.min(dev, cap, Math.sqrt(budget / Math.max(1, (this.W || 1280) * (this.H || 720))));
+    let dpr;
+    if (this.native) {
+      // PC native: draw at the display's own pixel density (1080p, 1440p, Retina, 4K), never supersampled past it.
+      // Auto scales the render resolution (this.rs, 1 down to 0.6) before it gives up a tier; HUD text is DOM, so it stays sharp either way.
+      const budget = t === 'ultra' || t === 'high' ? 16e6 : t === 'med' ? 6e6 : 2.5e6;
+      dpr = Math.min(dev, Math.sqrt(budget / Math.max(1, (this.W || 1280) * (this.H || 720)))) * (this.qMode === 'auto' ? this.rs : 1);
+    } else {
+      const budget = t === 'ultra' ? 4e6 : t === 'high' ? 3e6 : t === 'med' ? 2e6 : 1.2e6;
+      const cap = t === 'ultra' ? 2 : t === 'high' ? 1.5 : t === 'med' ? 1.25 : 1;
+      dpr = Math.min(dev, cap, Math.sqrt(budget / Math.max(1, (this.W || 1280) * (this.H || 720))));
+    }
     R.setPixelRatio(dpr); if (this.W) R.setSize(this.W, this.H, false);
     R.shadowMap.enabled = t !== 'low';
     if (this.key) { const ms = t === 'ultra' || t === 'high' ? 2048 : 1024; if (this.key.shadow.mapSize.x !== ms) { this.key.shadow.mapSize.set(ms, ms); if (this.key.shadow.map) { this.key.shadow.map.dispose(); this.key.shadow.map = null; } } this.key.castShadow = t !== 'low'; }
@@ -2590,6 +2765,7 @@ class Game {
     if (this.glossMesh) this.glossMesh.visible = this.useRefl;
     if (this.W) this.sizePost();
     if (this.$.qual) this.$.qual.textContent = 'Quality: ' + (this.qMode === 'auto' ? 'Auto (' + t + ')' : t);
+    this.syncMenu();
     if (!fromResize && this.scene) this.scene.traverse(o => { if (o.material && o.material.needsUpdate !== undefined && o.receiveShadow) o.material.needsUpdate = true; });
   }
   applyEnv() {
@@ -2612,12 +2788,22 @@ class Game {
     if (this.floorMat && this.floorMat.map) { this.floorMat.map.anisotropy = this.ultra ? this.renderer.capabilities.getMaxAnisotropy() : 8; this.floorMat.map.needsUpdate = true; }
   }
   setQuality(q) {
-    this.qMode = q; if (q !== 'auto') this.tier = q; else { this.tier = matchMedia('(pointer: coarse)').matches ? 'med' : 'high'; this.qDrops = 0; this.qFrames = 0; }
+    this.qMode = q; if (q !== 'auto') this.tier = q; else { this.tier = matchMedia('(pointer: coarse)').matches ? 'med' : 'high'; this.qDrops = 0; this.qFrames = 0; this.rs = 1; this.dts.length = 0; }
     this.applyTier(false);
   }
   autoQuality(dt) {
     if (this.qMode !== 'auto' || this.phase === 'title' || this.paused) return;
     this.frameMs = this.frameMs * 0.95 + dt * 1000 * 0.05; this.qFrames++;
+    if (this.native) {
+      // judge 90-frame windows by their median, so one stall (a tab switch, a screenshot, a shader compile) cannot cost a tier
+      const D = this.dts; D.push(dt * 1000); if (D.length < 90) return;
+      const med = D.slice().sort((a, b) => a - b)[45]; D.length = 0;
+      if (med > 18.5) {
+        if (this.rs > 0.61) { this.rs = Math.max(0.6, +(this.rs - 0.1).toFixed(2)); this.applyTier(true); }
+        else if (this.tier !== 'low' && this.qDrops < 3) { this.tier = this.tier === 'ultra' ? 'high' : this.tier === 'high' ? 'med' : 'low'; this.qDrops++; this.rs = 0.8; this.applyTier(false); }
+      } else if (med < 12.5 && this.rs < 1) { this.rs = Math.min(1, +(this.rs + 0.1).toFixed(2)); this.applyTier(true); }
+      return;
+    }
     if (this.qFrames > 150 && this.frameMs > 21 && this.tier !== 'low' && this.qDrops < 3) {
       this.tier = this.tier === 'ultra' ? 'high' : this.tier === 'high' ? 'med' : 'low'; this.qDrops++; this.qFrames = 0; this.frameMs = 16; this.applyTier(false);
     }
@@ -2673,9 +2859,9 @@ class Game {
     cp4.multiplyScalar(2.0 / cp4.dot(q));
     pm.elements[2] = cp4.x; pm.elements[6] = cp4.y; pm.elements[10] = cp4.z + 1.0; pm.elements[14] = cp4.w;
     this.reflMatrix.set(0.5, 0, 0, 0.5, 0, 0.5, 0, 0.5, 0, 0, 0.5, 0.5, 0, 0, 0, 1).multiply(rc.projectionMatrix).multiply(rc.matrixWorldInverse);
-    const hide = [this.glossMesh, this.floor, this.court, this.glowPlane, ...this.pools, ...this.streaks, ...this.caustics];
+    const hide = [this.glossMesh, this.floor, this.court, this.glowPlane, ...this.pools, ...this.streaks, ...this.caustics, ...this.decals.map(d => d.m), ...this.balls.map(b => b.trail)];
     const vis = hide.map(o => o.visible); hide.forEach(o => o.visible = false);
-    const shadows = []; for (const a of this.all) { shadows.push(a.shadow.visible); a.shadow.visible = false; a.ring && (a.ring.visible = false); }
+    const shadows = []; for (const a of this.all) { shadows.push(a.shadow.visible); a.shadow.visible = false; a.ring && (a.ring.visible = false); a.foot && (a.foot.visible = false); }
     const bs = this.balls ? this.balls.map(b => b.shadow.visible) : []; if (this.balls) this.balls.forEach(b => b.shadow.visible = false);
     const sm = R.shadowMap.enabled; R.shadowMap.enabled = false;
     R.setRenderTarget(this.reflRT); R.clear(); R.render(this.scene, rc); R.setRenderTarget(null);
@@ -2735,7 +2921,7 @@ class Game {
         P.blur.uniforms.t.value = P.a.texture; P.blur.uniforms.dir.value.set(tw * (1 + i), 0); this.pass(P.blur, P.b);
         P.blur.uniforms.t.value = P.b.texture; P.blur.uniforms.dir.value.set(0, th * (1 + i)); this.pass(P.blur, P.a);
       }
-      P.comp.uniforms.t.value = P.main.texture; P.comp.uniforms.bl.value = P.a.texture; P.comp.uniforms.k.value = (this.mode === 'vc' ? 0.25 : 0.10) * (this.ultra ? 0.8 : 1); P.comp.uniforms.grade.value = this.ultra ? 1 : 0; P.comp.uniforms.time.value = (performance.now() % 100000) / 1000; P.comp.uniforms.res.value.set(P.main.width, P.main.height);
+      P.comp.uniforms.t.value = P.main.texture; P.comp.uniforms.bl.value = P.a.texture; P.comp.uniforms.k.value = (this.mode === 'vc' ? 0.25 : 0.10) * (this.ultra ? 0.8 : 1); P.comp.uniforms.grade.value = (this.ultra || this.native) ? 1 : 0; P.comp.uniforms.time.value = (performance.now() % 100000) / 1000; P.comp.uniforms.res.value.set(P.main.width, P.main.height);
       this.pass(P.comp, null);
     } else { R.setRenderTarget(null); R.render(this.scene, this.camera); }
   }
@@ -2760,6 +2946,7 @@ class Game {
   punch(x, z, strength = 1) { if (this.rm) return; const v = this.view; v.punch = Math.max(v.punch, 26); v.px = x; v.pz = z; v.pk = strength; }
   catchFlash(a) {
     const y = a.h + 1.3 * a.scale;
+    if (!this.rm) this.decal(a.x, a.z, 0.5, 3.6, 18, a.team === 1 ? '#a6f23a' : '#ffc83d', 0.85);
     this.spawnSprite({ tex: this.tex.speed, x: a.x, y, z: a.z, s: 1.2, s1: 4.2, life: 16, color: '#ffd23a', alpha: 0.95, rot: Math.random() * 6, fade: 1.2 });
     this.spawnSprite({ tex: this.tex.star, x: a.x, y, z: a.z, s: 0.6, s1: 2.0, life: 12, ease: 'pop', normal: true, fade: 3 });
     this.spawnSprite({ tex: this.tex.glow, x: a.x, y, z: a.z, s: 2.4, s1: 3.6, life: 12, color: '#ffc83d', alpha: 0.9 });
@@ -2771,7 +2958,7 @@ class Game {
     this.$.world.appendChild(el); setTimeout(() => el.remove(), dur * 1000 + 60);
     this.say(text + (sub ? '. ' + sub : ''));
   }
-  destroy() { cancelAnimationFrame(this.raf); window.removeEventListener('keydown', this.onKeyDown); window.removeEventListener('keyup', this.onKeyUp); this.ro && this.ro.disconnect(); this.io && this.io.disconnect(); this.renderer && this.renderer.dispose(); this.root.remove(); }
+  destroy() { if (this.full) this.setFull(false); cancelAnimationFrame(this.raf); window.removeEventListener('keydown', this.onKeyDown); window.removeEventListener('keyup', this.onKeyUp); window.removeEventListener('mouseup', this.onMouseUp); document.removeEventListener('fullscreenchange', this.onFs); document.removeEventListener('webkitfullscreenchange', this.onFs); this.ro && this.ro.disconnect(); this.io && this.io.disconnect(); this.renderer && this.renderer.dispose(); this.root.remove(); }
 }
 
 function drawPalm(c, w, h) {

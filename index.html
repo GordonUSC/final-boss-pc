@@ -706,7 +706,7 @@ body[data-mode="vc"] .alan .plaque b{font:700 20px/1 'Teko',sans-serif;color:#ff
   <div class="playhead head">
     <h2 id="t-play" data-vc="Boss Rush">BOSS RUSH</h2>
     <p>Catch to put the thrower out. Throw to win the round. Your kit pick dresses the court.</p>
-    <p class="pcnote"><strong>PC Edition.</strong> Arena lighting, detailed jerseys and crisp ball markings. Built for a desktop or laptop with a keyboard. Auto quality adapts to your machine; choose Ultra for extra lighting detail or a lower setting for lighter rendering.</p>
+    <p class="pcnote"><strong>PC Edition.</strong> Plays full window at your screen's native resolution, keyboard and mouse. Press <b>F</b> for fullscreen and <b>M</b> for the menu, where Auto, High and Ultra quality live. Auto holds 60 fps by trimming render scale before it trims detail.</p>
     <p class="pcnote pc-phone">On a phone? <a href="https://gordonusc.github.io/final-boss/">Play the regular edition</a>, tuned for mobile.</p>
   </div>
   <div class="gamemount" id="fbgame"><p class="loading">Loading the arena...</p></div>
@@ -1007,7 +1007,7 @@ $('alan').addEventListener('click',e=>{
 /* ---------- global keys: arrows and 1 to 0 switch looks ---------- */
 addEventListener('keydown',e=>{
   if(e.metaKey||e.ctrlKey||e.altKey||e.defaultPrevented)return;
-  const t=e.target; if(t&&(t.closest('input,textarea,select,[contenteditable],#grid9,#play,dialog')))return;
+  const t=e.target; if(t&&(t.closest('input,textarea,select,[contenteditable],#grid9,#play,.fbg-root,dialog')))return;
   if(fbRunning())return;
   if(e.key==='ArrowRight'||e.key==='ArrowLeft'){e.preventDefault();step(e.key==='ArrowRight'?1:-1)}
   else if(/^[0-9]$/.test(e.key)){const i=(+e.key+9)%10, l=byMode(mode)[i]; if(l){setLook(l.id)}}
@@ -1072,9 +1072,9 @@ function startFallback(){
   if(fallbackOn)return; fallbackOn=true; $('fbgame').hidden=true; $('fallback').hidden=false; fb=bossRush();
 }
 (function loadGame(){
-  const mount=$('fbgame'), s=document.createElement('script'); s.src='game/game.bundle.js?v=pc-sportsmanship-20261006';
+  const mount=$('fbgame'), s=document.createElement('script'); s.src='game/game.bundle.js?v=pc-native-20261019';
   setTimeout(()=>{ if(!gameMounted&&!fallbackOn) startFallback() },9000);
-  s.onload=()=>{ if(window.FBGame&&typeof FBGame.mount==='function'){ try{ mount.innerHTML=''; if(fallbackOn)return; FBGame.mount(mount,{look:payload(look),mode,control:(cards.find(c=>c.dataset.id===chosen)||{dataset:{}}).dataset.name||'BELLAMY'}); gameMounted=true }catch(e){ console.warn('FBGame.mount failed, using the built-in game',e); startFallback() } } else startFallback() };
+  s.onload=()=>{ if(window.FBGame&&typeof FBGame.mount==='function'){ try{ mount.innerHTML=''; if(fallbackOn)return; FBGame.mount(mount,{native:true,look:payload(look),mode,control:(cards.find(c=>c.dataset.id===chosen)||{dataset:{}}).dataset.name||'BELLAMY'}); gameMounted=true }catch(e){ console.warn('FBGame.mount failed, using the built-in game',e); startFallback() } } else startFallback() };
   s.onerror=startFallback;
   document.body.appendChild(s);
 })();

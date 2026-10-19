@@ -345,3 +345,45 @@
 .fbg-root.no-webgl .fbg-poster p{bottom:68px;background:#0c0612ed}
 .fbg-reload{position:absolute;bottom:16px;left:16px}
 .fbg-root.no-webgl .fbg-hud,.fbg-root.no-webgl .fbg-btns,.fbg-root.no-webgl .fbg-touch,.fbg-root.no-webgl .fbg-ov,.fbg-root.no-webgl .fbg-vs,.fbg-root.no-webgl .fbg-world{display:none!important}
+
+/* ---------- PC native (opt-in via mount({native:true}) with a fine pointer) ---------- */
+html.fbg-lock, html.fbg-lock body{overflow:hidden}
+.fbg-root.is-full{position:fixed; inset:0; z-index:2147483000; width:100vw; height:100vh; height:100dvh; display:flex; flex-direction:column; background:#07030b}
+.fbg-root.is-full .fbg-stage{flex:1 1 auto; width:100%; height:auto; min-height:0; aspect-ratio:auto}
+.fbg-root:fullscreen{width:100vw; height:100vh}
+.fbg-root:-webkit-full-screen{width:100vw; height:100vh}
+/* desktop HUD type scale: --fbg-z is set from the stage height, DOM text re-rasterizes crisp at every size */
+.fbg-root.is-full :is(.fbg-hud,.fbg-btns,.fbg-meter,.fbg-crowd,.fbg-ctl,.fbg-bossbar,.fbg-keys,.fbg-card,.fbg-vs > *,.fbg-tag > *){zoom:var(--fbg-z,1)}
+.fbg-root.is-full .fbg-pop{font-size:calc(44px * var(--fbg-z,1)); -webkit-text-stroke-width:calc(2px * var(--fbg-z,1))}
+.fbg-root.is-full .fbg-pop.big{font-size:calc(84px * var(--fbg-z,1))}
+.fbg-root.is-full .fbg-pop.small{font-size:calc(30px * var(--fbg-z,1))}
+.fbg-root.is-full .fbg-brush b{font-size:calc(min(9vw,120px) * var(--fbg-z,1) * .78)}
+.fbg-root.is-full .fbg-brush span{font-size:calc(min(2.2vw,28px) * var(--fbg-z,1) * .78)}
+.fbg-root.is-full .fbg-ov{padding:calc(16px * var(--fbg-z,1))}
+.fbg-root.is-full .fbg-card{max-height:calc(100% / var(--fbg-z,1))}
+.fbg-ph{width:100%; background:#07030b}
+/* keyboard and mouse prompts, lit by the moment */
+.fbg-keys{display:none; position:absolute; left:50%; bottom:58px; transform:translateX(-50%); z-index:3; pointer-events:none; gap:14px; white-space:nowrap;
+  font:600 12px/1 var(--fbg-ui); color:var(--fbg-ash); padding:5px 10px; background:rgba(8,3,14,.55); opacity:.0; transition:opacity .3s}
+.fbg-root.is-native .fbg-keys{display:flex}
+.fbg-keys.on{opacity:.82}
+.fbg-keys span{display:flex; align-items:center; gap:4px; transition:color .12s}
+.fbg-keys i{font-style:normal; font:700 11px/1 var(--fbg-ui); color:var(--fbg-bone); border:1.5px solid rgba(245,239,228,.55); border-bottom-width:3px; padding:2px 5px 1px; min-width:18px; text-align:center; border-radius:3px; background:rgba(255,255,255,.04)}
+.fbg-keys i.m{border-color:rgba(185,174,203,.45); color:var(--fbg-ash)}
+.fbg-keys.hold .k-throw, .fbg-keys.hold .k-pass{color:var(--fbg-gold)}
+.fbg-keys.hold .k-throw i, .fbg-keys.hold .k-pass i{border-color:var(--fbg-gold); color:var(--fbg-gold)}
+.fbg-keys.inc .k-catch{color:#7ff3ff}
+.fbg-keys.inc .k-catch i{border-color:#7ff3ff; color:#7ff3ff; box-shadow:0 0 10px rgba(127,243,255,.6)}
+.fbg-root.rm .fbg-keys.inc .k-catch i{box-shadow:none}
+.fbg-btn .fbg-kbd{border-color:currentColor; font-size:11px; line-height:15px; margin-left:4px}
+/* settings block in the title, menu and pause cards */
+.fbg-set{display:grid; gap:8px; margin:10px 0 4px}
+.fbg-seg{display:flex; flex-wrap:wrap; align-items:center; gap:6px}
+.fbg-seg > span{font:700 18px/1 var(--fbg-disp); letter-spacing:.06em; color:var(--fbg-ash); min-width:76px}
+.fbg-sb{font:600 13px/1 var(--fbg-ui); color:var(--fbg-bone); background:#120818; border:1.5px solid rgba(245,239,228,.45); padding:8px 12px; min-height:34px; cursor:pointer}
+.fbg-sb[aria-pressed="true"]{background:var(--fbg-gold); color:#120818; border-color:var(--fbg-gold)}
+.fbg-sb:hover{border-color:var(--fbg-bone)}
+.fbg-sb:focus-visible{outline:3px solid var(--fbg-bone); outline-offset:2px}
+.fbg-sb .fbg-kbd{border-color:currentColor; font-size:11px; line-height:14px}
+.fbg-setnote{margin:0; font-size:12px; color:var(--fbg-ash)}
+.fbg-root.is-native .fbg-btn{cursor:pointer}
