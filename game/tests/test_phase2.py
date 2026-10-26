@@ -40,7 +40,7 @@ JS = r"""async () => {
   const m = g.inPlayers(0).filter(a => a !== g.user)[0]; m.role = 'gone'; g.queue[0].push(m);
   const vic = g.inPlayers(0)[0], sav = g.inPlayers(0)[1], B3 = g.balls[2]; B3.state = 'flight'; B3.team = 1; B3.live = true; B3.vx = 2; B3.vz = 0; B3.vh = 3; B3.h = 1.3; B3.thrower = g.inPlayers(1)[0];
   g.popUp(vic, B3, 'hit'); g.doCatch(sav, B3, true);
-  await new Promise(r => setTimeout(r, 2600));
+  for (let w = 0; w < 40 && brushes.length < 3; w++) await new Promise(r => setTimeout(r, 200));   // the 3 steps are 0.72 s apart; poll so a loaded machine does not flake
   out.saveBrushes = brushes; out.saveOneSequence = brushes.length === 3 && brushes[0] === 'SAVE!' && /OUT$/.test(brushes[1]) && brushes[2] === 'BACK IN';
   out.liveBrushes = g.root.querySelectorAll('.fbg-brush:not(.out)').length;
   // 5: weekend bookkeeping
