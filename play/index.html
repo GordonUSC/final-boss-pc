@@ -49,7 +49,7 @@
 <main id="game" aria-label="Boss Rush">
   <noscript><div class="nojs"><h1>BOSS RUSH</h1>
     <p>Turn on JavaScript to play Boss Rush, the FINAL BOSS dodgeball game.</p>
-    <p>Sin City style: 8 on 8, five balls, no sting. Rush only the balls on your right, clear your attack line, then throw. Catch a throw and the thrower is out while your next teammate comes back in. Hold 3 of the 5 balls and a 15 second clock starts: 3, 2, 1, then every ball goes to the other side.</p>
+    <p>Sin City style: 8 on 8, five balls, no sting. Rush only the balls on your right, clear your attack line, then throw. Catch a throw and the thrower is out while your next teammate comes back in. 3 or more balls on your side, held or loose, starts a 15 second clock. Drop to 2 and it resets. At 0, all 5 balls go over: 3, 2, 1, then every ball goes to the other side.</p>
     <p>Also playable: the <a href="https://gordonusc.github.io/final-boss/play/" style="color:var(--gold)">Mobile edition</a>. The team file is at <a href="../" style="color:var(--gold)">the FINAL BOSS site</a>.</p></div></noscript>
   <div class="boot" id="boot"><h1>BOSS RUSH</h1><p id="boot-p">Loading the arena...</p></div>
 </main>
@@ -57,7 +57,7 @@
 <script>
 (function () {
   var boot = document.getElementById('boot'), home = document.getElementById('home'), mount = document.getElementById('game');
-  var s = document.createElement('script'); s.src = '../game/game.bundle.js?v=pc-ctlside-20261026';
+  var s = document.createElement('script'); s.src = '../game/game.bundle.js?v=pc-phase2-20261026';
   var fail = function (msg) { document.getElementById('boot-p').textContent = msg; };
   var t = setTimeout(function () { if (!window.FBGame) fail('The arena is taking a while. Check your connection, then reload.'); }, 12000);
   s.onerror = function () { clearTimeout(t); fail('The arena could not load. Reload to try again.'); };

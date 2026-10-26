@@ -585,3 +585,141 @@ html.fbg-lock, html.fbg-lock body{overflow:hidden}
 .fbg-root.is-mobile .fbg-btns .fbg-pause{font-size:0; color:transparent}
 /* phones: the title card keeps PLAY in view while the rules scroll */
 .fbg-root.is-mobile .fbg-card > .fbg-row{position:sticky; bottom:-12px; z-index:2; margin-left:-12px; margin-right:-12px; padding:10px 12px; background:var(--fbg-bb); box-shadow:0 -8px 16px rgba(14,11,22,.9)}
+
+/* ===================== Phase 2 (2026-10-26): weekend board, fact cards, result chip, callouts, colorblind-safe THROW ===================== */
+/* every team cue keeps a SHAPE as well as a color: --fbg-lime and --sh-pixel follow the current opponent (signature color and emblem) */
+.fbg-root{--fbg-oppdk:#17131f; --fbg-bb:#0E0B16; --fbg-cream:#F6E7C8; --fbg-pg:#FFC93C; --fbg-hr:#E8173A}
+.fbg-games .fbg-g1{background:var(--fbg-oppdk)}
+.fbg-team.r .fbg-live i{background:var(--fbg-lime); box-shadow:0 0 6px var(--fbg-lime)}
+.fbg-bossbar span{color:var(--fbg-lime)}
+
+/* callouts: flat brand color with a Boss Black keyline (no gradient text), and a newer callout replaces the one on screen */
+.fbg-brush b{background:none; -webkit-background-clip:border-box; background-clip:border-box; color:var(--fbg-pg); -webkit-text-fill-color:currentColor}
+.fbg-brush.lime b{background:none; color:var(--fbg-lime)}
+.fbg-brush.red b{background:none; color:#ff5a3a}
+.fbg-brush.gold b{background:none; color:var(--fbg-pg)}
+.fbg-brush span{background:var(--fbg-bb); color:var(--fbg-cream); box-shadow:inset 0 -3px 0 var(--fbg-pg), 0 4px 0 rgba(0,0,0,.35)}
+.fbg-brush.lime span{background:var(--fbg-bb); color:var(--fbg-cream); box-shadow:inset 0 -3px 0 var(--fbg-lime)}
+.fbg-brush.red span{background:var(--fbg-bb); color:var(--fbg-cream); box-shadow:inset 0 -3px 0 var(--fbg-hr)}
+.fbg-brush.out{animation:fbg-brush-out .16s ease-in forwards}
+@keyframes fbg-brush-out{to{opacity:0; transform:translate(-50%,-70%) scale(.92)}}
+
+/* THROW keeps its pop for red-green colorblind players: a white ring and a target glyph (shape, not just red); CATCH gets open hands */
+.fbg-root.is-mobile .fbg-tb.throw{box-shadow:inset 0 0 0 4px #fff, 0 0 0 3px var(--fbg-bb), 0 4px 0 #7a0b1f; flex-direction:column; gap:2px}
+.fbg-root.is-mobile .fbg-tb.throw::before{content:''; width:26px; height:26px; background:#fff; -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill-rule='evenodd' d='M12 1a11 11 0 1 1 0 22 11 11 0 0 1 0-22zm0 3a8 8 0 1 0 0 16 8 8 0 0 0 0-16zm0 4a4 4 0 1 1 0 8 4 4 0 0 1 0-8z'/%3E%3C/svg%3E") center/contain no-repeat; mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill-rule='evenodd' d='M12 1a11 11 0 1 1 0 22 11 11 0 0 1 0-22zm0 3a8 8 0 1 0 0 16 8 8 0 0 0 0-16zm0 4a4 4 0 1 1 0 8 4 4 0 0 1 0-8z'/%3E%3C/svg%3E") center/contain no-repeat}
+.fbg-root.is-mobile .fbg-tb.catch{flex-direction:column; gap:2px}
+.fbg-root.is-mobile .fbg-tb.catch::before{content:''; width:24px; height:18px; background:var(--fbg-bb); -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 18'%3E%3Cpath d='M1 17C1 8 5 2 12 2s11 6 11 15h-4c0-6-3-11-7-11S5 11 5 17z'/%3E%3C/svg%3E") center/contain no-repeat; mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 18'%3E%3Cpath d='M1 17C1 8 5 2 12 2s11 6 11 15h-4c0-6-3-11-7-11S5 11 5 17z'/%3E%3C/svg%3E") center/contain no-repeat}
+.fbg-tb.throw{box-shadow:inset 0 0 0 3px #fff}
+
+/* title: two ways in, quick match first */
+.fbg-btn.fbg-wkb{background:var(--fbg-bb); color:var(--fbg-pg); box-shadow:inset 0 0 0 2px var(--fbg-pg)}
+.fbg-wkp{font-size:13px; color:var(--fbg-ash); margin:8px 0 0 !important}
+.fbg-wk-res{color:var(--fbg-pg); font-weight:700}
+
+/* ---- the weekend board ---- */
+.fbg-card.is-wk{max-width:1060px; background:var(--fbg-bb); border:0; box-shadow:inset 0 0 0 2px var(--fbg-pg); padding:0}
+.fbg-wk{position:relative}
+.fbg-wk-h{position:relative; padding:18px 20px 14px; background:linear-gradient(90deg,rgba(14,11,22,.96) 40%,rgba(14,11,22,.35)), var(--wk-art) 70% 40%/cover no-repeat; border-bottom:2px solid var(--fbg-pg)}
+.fbg-wk-h h2{margin:0 0 4px}
+.fbg-wk-h p{margin:0; max-width:46ch; color:var(--fbg-cream)}
+.fbg-wk-next{display:grid; grid-template-columns:132px 1fr; gap:16px; padding:16px 20px 4px; align-items:start}
+.fbg-wk-crest img, .fbg-wk-crest .fbg-wk-svg svg{width:132px; height:132px; object-fit:contain; display:block}
+.fbg-wk-nt small{display:block; font:700 13px/1.2 var(--fbg-ui); color:var(--fbg-pg); letter-spacing:.04em}
+.fbg-wk-nt h3{font:900 30px/1 Archivo,'Arial Black',sans-serif; font-stretch:125%; margin:4px 0 6px; color:var(--fbg-cream)}
+.fbg-wk-nt h3 em{font-style:normal; color:var(--fbg-pg)}
+.fbg-wk-nt p{margin:0 0 6px; color:var(--fbg-cream)}
+.fbg-wk-scout b{color:var(--fbg-pg); margin-right:6px}
+.fbg-wk-ab summary{cursor:pointer; color:var(--fbg-pg); font-weight:700; margin:4px 0}
+.fbg-wk-ab ul{margin:4px 0 0; padding:0; list-style:none; display:grid; gap:6px}
+.fbg-wk-ab li{background:#18141F; padding:8px 10px; box-shadow:inset 3px 0 0 var(--fbg-pg); display:grid; gap:2px}
+.fbg-wk-ab li b{color:var(--fbg-cream)} .fbg-wk-ab li span{font-size:13px; color:#d8cdb6}
+.fbg-wk-row{padding:6px 20px 12px; margin-top:0}
+.fbg-wk-days{display:grid; grid-template-columns:1.25fr 1fr; gap:18px; padding:12px 20px 18px; border-top:1px solid #2A2233}
+.fbg-wk-days h3{font:900 15px/1 Archivo,'Arial Black',sans-serif; font-stretch:125%; color:var(--fbg-pg); margin:0 0 10px; letter-spacing:.02em}
+.fbg-wk-pools{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+.fbg-wk-pool h4{margin:0 0 4px; font:700 13px/1 var(--fbg-ui); color:var(--fbg-ash)}
+.fbg-wk-pool ol{margin:0; padding:0; list-style:none}
+.fbg-wk-pool li, .fbg-wk-path li{display:grid; grid-template-columns:22px 1fr auto; gap:6px; align-items:center; padding:3px 6px; font-size:13px; color:var(--fbg-cream)}
+.fbg-wk-pool li.adv{background:#1d1826}
+.fbg-wk-pool li.fb{box-shadow:inset 3px 0 0 var(--fbg-pg)} .fbg-wk-pool li.fb b{color:var(--fbg-pg)}
+.fbg-wk-pool li i{font-style:normal; color:var(--fbg-ash); font-variant-numeric:tabular-nums}
+.fbg-wk-cr svg{width:22px; height:22px; display:block}
+.fbg-wk-path{margin:0; padding:0; list-style:none; display:grid; gap:4px}
+.fbg-wk-path li{grid-template-columns:22px 1fr auto; background:#18141F; padding:6px 8px; position:relative}
+.fbg-wk-path li small{grid-column:1 / -1; font-size:11px; color:var(--fbg-ash); letter-spacing:.04em}
+.fbg-wk-path li em{font-style:normal; font-weight:700; font-size:12px}
+.fbg-wk-path li.won em{color:var(--fbg-pg)} .fbg-wk-path li.lost em{color:#ff7a6a} .fbg-wk-path li.next{box-shadow:inset 0 0 0 2px var(--fbg-pg)} .fbg-wk-path li.next em{color:var(--fbg-pg)}
+.fbg-wk-path li.won em::before{content:'\2713 '} .fbg-wk-path li.lost em::before{content:'\2715 '} .fbg-wk-path li.next em::before{content:'\25B6 '}
+.fbg-wk-note, .fbg-wk-cb{font-size:12px; color:var(--fbg-ash); margin:8px 0 0 !important}
+.fbg-wk-cb{color:var(--fbg-cream)}
+.fbg-wk-reset{padding:0 20px 16px; margin:0}
+.fbg-wk-next.champ h3{color:var(--fbg-pg)}
+.fbg-root.is-narrow .fbg-wk-days, .fbg-root.is-mobile .fbg-wk-days{grid-template-columns:1fr}
+.fbg-root.is-narrow .fbg-wk-next{grid-template-columns:72px 1fr; gap:10px; padding:12px 12px 2px}
+.fbg-root.is-narrow .fbg-wk-crest img, .fbg-root.is-narrow .fbg-wk-crest .fbg-wk-svg svg{width:72px; height:72px}
+.fbg-root.is-narrow .fbg-wk-nt h3{font-size:20px}
+.fbg-root.is-narrow .fbg-wk-h{padding:12px} .fbg-root.is-narrow .fbg-wk-row, .fbg-root.is-narrow .fbg-wk-days{padding-left:12px; padding-right:12px}
+.fbg-root.is-mobile.is-wide .fbg-card.is-wk{max-height:100%}
+.fbg-root.is-mobile.is-wide .fbg-wk-h{padding:8px 14px} .fbg-root.is-mobile.is-wide .fbg-wk-h p{display:none}
+.fbg-root.is-mobile.is-wide .fbg-wk-next{grid-template-columns:76px 1fr; padding:10px 14px 0; gap:10px}
+.fbg-root.is-mobile.is-wide .fbg-wk-crest img, .fbg-root.is-mobile.is-wide .fbg-wk-crest .fbg-wk-svg svg{width:76px; height:76px}
+.fbg-root.is-mobile.is-wide .fbg-wk-nt h3{font-size:20px}
+.fbg-root.is-mobile.is-wide .fbg-wk-row{position:sticky; bottom:0; z-index:2; background:var(--fbg-bb); padding:8px 14px}
+.fbg-root.is-full .fbg-card.is-wk{max-width:calc(1060px * var(--fbg-z,1) * .8)}
+
+/* ---- the result chip ---- */
+.fbg-resgrid{display:grid; grid-template-columns:minmax(150px,240px) 1fr; gap:14px; align-items:center}
+.fbg-chipimg{width:100%; height:auto; display:block; background:var(--fbg-bb); box-shadow:0 0 0 2px var(--fbg-pg)}
+.fbg-chip-act{display:flex; gap:8px; margin-top:8px; flex-wrap:wrap}
+.fbg-chip-act .fbg-btn{text-decoration:none; display:inline-flex; align-items:center}
+.fbg-resgrid .fbg-res{grid-template-columns:repeat(2,1fr); margin:0}
+.fbg-root.is-narrow .fbg-resgrid{grid-template-columns:1fr} .fbg-root.is-narrow .fbg-chipimg{max-width:240px}
+.fbg-root.is-mobile.is-wide .fbg-resgrid{grid-template-columns:150px 1fr}
+
+/* ---- Fun Fabulous Facts (card.css from fabulous-facts-20261026/ship, scoped to the game) ---- */
+.fbg-root .ff-overlay{position:absolute; inset:0; display:grid; place-items:center; z-index:7; cursor:pointer}
+.fbg-root .ff-scrim{position:absolute; inset:0; background:rgba(14,11,22,0.72)}
+.fbg-root .ff-skip{position:absolute; left:50%; transform:translateX(-50%); bottom:10px; background:#0E0B16; padding:6px 10px; margin:0; font:600 15px/1 Archivo,sans-serif; color:#F6E7C8; opacity:.85}
+.fbg-root .ff{--u:1px; position:relative; overflow:hidden; background:transparent; color:#F6E7C8; width:calc(1920*var(--u)); height:calc(1080*var(--u)); font-family:Archivo,system-ui,sans-serif; font-stretch:100%; transform-origin:50% 50%; will-change:transform,opacity; user-select:none}
+.fbg-root .ff-frame{position:absolute; inset:0; width:100%; height:100%}
+.fbg-root .ff-frame .edge{fill:none; stroke:#FFC93C; stroke-width:6}
+.fbg-root .ff-frame .band{fill:none; stroke:#2A2233; stroke-width:30}
+.fbg-root .ff-frame .inner{fill:#18141F}
+.fbg-root .ff-frame .b{fill:#FFC93C} .fbg-root .ff-frame .b.alt{fill:#F6E7C8}
+.fbg-root .ff-frame .bulbs.chase .b{fill:#F6E7C8} .fbg-root .ff-frame .bulbs.chase .b.alt{fill:#FFC93C}
+.fbg-root .ff-label{display:flex; align-items:center; gap:calc(18*var(--u)); font-family:Yellowtail,cursive; color:#FFC93C; font-size:calc(78*var(--u)); line-height:1; margin:0 0 calc(10*var(--u))}
+.fbg-root .ff-label svg{width:calc(64*var(--u)); height:calc(64*var(--u)); flex:none}
+.fbg-root .ff-body{font-weight:600; font-size:calc(54*var(--u)); line-height:1.2; margin:0; text-wrap:pretty; letter-spacing:-0.005em}
+.fbg-root .ff-by{font-weight:500; font-size:calc(34*var(--u)); color:#CBBFA8; margin:calc(26*var(--u)) 0 0}
+.fbg-root .ff-col{position:absolute; top:0; bottom:0; display:flex; flex-direction:column; justify-content:center}
+.fbg-root .ff-portal{position:absolute; border-radius:50%; overflow:hidden; background:#110D1B; transform-origin:50% 50%; box-shadow:0 0 0 calc(10*var(--u)) #FFC93C, 0 0 0 calc(16*var(--u)) #0E0B16, 0 0 0 calc(20*var(--u)) #F6E7C8}
+.fbg-root .ff-portal img{width:100%; height:100%; display:block; object-fit:cover; transform-origin:50% 100%}
+.fbg-root .L-big .ff-col{left:calc(150*var(--u)); width:calc(1000*var(--u))}
+.fbg-root .L-big .ff-num{display:block; width:100%; height:calc(380*var(--u)); overflow:visible; margin:calc(-6*var(--u)) 0 calc(18*var(--u))}
+.fbg-root .ff-num text{font-family:Archivo; font-weight:900; font-stretch:125%; fill:#FFC93C; stroke:#0E0B16; paint-order:stroke; font-variant-numeric:tabular-nums; font-feature-settings:"tnum" 1}
+.fbg-root .L-big .ff-portal{left:calc(1210*var(--u)); top:calc(220*var(--u)); width:calc(640*var(--u)); height:calc(640*var(--u))}
+.fbg-root .L-quote .ff-portal{left:calc(150*var(--u)); top:calc(250*var(--u)); width:calc(580*var(--u)); height:calc(580*var(--u))}
+.fbg-root .L-quote .ff-col{left:calc(860*var(--u)); width:calc(920*var(--u))}
+.fbg-root .ff-qmark{width:calc(104*var(--u)); height:calc(80*var(--u)); margin:calc(14*var(--u)) 0 calc(10*var(--u)); fill:#FFC93C}
+.fbg-root .ff-quote{font-weight:800; font-stretch:112%; font-size:calc(78*var(--u)); line-height:1.08; margin:0 0 calc(28*var(--u)); color:#F6E7C8; text-wrap:balance; letter-spacing:-0.01em}
+.fbg-root .L-quote .ff-body{color:#FFC93C; font-size:calc(48*var(--u))}
+.fbg-root .L-dyk .ff-col{left:calc(150*var(--u)); width:calc(1020*var(--u))}
+.fbg-root .ff-head{font-weight:900; font-stretch:125%; font-size:calc(118*var(--u)); line-height:0.95; color:#FFC93C; margin:0 0 calc(30*var(--u)); letter-spacing:-0.01em; text-wrap:balance}
+.fbg-root .L-dyk .ff-portal{left:calc(1200*var(--u)); top:calc(250*var(--u)); width:calc(620*var(--u)); height:calc(620*var(--u))}
+.fbg-root .m .ff-body{font-size:calc(64*var(--u))} .fbg-root .m .ff-label{font-size:calc(92*var(--u))} .fbg-root .m .ff-by{font-size:calc(42*var(--u))}
+.fbg-root .m.L-big .ff-col{width:calc(1080*var(--u))}
+.fbg-root .m.L-big .ff-portal{left:calc(1290*var(--u)); top:calc(270*var(--u)); width:calc(540*var(--u)); height:calc(540*var(--u))}
+.fbg-root .m.L-quote .ff-portal{left:calc(130*var(--u)); top:calc(290*var(--u)); width:calc(500*var(--u)); height:calc(500*var(--u))}
+.fbg-root .m.L-quote .ff-col{left:calc(740*var(--u)); width:calc(1040*var(--u))}
+.fbg-root .m .ff-quote{font-size:calc(90*var(--u))} .fbg-root .m.L-quote .ff-body{font-size:calc(56*var(--u))}
+.fbg-root .m.L-dyk .ff-col{width:calc(1080*var(--u))} .fbg-root .m .ff-head{font-size:calc(132*var(--u))}
+.fbg-root .m.L-dyk .ff-portal{left:calc(1290*var(--u)); top:calc(290*var(--u)); width:calc(540*var(--u)); height:calc(540*var(--u))}
+.fbg-root .ff-prism{display:flex; width:calc(210*var(--u)); height:calc(12*var(--u)); margin:0 0 calc(22*var(--u)) calc(2*var(--u))}
+.fbg-root .ff-prism i{flex:1}
+/* dot 10/26: touch players get SWITCH and a compact NEXT IN readout (the text outline queue stays hidden on phones) */
+.fbg-tb.sw{display:none}
+.fbg-root.has-touch .fbg-touch > .fbg-tb.sw{display:flex; position:absolute; align-items:center; justify-content:center; left:calc(14px + var(--sl,0px)); bottom:calc(150px + var(--sb,0px)); width:58px; height:44px; padding:0; font:800 11px/1 var(--fbg-ui); letter-spacing:.04em; color:var(--fbg-cream); background:rgba(14,11,22,.72); box-shadow:inset 0 0 0 2px var(--fbg-cream); clip-path:polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%); border-radius:0; z-index:2}
+.fbg-root.has-touch.is-narrow .fbg-touch > .fbg-tb.sw{bottom:calc(176px + var(--sb,0px))}
+.fbg-next{position:absolute; left:50%; transform:translateX(-50%); top:58px; z-index:3; background:rgba(14,11,22,.86); color:var(--fbg-cream); font:700 12px/1 var(--fbg-ui); padding:5px 10px 4px; box-shadow:inset 0 -2px 0 var(--fbg-pg); pointer-events:none; white-space:nowrap}
+.fbg-next b{color:var(--fbg-pg); margin-right:4px} .fbg-next i{font-style:normal; color:var(--fbg-ash)}
+.fbg-root:not(.has-touch) .fbg-next{display:none}

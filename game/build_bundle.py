@@ -9,7 +9,7 @@ three = open(os.path.join(D, 'vendor', 'three-0.159.0.min.js')).read()
 three = re.sub(r"^console\.warn\([^\n]*?\),", "void 0,", three, count=1)  # drop the r150 deprecation warning
 css = open(os.path.join(D, 'game.css')).read()
 embed = {}
-for n in ['floor-maple.jpg', 'backdrop-fb.jpg', 'backdrop-vc.jpg']:
+for n in ['floor-maple.jpg', 'backdrop-fb.jpg', 'backdrop-vc.jpg', 'court-light.jpg']:
     p = os.path.join(D, 'assets', n)
     if os.path.exists(p):
         embed[n] = 'data:image/jpeg;base64,' + base64.b64encode(open(p, 'rb').read()).decode()
