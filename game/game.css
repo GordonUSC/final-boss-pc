@@ -732,3 +732,4 @@ html.fbg-lock, html.fbg-lock body{overflow:hidden}
   .fbg-root .fbg-card:has(.fbg-lineup) > p { margin-bottom: 6px; font-size: 13px }
   .fbg-root .fbg-card:has(.fbg-lineup) .fbg-lineup h3 { margin: 4px 0 }
 }
+.fbg-btn.fbg-go.fbg-wkb{background:var(--fbg-gold); color:#120818; box-shadow:none}
