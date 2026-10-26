@@ -480,7 +480,6 @@ html.fbg-lock, html.fbg-lock body{overflow:hidden}
 .fbg-root.is-mobile.is-narrow .fbg-stick{left:calc(76px + var(--sl)); bottom:calc(88px + var(--sb))}
 .fbg-root.is-mobile.is-narrow .fbg-tbtns{display:block; left:auto; right:calc(6px + var(--sr)); top:auto; bottom:calc(0px + var(--sb)); width:204px; height:176px; padding:0}
 .fbg-root.is-mobile.is-narrow .fbg-btns{top:auto; bottom:auto}
-.fbg-root.is-mobile.is-narrow .fbg-pause{position:absolute}
 .fbg-root.is-mobile.is-narrow .fbg-btns{position:absolute; right:calc(6px + var(--sr)); top:calc(56px + var(--st))}
 
 /* ball control 3, 2, 1 (brand numerals: Archivo expanded black, Boss Black keyline and disc, Power-Up Gold for FINAL BOSS, lime for the Glitches; flat color, no gradients) */
@@ -579,3 +578,8 @@ html.fbg-lock, html.fbg-lock body{overflow:hidden}
 .fbg-root:not(.is-mobile).is-wide .fbg-ctl{top:92px}
 .fbg-root.is-mobile.is-wide .fbg-coach{left:calc(10px + var(--sl)); top:calc(74px + var(--st)); transform:none}
 .fbg-root.is-mobile.is-wide .fbg-coach.on{transform:none}
+/* portrait fallback: the control chip sits under the HUD, not over the court; the full-screen page keeps a 4:5 stage */
+.fbg-root.is-mobile.is-narrow .fbg-ctl{top:calc(84px + var(--st)); bottom:auto; font-size:13px; padding:4px 10px 2px}
+.fbg-root.is-fill.is-narrow{justify-content:center}
+.fbg-root.is-fill.is-narrow .fbg-stage{flex:0 0 auto; aspect-ratio:4/5}
+.fbg-root.is-mobile .fbg-btns .fbg-pause{font-size:0; color:transparent}

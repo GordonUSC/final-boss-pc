@@ -1062,7 +1062,7 @@ class Game {
     // wide screens keep a 16:9 safe frame: on 21:9 or 32:9 the court depth sets the distance, so nothing is cropped top or bottom
     if (v.wide && aspect > 16 / 9) v.d = Math.max(v.d, halfW / (Math.tan(v.fov / 2 * DEG) * (16 / 9)));
     v.tz = v.wide ? -2.3 : -1.4;
-    v.d *= 1 + 0.7 * (HZ - 4.5) / 4.5; v.tz += 0.55 * (HZ - 4.5);   // re-frame for the wider court (COURT_W): pull back and center the extra width
+    v.d *= 1 + 0.7 * (HZ - 4.5) / 4.5; v.tz += v.wide ? 0.55 * (HZ - 4.5) : -2.2;   // re-frame for the wider court (COURT_W): pull back and center the extra width
     // desktop HUD type scale: the HUD was drawn for a ~600 px tall stage; in full window it grows with the screen (1080p about 1.45x, 1440p about 1.9x)
     const z = this.full ? Math.max(1, Math.min(2.4, H / 745)) : 1;
     this.root.style.setProperty('--fbg-z', z.toFixed(3));
