@@ -71,7 +71,7 @@ const BOSS_TEAM = {
 };
 const DEFAULT_LOOK = { id: 'fb01', name: 'Chosen Family', mode: 'fb', colors: ['#14523f', '#2ab3b8', '#f3e6c8', '#c9a24a'] };
 const ATK = 3;                     // attack lines, 3 m from center
-const RULES = { match: 180, ot: 60, mercy: 8, control: 10, oob: 10, back: 5, timeout: 30, balls: 5, rushF: 300 };
+const RULES = { match: 180, ot: 60, mercy: 8, control: 15, oob: 10, back: 5, timeout: 30, balls: 5, rushF: 300 };
 function rosterKey(v) { if (!v) return null; const pk = String(v).toUpperCase().trim().replace('#', ''); const hit = ROSTER.find(r => r.key === pk) || ROSTER.find(r => r.num === pk) || ROSTER.find(r => r.key.startsWith(pk)); return hit ? hit.key : null; }
 function rpsIcon(i) {
   const s = ['<circle cx="24" cy="26" r="14"/><path d="M14 22h20M15 29h18" stroke="#120818" stroke-width="2.5" fill="none"/>',
@@ -1670,7 +1670,7 @@ class Game {
     const touch = this.root.classList.contains('has-touch');
     const title = this.ot ? 'OVERTIME' : 'GAME ' + this.gameNo;
     const rules = [['rush', 'Rush right only', 'on GO, run only for the balls on your right as you face the other team'], ['line', 'Clear the line', 'carry a rushed ball past your attack line before you throw'], ['catch', 'Catch = back in', 'the thrower is out and your next teammate returns'],
-      ['head', 'No headshots', 'a standing headshot puts the thrower out'], ['clock', '10 s control', 'hold 3 of 5 balls and the clock runs'], ['back', 'Back line only', 'leave only out the back, 10 s to return']];
+      ['head', 'No headshots', 'a standing headshot puts the thrower out'], ['clock', '15 s control', 'hold 3 of 5 balls and the clock runs'], ['back', 'Back line only', 'leave only out the back, 10 s to return']];
     const ctl = touch ? 'Left pad moves (flick to dash). <b>THROW</b>, <b>CATCH</b> (hold to duck), <b>JUMP</b>, <b>PASS</b>.'
       : '<span class="fbg-kbd">Arrows</span>/<span class="fbg-kbd">WASD</span> move, double-tap to dash. <span class="fbg-kbd">J</span>' + (this.native ? '/<span class="fbg-kbd">Left click</span>' : '') + ' throw, <span class="fbg-kbd">K</span>' + (this.native ? '/<span class="fbg-kbd">Right click</span>' : '') + ' catch (hold to duck), <span class="fbg-kbd">L</span> jump, <span class="fbg-kbd">Shift</span> pass, <span class="fbg-kbd">Q</span> switch.';
     this.$.vs.innerHTML = `<div class="fbg-rps fbg-brief" role="dialog" aria-label="${title} rules"><h3>${title}</h3>
@@ -1845,7 +1845,7 @@ class Game {
          <li data-n="2"><span class="fbg-kbd">J</span>${this.native ? ', <span class="fbg-kbd">Left click</span>' : ''} or <span class="fbg-kbd">Space</span> throws. Throw on dash steps 4 to 7 for a <b>power shot</b>.</li>
          <li data-n="3"><span class="fbg-kbd">K</span>${this.native ? ' or <span class="fbg-kbd">Right click</span>' : ''} catches or blocks right before impact (hold to duck). <span class="fbg-kbd">L</span> jumps, <span class="fbg-kbd">Shift</span> passes.</li>`;
     const rules = [['rush', 'Rush right', 'grab only the balls on your right'], ['line', 'Clear the line', 'carry it past your attack line first'], ['catch', 'Catch = back in', 'thrower out, your next teammate returns'],
-      ['head', 'No headshots', 'a standing headshot puts the thrower out'], ['clock', '10 s control', 'hold 3 of 5 balls and the clock runs'], ['back', 'Back line only', 'leave only out the back, 10 s to return']];
+      ['head', 'No headshots', 'a standing headshot puts the thrower out'], ['clock', '15 s control', 'hold 3 of 5 balls and the clock runs'], ['back', 'Back line only', 'leave only out the back, 10 s to return']];
     this.$.card.innerHTML = `
       <h2>BOSS <em>RUSH</em></h2>
       <p>Sin City rules. 8 on 8, 5 balls, no sting. Most games in 3 minutes wins.</p>
