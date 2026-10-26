@@ -3512,7 +3512,7 @@ class Game {
       const holder = !!a.held && a.role === 'in';
       a.foot.visible = a.role === 'in' && a.root.visible && this.phase !== 'title' && !a.ring.visible;
       if (a.foot.visible) { const s = 1.05 * a.scale; a.foot.scale.set(s, s * 0.62, 1); a.foot.position.set(a.x, 0.016, a.z); }
-      a.ring.visible = (you || holder) && a.root.visible;
+      a.ring.visible = holder && !you && a.root.visible;   // the player you control gets the rainbow star instead (updateUserStar)
       if (a.ring.visible) {
         const pulse = you ? 1 + 0.08 * Math.sin(this.frame * 0.2) : 1;
         const s = (you ? 1.5 : 1.15) * a.scale * pulse; a.ring.scale.set(s, s * 0.62, 1); a.ring.position.set(a.x, 0.02, a.z);
@@ -3526,6 +3526,7 @@ class Game {
       const lf = (this.lineFlash || 0) > 0 ? (this.lineFlash--, 0.25) : 0;
       this.lineStrips[0].material.opacity = Math.min(0.85, op(dc) + lf); this.lineStrips[1].material.opacity = Math.min(0.85, op(ds[0]) + lf); this.lineStrips[2].material.opacity = Math.min(0.85, op(ds[1]) + lf);
     }
+    this.updateUserStar();
     this.updateStands();
     this.updateTrails();
     this.renderFrame();
@@ -4397,6 +4398,42 @@ Object.assign(Game.prototype, {
     this.allI = (this.allI || 0) + 3;
     for (const sg of this.signs) { const m = /^\*a(\d)$/.exec(sg.def.who); if (m) sg.def.t = ALLUDE[(this.allI + +m[1]) % ALLUDE.length]; }
     this.marqI = (this.marqI || 0) + 1; this.drawSigns(); this.drawBanner();
+  },
+});
+
+
+Object.assign(Game.prototype, {
+  // ------------------------------------------------ the player you control (Gordon 10/26): a rainbow star on the floor with a gold arrow tip along your facing
+  buildUserStar() {
+    const S = 256, R0 = 98, r0 = 41;
+    const star = (c, R, r) => { c.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r : R; c.lineTo(S / 2 + Math.cos(a) * rr, S / 2 + Math.sin(a) * rr); } c.closePath(); };
+    const st = canvasTex(S, S, (c) => {
+      c.clearRect(0, 0, S, S);
+      star(c, R0 + 22, r0 + 14); c.fillStyle = '#0E0B16'; c.fill();   // dark outline (about 5 px at gameplay size) so it reads on maple and on green
+      const g = c.createLinearGradient(S / 2, S / 2 - R0, S / 2, S / 2 + R0);
+      ['#E40303', '#FF8C00', '#FFED00', '#008026', '#004DFF', '#750787'].forEach((col, i) => { g.addColorStop(i / 5, col); });
+      star(c, R0, r0); c.fillStyle = g; c.fill();
+      c.lineWidth = 3; c.strokeStyle = 'rgba(255,255,255,.55)'; c.stroke();
+    });
+    const ar = canvasTex(128, 128, (c) => {
+      c.clearRect(0, 0, 128, 128);
+      const tri = () => { c.beginPath(); c.moveTo(64, 10); c.lineTo(112, 92); c.lineTo(80, 80); c.lineTo(80, 122); c.lineTo(48, 122); c.lineTo(48, 80); c.lineTo(16, 92); c.closePath(); };
+      tri(); c.lineWidth = 16; c.lineJoin = 'round'; c.strokeStyle = '#0E0B16'; c.stroke(); tri(); c.fillStyle = '#FFC93C'; c.fill();
+    });
+    const mk = (tex) => { const m = new THREE.Mesh(GEO.plane, new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0.86 })); m.rotation.x = -Math.PI / 2; m.renderOrder = 2; m.visible = false; this.scene.add(m); return m; };
+    this.uStar = mk(st); this.uArrow = mk(ar); this.uSpin = 0;
+    for (const b of this.balls || []) b.shadow.renderOrder = 3;   // a ball's shadow always draws over the star
+    if (this.lineStrips) for (const m of this.lineStrips) m.renderOrder = 3;   // so do the glowing boundary lines
+  },
+  updateUserStar() {
+    if (!this.uStar) this.buildUserStar();
+    const a = this.user, on = !!(a && a.role === 'in' && a.root.visible && this.phase !== 'title' && this.phase !== 'handshake');
+    this.uStar.visible = this.uArrow.visible = on; if (!on) return;
+    const s = 1.8 * a.scale;   // about 1.2x the old player ring
+    if (!this.rm) this.uSpin += 0.25 * 2 * Math.PI / 60;   // a slow quarter turn per second, never a flash; static with reduced motion
+    this.uStar.position.set(a.x, 0.021, a.z); this.uStar.scale.set(s, s, 1); this.uStar.rotation.set(-Math.PI / 2, 0, this.uSpin);
+    const fx = Math.sin(a.yaw), fz = Math.cos(a.yaw), d = 0.62 * s, as = 0.62 * s;
+    this.uArrow.position.set(a.x + fx * d, 0.022, a.z + fz * d); this.uArrow.scale.set(as, as, 1); this.uArrow.rotation.set(-Math.PI / 2, 0, a.yaw + Math.PI);
   },
 });
 

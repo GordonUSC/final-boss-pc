@@ -43,6 +43,13 @@ JS = r"""async () => {
   for (let w = 0; w < 40 && brushes.length < 3; w++) await new Promise(r => setTimeout(r, 200));   // the 3 steps are 0.72 s apart; poll so a loaded machine does not flake
   out.saveBrushes = brushes; out.saveOneSequence = brushes.length === 3 && brushes[0] === 'SAVE!' && /OUT$/.test(brushes[1]) && brushes[2] === 'BACK IN';
   out.liveBrushes = g.root.querySelectorAll('.fbg-brush:not(.out)').length;
+  // 4b: the rainbow star sits under the controlled player, its arrow along the facing, and it follows a player switch at once
+  toPlay(); g.updateUserStar(); const u0 = g.user, st = g.uStar, arw = g.uArrow;
+  const under = (a) => Math.hypot(st.position.x - a.x, st.position.z - a.z) < 1e-6;
+  const along = (a) => { const dx = arw.position.x - a.x, dz = arw.position.z - a.z, L = Math.hypot(dx, dz) || 1; return (dx / L) * Math.sin(a.yaw) + (dz / L) * Math.cos(a.yaw) > 0.999; };
+  out.starUnderUser = st.visible && arw.visible && under(u0) && along(u0);
+  g.switchUser(true); g.updateUserStar(); out.starFollowsSwitch = g.user !== u0 && under(g.user) && along(g.user);
+  out.starOnlyOne = g.all.filter(a => a.ring.visible && a === g.user).length === 0;
   // 5: weekend bookkeeping
   g.popBrush = pb; const w = g.wkNew(); g.wk = w; const fake = (win) => { g.wkMatch = Object.assign({}, g.wkInfo(w)); g.wkRecord(win, win ? [3, 1] : [1, 3]); };
   fake(true); fake(true); fake(true); out.sunday = w.day === 'sun' && w.sun.path.length === 5 && w.sun.path[4] === 'glitches' && w.sun.path[3] === 'duchesses-of-dodge';
@@ -66,7 +73,7 @@ try:
         pg.goto(f'http://127.0.0.1:{srv.server_port}/play/'); pg.wait_for_function('window.FBGame && FBGame._game() && FBGame.state()', timeout=60000)
         r = pg.evaluate(JS); b.close()
     print(json.dumps(r, indent=1))
-    checks = ['pendingCleared', 'popSet', 'popCleared', 'cleanRally', 'saveOneSequence', 'sunday', 'comeback', 'rejoin', 'grandFinal', 'done', 'bracketReset', 'champion']
+    checks = ['starUnderUser', 'starFollowsSwitch', 'starOnlyOne', 'pendingCleared', 'popSet', 'popCleared', 'cleanRally', 'saveOneSequence', 'sunday', 'comeback', 'rejoin', 'grandFinal', 'done', 'bracketReset', 'champion']
     bad = [k for k in checks if not r.get(k)] + (['pendingHitAfterViolation'] if r['pendingHitAfterViolation'] else []) + (['liveBrushes'] if r['liveBrushes'] > 1 else []) + (['pageErrors'] if errs else [])
     print('PASS' if not bad else 'FAIL ' + ', '.join(bad), errs[:3]); sys.exit(1 if bad else 0)
 finally:
