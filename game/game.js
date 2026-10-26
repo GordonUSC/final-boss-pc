@@ -666,7 +666,7 @@ class Athlete {
     this.ai = { t: 0, plan: null, delay: 0, press: -1, dodge: 0, dz: 0, home: null, think: 0, claimBall: null, dodgeAt: 0 };
     this.wantPower = false; this.throwType = 'normal'; this.throwTarget = null; this.passTarget = null;
     this.visible = true; this.root.visible = true; this.shadow.visible = true; this.popScale = 1;
-    this.lane = null; this.knock = null; this.happyT = 0; this.pendingOut = null; this.pendWhy = null;
+    this.lane = null; this.knock = null; this.happyT = 0; this.pendingOut = null; this.pendWhy = null; this.rushCarry = false; this.rushThrow = false; this.xAim = null; this.noLook = false; this.ninaPlay = null;
     this.boundaryRisk = null; this.balanceNX = this.balanceNZ = 0; this.stumbleT = 0; this.outOrder = null; this.greetT = 0;
     if (this.faceTex) this.setExpr('neutral');
   }
@@ -1872,6 +1872,7 @@ class Game {
     this.clock = RULES.match; this.points = [0, 0]; this.gameNo = 0; this.ot = false; this.otClock = RULES.ot; this.sudden = false; this.over = false;
     this.score = 0; this.combo = 0; this.stats = { hits: 0, catches: 0, power: 0, kos: 0, bestCombo: 0, headshots: 0, backIn: 0, blocks: 0 };
     this.handshake = null; this.keys = {}; this.edge = {}; this.paused = false;
+    this.rushWins = [0, 0];
     this.timeoutUsed = false; this.timeoutT = 0; this.result = null; this.lastBig = -1; this.lastCtl = -1;
     this.setupGame();
     this.updateHUD(true);
@@ -2015,7 +2016,7 @@ class Game {
     for (const b of this.balls) this.placeBallMesh(b);
     if (this.lineT === 45) { this.popCenter('SET', 'big', 0.45, 0.75); this.sfx.vo('vo_set', 2); }
     if (this.lanes && this.lanesOn) for (const m of this.lanes) m.material.opacity = 0.34 + 0.1 * Math.sin(this.lineT * 0.15);
-    if (this.lineT === 90) { this.phase = 'play'; this.rushT = 0; this.cheer('*go'); this.popBrush('RUSH!', (this.rpsWinner === 0 ? 'FINAL BOSS' : '' + this.opp.short + '') + ' rush 3 balls', '', 0.3, 1.3); this.sfx.crowd(true); this.sfx.vo('vo_go', 3); this.sfx.whistle(); }
+    if (this.lineT === 90) { this.phase = 'play'; this.rushT = 0; this.ninaRushStart(); this.cheer('*go'); this.popBrush('RUSH!', (this.rpsWinner === 0 ? 'FINAL BOSS' : '' + this.opp.short + '') + ' rush 3 balls', '', 0.3, 1.3); this.sfx.crowd(true); this.sfx.vo('vo_go', 3); this.sfx.whistle(); }
   }
   pause(auto) {
     if (this.dead) return;
@@ -2443,7 +2444,8 @@ class Game {
       if (n === 1 && (C.n || 0) > 1) this.awStat('oneBallPoss' + t);
       C.n = n; if (n === 0) C.flankLeft = 0;
       const ai = holders.filter(a => this.aiPlays(a) && (!a.ai.plan || a.ai.plan.k !== 'sync'));
-      if (n >= 3 && ai.length >= 2 && !C.plan && Math.random() < T.push) {
+      if (t === 0 && ai.length >= 2 && !C.plan && this.ninaCall(t, ai)) { /* Coach Nina's play is on (DELAY, SMALL X, WIDE X) */ }
+      else if (n >= 3 && ai.length >= 2 && !C.plan && Math.random() < T.push) {
         const mode = Math.random() < T.fake ? 'fake' : 'multi';
         C.plan = { k: 'push', mode, members: ai.slice(0, 3), t0: this.frame }; this.awStat('plan_push_' + mode); if (t === 0) this.coachSay(mode === 'fake' ? 'PUMP FAKE' : 'PUSH');
         for (const m of C.plan.members) { m.ai.plan = { k: 'coach' }; m.ai.t = 0; }
@@ -2510,7 +2512,9 @@ class Game {
   }
   aiWithBall(a, it) {
     const b = a.held, ai = a.ai;
+    if (ai.plan && ai.plan.k === 'pumpAt') { if (this.frame >= ai.plan.at) { ai.plan = null; if (!a.locked()) { a.set('pump'); this.awStat('ninaPumpCover'); } } return it; }
     if (a.oob > 0) return this.seek(a, it, a.side * (HX - 0.9), Math.max(-3, Math.min(3, a.z)), false);
+    { const nr = this.ninaHold(a, it); if (nr) return nr; }
     if (!b.cleared) return this.seek(a, it, a.side * (ATK + 1.2), Math.max(-(HZ - 0.7), Math.min(HZ - 0.7, a.z)), false);
     const pressure = this.ctlTeam === a.team ? this.ctlT : 0;
     const foeHeld = this.balls.filter(x => x.holder && x.holder.team !== a.team).length;
@@ -2597,6 +2601,7 @@ class Game {
   windupNotice(th) {
     // "Dodge on their load, not their release": a target watching the thrower reads the windup
     const t = th.throwTarget; if (!t || t.team === th.team || !this.aiPlays(t)) return;
+    if (th.noLook) { this.awStat('noLookWindups'); return; }   // Nina's X: no eye contact, so the target cannot read the load
     if (this.viewOf(t, th.x, th.z) < 1) return;
     const r = t.rt || FB_BASE; if (Math.random() < clampR(this.busyOf(t) * (0.15 + 0.8 * r.aware))) t.ai.loadRead = { th, f: (this.wf || 0) };
   }
@@ -2859,10 +2864,11 @@ class Game {
     let tx = t ? t.x : a.x - a.side * 9, tz = t ? t.z : a.z;
     if (t) { const d0 = Math.hypot(tx - B.x, tz - B.z); const eta0 = d0 / spd; tx += t.vx * eta0 * 0.6; tz += t.vz * eta0 * 0.6; }
     if (cpu && t) tz += (Math.random() - 0.5) * 1.5 * (1 - rt.acc) / this.abAccM(a);   // accuracy: command players hit their spot
+    if (a.xAim && t) { const ux = tx - B.x, uz = tz - B.z, L = Math.hypot(ux, uz) || 1, o = a.xAim.side * 0.3 * t.scale; tx += -uz / L * o; tz += ux / L * o; }   // SMALL X: left or right shoulder (or shin)
     const dx = tx - B.x, dz = tz - B.z, d = Math.hypot(dx, dz) || 1, eta = d / spd;
     B.vx = dx / d * spd; B.vz = dz / d * spd; B.grav = 6;
     // "Hit hips and legs. Never aim at a head": CPU throwers aim between the knees and the hips
-    const aimH = (a.sig && a.sig.k.aim) || (cpu ? 0.5 + Math.random() * 0.42 + (Math.random() - 0.5) * 0.5 * (1 - rt.acc) : 0.9);
+    const aimH = (a.xAim && a.xAim.h) || (a.sig && a.sig.k.aim) || (cpu ? 0.5 + Math.random() * 0.42 + (Math.random() - 0.5) * 0.5 * (1 - rt.acc) : 0.9);
     const th = (B.forceHead ? 1.78 : aimH) * (t ? t.scale : 1);
     if (cpu && B.type !== 'pass') { this.awStat('aiThrows'); this.awStat('throw_' + a.arch); if (this.balls.filter(x => x.holder && x.holder.team === a.team).length === 0 && this.balls.filter(x => x.state === 'flight' && x.team === a.team && x !== B).length === 0) this.awStat('oneBallThrow' + a.team); B.fakeShot = !!a.fakeShot; a.fakeShot = false; if (B.fakeShot) this.awStat('fakeShots'); if (aimH < 1.1) this.awStat('belowChest'); if (B.sync) this.awStat('syncBalls'); }
     B.vh = (th - B.h) / eta + 0.5 * B.grav * eta;
@@ -2876,6 +2882,7 @@ class Game {
     if (B.power) { this.pop(a, SHOT_NAME[B.type] || 'POWER!', a.team === 0 ? 'gold' : 'lime'); B.flash = 6; }
     if (this.ctlTeam === a.team) this.ctlT = Math.max(0, this.ctlT - 0);
     this.abRelease1(a, B, t);
+    if (a.ninaPlay) { B.nina = a.ninaPlay; this.awStat('ninaBall_' + a.ninaPlay); } a.xAim = null; a.noLook = false; a.ninaPlay = null; a.rushCarry = false; a.rushThrow = false;
     this.noticeThrow(B);
   }
 
@@ -2900,7 +2907,7 @@ class Game {
     let fx, fz;
     if (a.state === 'run') { fx = a.runDir; fz = -0.5; }
     else if (a.state === 'down' || a.state === 'getup') return;
-    else if (a.held && a.throwTarget && (a.state === 'windup' || a.state === 'pwind')) { fx = a.throwTarget.x - a.x; fz = a.throwTarget.z - a.z; }
+    else if (a.held && a.throwTarget && !a.noLook && (a.state === 'windup' || a.state === 'pwind')) { fx = a.throwTarget.x - a.x; fz = a.throwTarget.z - a.z; }
     else if (a.held && a.passTarget && a.passing) { fx = a.passTarget.x - a.x; fz = a.passTarget.z - a.z; }
     else {
       const R = a.ai && a.ai.react, inc = this.aiPlays(a) ? (R && R.aware && !R.fake && R.B.state === 'flight' ? R.B : null) : this.incomingFor(a);
@@ -3022,7 +3029,7 @@ class Game {
       else if (Math.sign(B.x) !== a.side && Math.abs(B.x) > 0.3) continue;
       const d = Math.hypot(a.x - B.x, a.z - B.z); if (d < bd) { bd = d; best = a; }
     }
-    if (best) { const wasRest = B.state === 'rest'; this.give(best, B); B.cleared = !wasRest; if (wasRest && best === this.user) this.pop(best, 'CLEAR THE LINE', 'small cyan'); }
+    if (best) { const wasRest = B.state === 'rest'; this.give(best, B); B.cleared = !wasRest; if (wasRest) this.ninaRushPick(best); if (wasRest && best === this.user) this.pop(best, 'CLEAR THE LINE', 'small cyan'); }
   }
   killBall(B, why) {
     if (B.pop) { const P = B.pop; B.state = 'loose'; this.resolvePop(B, null); B.pop = null; void P; }
@@ -3428,9 +3435,9 @@ class Game {
     const dots = (t) => this.teams[t].map(a => `<i class="${a.role === 'in' || a.role === 'returning' ? '' : 'off'}${a === this.user ? ' me' : ''}" title="${esc(a.name)}"></i>`).join('');
     this.$.l0.innerHTML = dots(0); this.$.l1.innerHTML = dots(1);
     this.$.l0.classList.toggle('danger', this.liveCount(0) <= 2 && this.phase === 'play'); this.$.l1.classList.toggle('danger', this.liveCount(1) <= 2 && this.phase === 'play');
-    const q = (t) => this.queue[t].map((a, i) => `<span>${i === 0 ? 'NEXT ' : ''}#${a.num}</span>`).join('');
+    const q = (t) => this.queue[t].map((a, i) => `<span>${i === 0 ? 'NEXT ' : ''}${a.num && a.num !== '?' ? '#' + a.num : esc(a.name)}</span>`).join('');
     this.$.q0.innerHTML = this.queue[0].length ? 'Outline: ' + q(0) : '';
-    { const nx = this.root.querySelector('.fbg-next'), n0 = this.queue[0][0]; if (nx) { nx.hidden = !n0 || this.phase !== 'play'; if (n0) nx.innerHTML = `<b>NEXT IN</b> ${esc(n0.name)} #${n0.num}${this.queue[0].length > 1 ? ` <i>+${this.queue[0].length - 1}</i>` : ''}`; } } this.$.q1.innerHTML = this.queue[1].length ? 'Outline: ' + q(1) : '';
+    { const nx = this.root.querySelector('.fbg-next'), n0 = this.queue[0][0]; if (nx) { nx.hidden = !n0 || this.phase !== 'play'; if (n0) nx.innerHTML = `<b>NEXT IN</b> ${esc(n0.name)}${n0.num && n0.num !== '?' ? ' #' + n0.num : ''}${this.queue[0].length > 1 ? ` <i>+${this.queue[0].length - 1}</i>` : ''}`; } } this.$.q1.innerHTML = this.queue[1].length ? 'Outline: ' + q(1) : '';
   }
   tutorialTick() {
     // first rally teaches one exchange: catch the incoming throw, then throw back, then the dash power window
@@ -4421,6 +4428,98 @@ Object.assign(Game.prototype, {
     this.uStar.position.set(a.x, 0.021, a.z); this.uStar.scale.set(s, s, 1); this.uStar.rotation.set(-Math.PI / 2, 0, this.uSpin);
     const fx = Math.sin(a.yaw), fz = Math.cos(a.yaw), d = 0.62 * s, as = 0.62 * s;
     this.uArrow.position.set(a.x + fx * d, 0.022, a.z + fz * d); this.uArrow.scale.set(as, as, 1); this.uArrow.rotation.set(-Math.PI / 2, 0, a.yaw + Math.PI);
+  },
+});
+
+
+Object.assign(Game.prototype, {
+  // ------------------------------------------------ Coach Nina Fiore's plays (FINAL BOSS, STRATEGY.md "Nina Fiore coaching note", 2026-10-26)
+  ninaKey(foes) {
+    // the key player: the best hands and the biggest arm on the floor (the star counts extra)
+    return foes.slice().sort((p, q) => this.ninaThreat(q) - this.ninaThreat(p))[0];
+  },
+  ninaThreat(f) { const r = f.rt || FB_BASE; return r.catch + r.power + (f.boss ? 0.3 : 0) + (f.held ? 0.15 : 0); },
+  ninaCatcher(f) { return ((f.rt || FB_BASE).catch) >= 0.7; },   // a known catcher
+  ninaWidePair(foes) {
+    // the corner (the player nearest a court corner) and the wing next to them; both must be dodgers, never known catchers
+    const corner = foes.slice().sort((p, q) => (Math.abs(q.z) + Math.abs(q.x) * 0.6) - (Math.abs(p.z) + Math.abs(p.x) * 0.6))[0];
+    if (!corner) return null;
+    const wing = foes.filter(f => f !== corner && Math.hypot(f.x - corner.x, f.z - corner.z) < 2.8).sort((p, q) => Math.hypot(p.x - corner.x, p.z - corner.z) - Math.hypot(q.x - corner.x, q.z - corner.z))[0];
+    if (!wing || this.ninaCatcher(corner) || this.ninaCatcher(wing)) return null;
+    if ((corner.rt || FB_BASE).foot < 0.5 && (wing.rt || FB_BASE).foot < 0.5) return null;
+    return [corner, wing];
+  },
+  ninaCall(t, M) {
+    // one of Nina's plays per possession, now and then (visible and fun, never oppressive), only when it does not throw away ball control
+    if (t !== 0 || this.phase !== 'play' || this.rushT < RULES.rushF || this.frame < (this.ninaCool || 0)) return false;
+    this.ninaCool = this.frame + 240;
+    if (Math.random() > 0.25) return false;
+    const mine = this.balls.filter(b => b.holder && b.holder.team === t).length, theirs = this.balls.filter(b => b.holder && b.holder.team !== t).length;
+    if (mine <= 2 && theirs >= 2) { this.awStat('ninaHeldForControl'); return false; }   // two throws would hand them every ball
+    const foes = this.inPlayers(1 - t).filter(f => f.oob === 0); if (!foes.length) return false;
+    const pair = this.ninaWidePair(foes), r = Math.random();
+    const kind = pair && r < 0.22 ? 'xwide' : (r < 0.6 ? 'delay' : 'xone');
+    return this.ninaPlan(kind, M, foes);
+  },
+  ninaPlan(kind, M, foes) {
+    const t = M[0].team, now = this.frame, ready = M.filter(m => this.aiPlays(m) && m.held && m.held.cleared && m.oob === 0);
+    if (ready.length < 2 || !foes.length) return false;
+    const plan = (m, at, target) => { m.ai.plan = { k: 'sync', s: { at, target, team: t } }; m.ai.t = 0; m.ninaPlay = kind; };
+    if (kind === 'delay') {
+      // two balls on one key player: the first makes them move, the FOLLOW ball about 1 s later is thrown by the more ACCURATE thrower (not the fastest)
+      const target = this.ninaKey(foes); const [a, b] = ready.slice(0, 2), follow = (a.rt || FB_BASE).acc >= (b.rt || FB_BASE).acc ? a : b, lead = follow === a ? b : a;
+      plan(lead, now + 8, target); plan(follow, now + 8 + 60, target);
+      this.ninaCalled = { kind, target, lead, follow, at: now };
+    } else if (kind === 'xone') {
+      // SMALL X on one player: left shoulder and right shoulder (or left and right shins), released AT THE SAME TIME, so even a catcher can take only one
+      const target = this.ninaKey(foes), [a, b] = ready.slice(0, 2), h = Math.random() < 0.6 ? 1.3 : 0.3;
+      for (const [m, side] of [[a, -1], [b, 1]]) { plan(m, now + 12, target); m.xAim = { h, side }; m.noLook = true; }
+      // with 3 or 4 balls, the holders not throwing pump-fake with the release to hide who is throwing
+      for (const m of ready.slice(2)) { m.ai.plan = { k: 'pumpAt', at: now + 12 + TUNE.wind - 2 }; m.ai.t = 0; }
+      this.ninaCalled = { kind, target, throwers: [a, b], h, at: now };
+    } else if (kind === 'xwide') {
+      // the riskier wider X: the CORNER and the WING next to them, throws crossing; dodgers only, never known catchers; no-look
+      const pair = this.ninaWidePair(foes); if (!pair) return false;
+      const th = ready.slice(0, 2).sort((p, q) => p.z - q.z), tg = pair.slice().sort((p, q) => q.z - p.z);   // the thrower on one side throws at the target on the other: the paths cross
+      th.forEach((m, i) => { plan(m, now + 12, tg[i]); m.noLook = true; });
+      this.ninaCalled = { kind, targets: tg, throwers: th, at: now };
+    } else return false;
+    const label = { delay: 'DELAY', xone: 'SMALL X', xwide: 'WIDE X' }[kind];
+    this.coachSay(label); this.awStat('nina_' + kind); this.qaLog('nina', { kind });
+    return true;
+  },
+  // ---- the rush: plan who rushes and where the balls go; protect the balls in game 1; a one-ball play from game 2 only if our rushers were faster
+  ninaRushStart() {
+    this.rushFirst = [null, null]; this.rushOne = [null, null];
+    this.rushPlay = [0, 1].map(t => this.gameNo > 1 && !this.ot && (this.rushWins || [0, 0])[t] > (this.rushWins || [0, 0])[1 - t]);
+    if (this.rushPlay[0]) this.coachSay('ONE-BALL PLAY');
+    this.qaLog('rushPlan', { play: this.rushPlay.slice(), wins: (this.rushWins || [0, 0]).slice(), game: this.gameNo });
+  },
+  ninaRushPick(a) {
+    if (!this.rushFirst) return;
+    a.rushCarry = true;
+    if (this.rushFirst[a.team] == null) {
+      this.rushFirst[a.team] = this.rushT;
+      const o = this.rushFirst[1 - a.team]; if (o == null) { this.rushWins = this.rushWins || [0, 0]; this.rushWins[a.team]++; }   // first to a rush ball wins this rush
+    }
+    if (this.rushPlay && this.rushPlay[a.team] && !this.rushOne[a.team]) {
+      const carriers = this.teams[a.team].filter(m => m.rushCarry && m.held && this.aiPlays(m));
+      if (carriers.length >= 2 || this.rushT > 70) { const best = carriers.sort((p, q) => (q.rt || FB_BASE).power - (p.rt || FB_BASE).power)[0]; if (best) { this.rushOne[a.team] = best; best.rushThrow = true; } }
+    }
+  },
+  ninaHold(a, it) {
+    // a rushed ball goes back behind the attack line to the corners (Nina); the one-ball thrower answers right off the rush; everyone else holds
+    if (!a.rushCarry) return null;
+    const b = a.held;
+    if (a.rushThrow && b.cleared) {
+      a.rushThrow = false; a.rushCarry = false;
+      const foes = this.inPlayers(1 - a.team).filter(f => f.oob === 0), tg = foes.length ? this.ninaKey(foes) : null;
+      if (tg) { a.ai.plan = { k: 'sync', s: { at: this.frame + 2, target: tg, team: a.team } }; a.ai.t = 0; a.ninaPlay = 'rush'; this.awStat('rushOneBall'); if (a.team !== 0) this.pop(a, 'RUSH PLAY!', 'small lime sh1'); return null; }
+    }
+    if (a.rushThrow) return this.seek(a, it, a.side * (ATK + 1.0), Math.max(-(HZ - 0.8), Math.min(HZ - 0.8, a.z)), true);
+    const cz = (a.z === 0 ? (a.team === 0 ? -1 : 1) : Math.sign(a.z)) * (HZ - 0.9), cx = a.side * (HX - 1.2);
+    if (Math.hypot(a.x - cx, a.z - cz) < 0.7 || (this.rushT >= RULES.rushF && a.ai.t > 240)) { a.rushCarry = false; a.ai.plan = { k: 'hold', until: a.ai.t + 50 }; this.awStat('rushToCorner'); return null; }
+    return this.seek(a, it, cx, cz, true);
   },
 });
 
