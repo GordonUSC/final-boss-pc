@@ -13,9 +13,11 @@ const PITCH = 27 * DEG;            // spec said 32; lowered to match Gordon's ap
 const SINP = Math.sin(PITCH), COSP = Math.cos(PITCH);
 const DT = 1 / 60;
 const TRAIL_N = 14;               // ball ribbon trail length in ticks
-const HX = 9, HZ = 4.5;            // court half extents (18 x 9 m)
+// court half extents: 18 m long; COURT_W is the one tunable width (Gordon 2026-10-26: "feel a little bit wider"; was 9 m)
+const COURT_W = 10.4;
+const HX = 9, HZ = COURT_W / 2;
 const OUTX = 10.25;                // back outfield lane x
-const SIDEZ = 5.35;                // side outfield lane z
+const SIDEZ = HZ + 0.85;           // side outfield lane z
 const GRAV = 22;
 const CHAR = 1.14;               // chunky Kunio-style scale, tuned so 16 athletes read at once
 const TUNE = {
@@ -43,7 +45,7 @@ const ROSTER = [
 ];
 const SHOTS_BY = { FIORE: ['hook', 'hop'], ZABOKRITSKY: ['hook', 'moon'], HAWKINS: ['comet', 'hop'], 'BELLAMY III': ['hook', 'hop'], REED: ['comet', 'moon'], KRAMER: ['comet', 'hop'], KETCHUM: ['hook', 'moon'] };
 const BOSS_TEAM = {
-  name: 'THE GLITCHES',
+  name: 'THE GLITCHES', short: 'GLITCHES',
   colors: ['#17131f', '#a6f23a', '#a6f23a', '#ff3fa1'],
   players: [
     { key: 'NERF', num: '0', skin: '#b98a6a', build: 1.0, shots: ['hook', 'hop'] },
@@ -56,9 +58,56 @@ const BOSS_TEAM = {
   ],
   boss: { key: 'GLITCH KING', num: '00', skin: '#6f4a8a', build: 1.0, shots: ['hook', 'zig'] },
 };
+// ---------------------------------------------------------------- P0d: player rating profiles (0..1) and team styles
+// FINAL BOSS players are real people: strength-forward profiles only, from receipts in the Kramer camp docs
+// (~/work/dodgeball-kramer-20261004/season/index.html); nobody on FINAL BOSS gets an invented weakness, and ratings are never shown
+const FB_BASE = { aware: 0.7, catch: 0.68, acc: 0.68, power: 0.64, foot: 0.68, comp: 0.68 };
+const FB_STRENGTH = {
+  KETCHUM: { power: 0.94, acc: 0.74, arch: 'power arm' },          // "the most feared arm in dodgeball, even in foam"; Team USA gold 2015
+  FIORE: { catch: 0.93, comp: 0.92, aware: 0.8, arch: 'clutch catcher' }, // US Women's National Team; "among the tournament's best clutch catchers"
+  REED: { power: 0.85, aware: 0.78, comp: 0.75, arch: 'strong arm' },  // "Strong arms... combined with the smarts and experience"
+  KRAMER: { acc: 0.93, arch: 'command' },                             // former pro pitcher: accuracy and command
+};
+// opponents are fictional, so their profiles can vary freely; the GLITCH KING stays the strongest player on the floor
+const OPP_STYLES = {
+  glitches: { scout: 'Scrappy and chaotic: big arms, wandering eyes, a few slippery dodgers.', base: { aware: 0.6, catch: 0.6, acc: 0.56, power: 0.74, foot: 0.62, comp: 0.54 }, spread: 0.13, spreadK: { foot: 0.3, aware: 0.2 }, sync: 0.16 },
+  catchfirst: { scout: 'Catch-first: patient hands, soft throws.', base: { aware: 0.72, catch: 0.76, acc: 0.6, power: 0.5, foot: 0.62, comp: 0.68 }, spread: 0.07, sync: 0.1 },
+  powerarm: { scout: 'Power arms: heat from the back line, and they love a double.', base: { aware: 0.56, catch: 0.5, acc: 0.62, power: 0.86, foot: 0.56, comp: 0.6 }, spread: 0.09, sync: 0.3 },
+};
+// Opponent schema (teams.json). Teams differ by style, strategy weights, ratings and signature abilities, NEVER by rules (every match uses the same real rules):
+//   { name, short, colors[4], emblem, style, intro, tactic: { patience, push, fake, flank, calls, lastBall },
+//     players: [{ key, num, skin, build, shots, rt: { aware, catch, acc, power, foot, comp } }] (7), boss: {...},
+//     abilities: [{ id, kind, amount, tell: { text, sfx } }] }
+// ability kinds act only through existing systems, each with a visible and audible tell so it is readable and counterable:
+//   throwSpeed (faster throws), throwCurve (chance a throw curves), catchWindow (better catch timing and choice), dodgeBias (better footwork),
+//   fakeBait (stronger pump fakes), moveSpeed (quicker feet)
+const ABILITY_KINDS = new Set(['throwSpeed', 'throwCurve', 'catchWindow', 'dodgeBias', 'fakeBait', 'moveSpeed']);
+function oppFrom(o) {
+  // a new opponent can come straight from teams.json; THE GLITCHES stay the default and the final boss
+  if (!o || !Array.isArray(o.players) || !o.players.length) return BOSS_TEAM;
+  return { name: String(o.name || 'OPPONENT').toUpperCase(), short: String(o.short || o.name || 'OPPONENT').toUpperCase(), colors: o.colors || BOSS_TEAM.colors, emblem: o.emblem || 'pixel', style: o.style || null, intro: o.intro || null, tactic: o.tactic || null,
+    abilities: (Array.isArray(o.abilities) ? o.abilities : []).filter(x => x && ABILITY_KINDS.has(x.kind)).map(x => ({ id: String(x.id || x.kind), kind: x.kind, amount: Math.max(0, Math.min(0.5, +x.amount || 0)), tell: x.tell || { text: String(x.id || x.kind).toUpperCase() } })),
+    players: o.players.slice(0, 7).map((p, i) => Object.assign({ num: String(i + 1), skin: '#c99272', build: 1, shots: ['hook', 'hop'] }, p, { key: String(p.key || p.name || 'P' + i).toUpperCase() })),
+    boss: Object.assign({ num: '00', skin: '#6f4a8a', build: 1, shots: ['hook', 'zig'] }, o.boss || BOSS_TEAM.boss, { key: String((o.boss && (o.boss.key || o.boss.name)) || BOSS_TEAM.boss.key).toUpperCase() }) };
+}
+// P0i: team tactics (Gordon's strategy points 13 to 17): how often a team waits for control, pushes together, fakes, flanks, calls, and keeps its last ball
+const TACTICS = {
+  finalboss: { patience: 0.35, push: 0.7, fake: 0.5, flank: 0.6, calls: 0.5, lastBall: 0.85 },
+  glitches: { patience: 0.12, push: 0.45, fake: 0.35, flank: 0.3, calls: 0.25, lastBall: 0.5 },    // aggressive and scrappy
+  catchfirst: { patience: 0.8, push: 0.55, fake: 0.65, flank: 0.4, calls: 0.4, lastBall: 0.95 },  // patient
+  powerarm: { patience: 0.3, push: 0.85, fake: 0.2, flank: 0.7, calls: 0.3, lastBall: 0.7 },      // pushers and flankers
+};
+const BOSS_RT = { aware: 0.9, catch: 0.88, acc: 0.86, power: 0.96, foot: 0.84, comp: 0.92 };
+const DIFF_OFF = { easy: -0.14, normal: 0, hard: 0.1 };
+function hash01(s) { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return ((h >>> 0) % 10007) / 10007; }
+function clampR(v) { return Math.max(0.05, Math.min(0.97, v)); }
+
 const DEFAULT_LOOK = { id: 'fb01', name: 'Chosen Family', mode: 'fb', colors: ['#14523f', '#2ab3b8', '#f3e6c8', '#c9a24a'] };
 const ATK = 3;                     // attack lines, 3 m from center
-const RULES = { match: 180, ot: 60, mercy: 8, control: 15, oob: 10, back: 5, timeout: 30, balls: 5, rushF: 300 };
+// control: 15 s, per the WeHo/Sin City rulebook: "Once a team gains ball control, that team has 15 seconds to relinquish majority possession"
+// (https://www.wehododgeball.com/rules); Gordon 2026-10-26: "oh i am wrong clearly on the 15 second rule"
+// saveOnTeammateCatch: a teammate catching a body-hit pop-up before the floor saves the hit player (league convention; NEEDS GORDON'S CONFIRMATION, the rulebook text states it only for dropped blocks)
+const RULES = { saveOnTeammateCatch: true, match: 180, ot: 60, mercy: 8, control: 15, oob: 10, back: 5, timeout: 30, balls: 5, rushF: 300 };
 function rosterKey(v) { if (!v) return null; const pk = String(v).toUpperCase().trim().replace('#', ''); const hit = ROSTER.find(r => r.key === pk) || ROSTER.find(r => r.num === pk) || ROSTER.find(r => r.key.startsWith(pk)); return hit ? hit.key : null; }
 function rpsIcon(i) {
   const s = ['<circle cx="24" cy="26" r="14"/><path d="M14 22h20M15 29h18" stroke="#120818" stroke-width="2.5" fill="none"/>',
@@ -207,6 +256,16 @@ function sparkleTex() {
   return canvasTex(64, 64, (c, w, h) => {
     c.translate(32, 32); c.fillStyle = '#fff';
     c.beginPath(); c.moveTo(0, -30); c.quadraticCurveTo(4, -4, 30, 0); c.quadraticCurveTo(4, 4, 0, 30); c.quadraticCurveTo(-4, 4, -30, 0); c.quadraticCurveTo(-4, -4, 0, -30); c.fill();
+  });
+}
+function crownTex() { return canvasTex(64, 64, (c) => { crown(c, 32, 40, 30, '#ffffff', '#ffffff'); }); }
+function pixelTex() { return canvasTex(64, 64, (c) => { c.fillStyle = '#fff'; for (const [x, y] of [[8, 8], [28, 8], [48, 8], [18, 28], [38, 28], [8, 48], [28, 48], [48, 48]]) c.fillRect(x, y, 12, 12); }); }
+function teamFootTex(team) {
+  // the ground marker carries the team shape: a crown-notched ring for FINAL BOSS, a stepped pixel ring for the Glitches
+  return canvasTex(128, 128, (c) => {
+    c.strokeStyle = '#fff'; c.fillStyle = '#fff';
+    if (team === 0) { c.lineWidth = 9; c.beginPath(); c.arc(64, 64, 46, 0, Math.PI * 2); c.stroke(); for (const a of [-0.55, 0, 0.55]) { const x = 64 + Math.sin(a) * 46, y = 64 - Math.cos(a) * 46; c.beginPath(); c.moveTo(x - 9, y + 4); c.lineTo(x, y - 14); c.lineTo(x + 9, y + 4); c.closePath(); c.fill(); } }
+    else { const st = [[44, 14], [30, 22], [22, 30], [14, 44]]; c.lineWidth = 0; for (let k = 0; k < 4; k++) { const sx = k % 2 ? 1 : -1, sy = k < 2 ? 1 : -1; for (const [dx, dy] of st) { c.fillRect(64 + sx * dx - 5, 64 + sy * dy - 5, 10, 10); } c.fillRect(64 - 5 + sx * 48, 59, 10, 10); c.fillRect(59, 64 - 5 + sy * 48, 10, 10); } }
   });
 }
 function ringTex() {
@@ -471,7 +530,7 @@ function drawFace(c, a, expr) {
 }
 class Athlete {
   constructor(game, def, team) {
-    this.g = game; this.def = def; this.team = team; this.name = def.key; this.num = def.num;
+    this.g = game; this.def = def; this.team = team; this.name = def.key; this.key = def.key; this.num = def.num;   // key: stable id for ratings and tactics
     this.boss = !!def.isBoss;
     const L = Object.assign({ g: 'm', hs: 'cap', hc: '#2a1a10', skin: def.skin || '#d9a07a', ht: 1, bw: 1 }, APPEAR[def.key] || {});
     if (def.skin && !APPEAR[def.key]) L.skin = def.skin;
@@ -612,7 +671,9 @@ class Athlete {
 }
 
 const NOI = { mx: 0, mz: 0, dash: 0, holdRun: false, throw: false, catch: false, catchHeld: false, jump: false, pass: false };
-const LOCKED = new Set(['balance', 'windup', 'release', 'recover', 'catch', 'bobble', 'hitstun', 'knock', 'down', 'getup', 'ko', 'tired', 'squat', 'land', 'walkin', 'drop', 'pwind', 'prel', 'prec', 'block']);
+const DODGE_HIT = { lean: { r: 0.62, top: 1.7 }, dive: { r: 0.95, top: 0.62 }, spin: { r: 0.8, top: 1.9 }, matador: { r: 0.5, top: 1.75 }, getup: { r: 1, top: 0.9 } };
+const DODGES = new Set(['lean', 'dive', 'spin', 'matador']);
+const LOCKED = new Set(['lean', 'dive', 'spin', 'matador', 'getup', 'pump', 'teeter', 'stagger', 'balance', 'windup', 'release', 'recover', 'catch', 'bobble', 'hitstun', 'knock', 'down', 'getup', 'ko', 'tired', 'squat', 'land', 'walkin', 'drop', 'pwind', 'prel', 'prec', 'block']);
 
 // ---------------------------------------------------------------- editions (PC native and Mobile native are two builds; the picker routes between them)
 const ED_KEY = 'fbg-edition';
@@ -675,7 +736,7 @@ class Sfx {
     this.vBus = C.createGain(); this.vBus.gain.value = 1.15; this.vBus.connect(this.master);
     const names = ['crowd_bed', 'crowd_hype', 'crowd_roar', 'crowd_groan', 'crowd_ooh', 'crowd_chant', 'hit', 'catch', 'throw', 'whistle', 'buzzer', 'squeak', 'bounce',
       'ui_move', 'ui_select', 'ui_back', 'big_hit', 'ko_sting', 'vo_choose', 'vo_pc', 'vo_mobile', 'vo_ko', 'vo_boss',
-      'vo_three', 'vo_two', 'vo_one', 'tick_3', 'tick_2', 'tick_1',
+      'vo_three', 'vo_two', 'vo_one', 'tick_3', 'tick_2', 'tick_1', 'call_fb', 'call_gl', 'vo_double', 'vo_triple', 'vo_save', 'vo_mo1', 'vo_mo2', 'vo_mo3', 'vo_mo4', 'deflect_pop', 'ball_left_1', 'ball_left_2', 'ball_left_3', 'ball_right_1', 'ball_right_2', 'ball_right_3',
       'vo_open', 'vo_rps', 'vo_ready', 'vo_set', 'vo_go', 'vo_next', 'vo_catch', 'vo_headshot', 'vo_tide', 'vo_opptide', 'vo_lead', 'vo_point_fb', 'vo_point_gl', 'vo_phase2', 'vo_ot', 'vo_win', 'vo_lose', 'vo_clutch', 'vo_falsestart'];
     for (let i = 0; i < 5; i++) names.push('k_hit' + i, 'k_power' + i, 'k_step' + i, 'k_bounce' + i);
     for (const n of names) {
@@ -768,6 +829,7 @@ class Game {
     this.look = this.opts.look || DEFAULT_LOOK; this.mode = this.opts.mode === 'vc' ? 'vc' : 'fb';
     this.controlKey = rosterKey(this.opts.player) || rosterKey(this.opts.control) || 'BELLAMY';
     this.squad = ROSTER.map(r => r.key);
+    this.opp = oppFrom(this.opts.opponent);   // data-driven opponent (teams.json); THE GLITCHES by default
     this.sfx = new Sfx(); this.sfx.base = this.base + 'assets/audio/';
     // QA ring buffer: countdown and announcer events with sim time, so automated playtests can measure timing
     this.qa = []; this.qaLog = (ev, o) => { this.qa.push(Object.assign({ ev, frame: this.frame, ctlT: +(this.ctlT || 0).toFixed(3), ms: Math.round(performance.now()) }, o || {})); if (this.qa.length > 80) this.qa.shift(); };
@@ -831,16 +893,17 @@ class Game {
   <div class="fbg-world"></div>
   <div class="fbg-flash"></div>
   <div class="fbg-hud">
-    <div class="fbg-team l"><div class="fbg-tname"><span class="fbg-crest">${CREST_FB}</span><span>FINAL BOSS</span></div><div class="fbg-live" data-t="0"></div><div class="fbg-q" data-t="0"></div></div>
+    <div class="fbg-team l"><div class="fbg-tname"><span class="fbg-crest">${CREST_FB}</span><span>FINAL BOSS</span></div><div class="fbg-live" data-t="0"></div><i class="fbg-mom" aria-hidden="true"><b class="m0"></b></i><div class="fbg-q" data-t="0"></div></div>
     <div class="fbg-mid"><div class="fbg-games"><b class="fbg-g0">0</b><div class="fbg-clock">3:00</div><b class="fbg-g1">0</b></div><div class="fbg-sub">GAME 1</div><div class="fbg-score">0</div></div>
-    <div class="fbg-team r"><div class="fbg-tname"><span>THE GLITCHES</span><span class="fbg-crest g">${CREST_GL}</span></div><div class="fbg-live" data-t="1"></div><div class="fbg-q" data-t="1"></div></div>
+    <div class="fbg-team r"><div class="fbg-tname"><span>${this.opp.name}</span><span class="fbg-crest g">${CREST_GL}</span></div><div class="fbg-live" data-t="1"></div><i class="fbg-mom" aria-hidden="true"><b class="m1"></b></i><div class="fbg-q" data-t="1"></div></div>
   </div>
   <div class="fbg-crowd" aria-hidden="true"><span>CROWD WATCHING</span><i><b></b></i></div>
   <div class="fbg-ctl" hidden></div>
   <div class="fbg-bossbar"><span>GLITCH KING</span><i></i></div>
+  <div class="fbg-coach" aria-live="polite"><i class="fbg-coach-c" aria-hidden="true"></i><span>COACH FIORE</span><b></b></div>
   <div class="fbg-cd" hidden aria-hidden="true"><div class="fbg-cd-disc"><b class="fbg-cd-n"></b></div><span class="fbg-cd-t"></span></div>
-  <div class="fbg-meter"><b>STEPS</b><div class="fbg-steps"></div></div>
-  <div class="fbg-keys" aria-hidden="true"><span><i>WASD</i>Move</span><span class="k-throw"><i>J</i><i class="m">LMB</i>Throw</span><span class="k-catch"><i>K</i><i class="m">RMB</i>Catch</span><span><i>L</i>Jump</span><span class="k-pass"><i>Shift</i>Pass</span><span><i>Q</i>Switch</span><span><i>Esc</i>Time out</span><span><i>M</i>Menu</span></div>
+  <div class="fbg-meter"><b>DASH</b><div class="fbg-steps"></div><span class="fbg-mhint"></span></div>
+  <div class="fbg-keys" aria-hidden="true"><span><i>WASD</i>Move</span><span class="k-throw"><i>J</i><i class="m">LMB</i>Throw</span><span class="k-catch"><i>K</i><i class="m">RMB</i>Catch</span><span class="k-dash"><i>U</i>Dash</span><span><i>L</i>Jump</span><span class="k-pass"><i>Shift</i>Pass</span><span><i>Q</i>Switch</span><span><i>Esc</i>Time out</span><span><i>M</i>Menu</span></div>
   <div class="fbg-btns"><button class="fbg-btn ghost fbg-qual" type="button">Quality: Auto</button><button class="fbg-btn ghost fbg-menu" type="button" hidden>Menu <span class="fbg-kbd">M</span></button><button class="fbg-btn ghost fbg-sound" type="button" aria-pressed="false">Sound off</button><button class="fbg-btn ghost fbg-pause" type="button">Time out</button></div>
   <div class="fbg-vs" hidden></div>
   <div class="fbg-poster"><p>Boss Rush needs WebGL. This is a still from the game.</p></div>
@@ -849,6 +912,7 @@ class Game {
 </div>
 <div class="fbg-touch" aria-label="Touch controls">
   <div class="fbg-stickzone"><div class="fbg-stick"><div class="fbg-knob"></div></div></div>
+  <button class="fbg-tb dash" data-b="sprint" type="button" aria-label="Dash, hold">DASH</button>
   <div class="fbg-tbtns">
     <button class="fbg-tb catch" data-b="catch" type="button">CATCH</button>
     <button class="fbg-tb throw" data-b="throw" type="button">THROW</button>
@@ -861,9 +925,9 @@ class Game {
     const q = (s) => r.querySelector(s);
     this.$ = { stage: q('.fbg-stage'), canvas: q('.fbg-canvas'), world: q('.fbg-world'), flash: q('.fbg-flash'), clock: q('.fbg-clock'), score: q('.fbg-score'), crowd: q('.fbg-crowd'), crowdL: q('.fbg-crowd span'), crowdB: q('.fbg-crowd b'),
       looknm: q('.fbg-looknm') || document.createElement('div'), chip: q('.fbg-chip'), l0: q('.fbg-live[data-t="0"]'), l1: q('.fbg-live[data-t="1"]'), q0: q('.fbg-q[data-t="0"]'), q1: q('.fbg-q[data-t="1"]'),
-      g0: q('.fbg-g0'), g1: q('.fbg-g1'), sub: q('.fbg-sub'), ctl: q('.fbg-ctl'), boss: q('.fbg-bossbar'), bossI: q('.fbg-bossbar i'),
-      meter: q('.fbg-meter'), steps: q('.fbg-steps'), vs: q('.fbg-vs'), ov: q('.fbg-ov'), card: q('.fbg-card'), sound: q('.fbg-sound'), qual: q('.fbg-qual'), pause: q('.fbg-pause'), sr: q('.fbg-sr'),
-      poster: q('.fbg-poster'), cd: q('.fbg-cd'), cdN: q('.fbg-cd-n'), cdT: q('.fbg-cd-t'), touch: q('.fbg-touch'), knob: q('.fbg-knob'), stick: q('.fbg-stick'), keys: q('.fbg-keys'), menu: q('.fbg-menu') };
+      mom0: q('.fbg-mom .m0'), mom1: q('.fbg-mom .m1'), g0: q('.fbg-g0'), g1: q('.fbg-g1'), sub: q('.fbg-sub'), ctl: q('.fbg-ctl'), boss: q('.fbg-bossbar'), bossI: q('.fbg-bossbar i'),
+      meter: q('.fbg-meter'), meterB: q('.fbg-meter b'), mhint: q('.fbg-mhint'), steps: q('.fbg-steps'), vs: q('.fbg-vs'), ov: q('.fbg-ov'), card: q('.fbg-card'), sound: q('.fbg-sound'), qual: q('.fbg-qual'), pause: q('.fbg-pause'), sr: q('.fbg-sr'),
+      poster: q('.fbg-poster'), coach: q('.fbg-coach'), coachB: q('.fbg-coach b'), cd: q('.fbg-cd'), cdN: q('.fbg-cd-n'), cdT: q('.fbg-cd-t'), touch: q('.fbg-touch'), knob: q('.fbg-knob'), stick: q('.fbg-stick'), keys: q('.fbg-keys'), menu: q('.fbg-menu') };
     this.$.poster.style.backgroundImage = `url(${assetURL(this.base, 'poster.jpg')})`;
     for (let i = 1; i <= 9; i++) { const c = document.createElement('i'); this.$.steps.appendChild(c); }
     if (this.rm) r.classList.add('rm');
@@ -998,6 +1062,7 @@ class Game {
     // wide screens keep a 16:9 safe frame: on 21:9 or 32:9 the court depth sets the distance, so nothing is cropped top or bottom
     if (v.wide && aspect > 16 / 9) v.d = Math.max(v.d, halfW / (Math.tan(v.fov / 2 * DEG) * (16 / 9)));
     v.tz = v.wide ? -2.3 : -1.4;
+    v.d *= 1 + 0.7 * (HZ - 4.5) / 4.5; v.tz += 0.55 * (HZ - 4.5);   // re-frame for the wider court (COURT_W): pull back and center the extra width
     // desktop HUD type scale: the HUD was drawn for a ~600 px tall stage; in full window it grows with the screen (1080p about 1.45x, 1440p about 1.9x)
     const z = this.full ? Math.max(1, Math.min(2.4, H / 745)) : 1;
     this.root.style.setProperty('--fbg-z', z.toFixed(3));
@@ -1028,7 +1093,7 @@ class Game {
     const court = new THREE.Mesh(new THREE.PlaneGeometry(26, 15), this.courtMat); court.rotation.x = -Math.PI / 2; court.position.y = 0.003; court.receiveShadow = true; S.add(court); this.court = court;
     // pool caustics (Miami night): two scrolling layers, additive
     this.causticTex = causticTexture(); this.causticTex.wrapS = this.causticTex.wrapT = THREE.RepeatWrapping;
-    this.caustics = [0, 1].map(i => { const t = this.causticTex.clone(); t.needsUpdate = true; t.repeat.set(5 + i * 1.3, 3 + i * 0.8); const m = new THREE.Mesh(new THREE.PlaneGeometry(18, 9), new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.28, color: '#bff8ff' })); m.rotation.x = -Math.PI / 2; m.position.y = 0.005 + i * 0.001; m.renderOrder = 1; m.visible = false; S.add(m); return m; });
+    this.caustics = [0, 1].map(i => { const t = this.causticTex.clone(); t.needsUpdate = true; t.repeat.set(5 + i * 1.3, 3 + i * 0.8); const m = new THREE.Mesh(new THREE.PlaneGeometry(2 * HX, 2 * HZ), new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.28, color: '#bff8ff' })); m.rotation.x = -Math.PI / 2; m.position.y = 0.005 + i * 0.001; m.renderOrder = 1; m.visible = false; S.add(m); return m; });
     this.glowTex = canvasTex(1000, 560, () => { });
     this.glowMat = new THREE.MeshBasicMaterial({ map: this.glowTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.45 });
     const glow = new THREE.Mesh(new THREE.PlaneGeometry(25, 14), this.glowMat); glow.rotation.x = -Math.PI / 2; glow.position.y = 0.006; glow.renderOrder = 1; S.add(glow); this.glowPlane = glow;
@@ -1082,12 +1147,14 @@ class Game {
     }
     this.shadowTex = radialTex([[0, 'rgba(10,4,16,0.6)'], [0.55, 'rgba(10,4,16,0.32)'], [1, 'rgba(10,4,16,0)']]);
     this.shadowMat = new THREE.MeshBasicMaterial({ map: this.shadowTex, transparent: true, depthWrite: false });
-    this.tex = { star: starTex(), sparkle: sparkleTex(), ring: ringTex(), speed: speedTex(), glow: radialTex([[0, 'rgba(255,255,255,1)'], [0.3, 'rgba(255,255,255,0.6)'], [1, 'rgba(255,255,255,0)']], 64), dust: radialTex([[0, 'rgba(255,240,220,0.9)'], [1, 'rgba(255,240,220,0)']], 64) };
+    this.tex = { crown: crownTex(), pixel: pixelTex(), star: starTex(), sparkle: sparkleTex(), ring: ringTex(), speed: speedTex(), glow: radialTex([[0, 'rgba(255,255,255,1)'], [0.3, 'rgba(255,255,255,0.6)'], [1, 'rgba(255,255,255,0)']], 64), dust: radialTex([[0, 'rgba(255,240,220,0.9)'], [1, 'rgba(255,240,220,0)']], 64) };
     this.spritePool = [];
     for (let i = 0; i < 180; i++) { const m = new THREE.SpriteMaterial({ map: this.tex.glow, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }); const s = new THREE.Sprite(m); s.visible = false; s.renderOrder = 5; S.add(s); this.spritePool.push(s); }
     // floor decals: shock rings that spread from hits and catches (laid flat on the court, not camera-facing sprites)
     this.decals = [];
     for (let i = 0; i < 10; i++) { const m = new THREE.Mesh(GEO.plane, new THREE.MeshBasicMaterial({ map: this.tex.ring, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 })); m.rotation.x = -Math.PI / 2; m.renderOrder = 2; m.visible = false; S.add(m); this.decals.push({ m, t: 0, life: 1, s0: 1, s1: 1, a0: 1 }); }
+    // readable lines: the center line and both side lines brighten as a player nears them (P0f), never always on
+    this.lineStrips = [[0, 0, 0.16, 2 * HZ + 0.1], [0, -HZ, 18.2, 0.16], [0, HZ, 18.2, 0.16]].map(([x, z, w, d]) => { const m = new THREE.Mesh(GEO.plane, new THREE.MeshBasicMaterial({ color: '#fff6dc', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 })); m.rotation.x = -Math.PI / 2; m.position.set(x, 0.011, z); m.scale.set(w, d, 1); m.renderOrder = 2; S.add(m); return m; });
     this.initPost();
     this.resize();
   }
@@ -1173,7 +1240,9 @@ class Game {
     this.mode = mode === 'vc' ? 'vc' : 'fb';
     const vc = this.mode === 'vc';
     this.root.classList.toggle('mode-vc', vc);
-    this.bdMat.map = this.bdTex[this.mode]; this.bdMat.color.set(vc ? '#e6dcef' : '#d8ccd0'); this.bdMat.needsUpdate = true;
+    // the crowd is depth, not content: one value step under the court and players
+    this.bdMat.map = this.bdTex[this.mode]; this.bdMat.color.set(vc ? '#b8aec0' : '#a89ca2'); this.bdMat.needsUpdate = true;
+    if (this.signs) for (const sg of this.signs) sg.mat.color.set('#b3aaae'); if (this.bannerMat) this.bannerMat.color.set('#c2b8bc'); if (this.ribbonMat) this.ribbonMat.color.set('#a8a0a4');
     this.scene.background = new THREE.Color(vc ? '#0a0618' : '#0b0608');
     this.palms.forEach(p => p.visible = false);
     this.floorMat.map = vc ? this.waterTex : this.mapleTex; this.floorMat.color.set(vc ? '#ffffff' : '#dce0d4'); this.floorMat.roughness = vc ? 0.28 : 0.58; this.floorMat.needsUpdate = true;
@@ -1183,7 +1252,7 @@ class Game {
     this.rimL.color.set(vc ? '#ff3fa1' : '#ff7a3a'); this.rimR.color.set(vc ? '#3ff0ff' : '#77b9e8');
     this.rimL.intensity = vc ? 1.6 : 0.85; this.rimR.intensity = vc ? 1.5 : 1.0;
     RIM_U.color.value.set(vc ? '#ff6fd0' : '#ffb070'); RIM_U.strength.value = 0.85;
-    RIM_T1.color.value.set(vc ? '#6ff3ff' : '#b6ff5a'); RIM_T1.strength.value = vc ? 0.7 : 0.55;
+    RIM_T1.color.value.set(vc ? '#6ff3ff' : '#c8ff6a'); RIM_T1.strength.value = vc ? 0.85 : 0.95;   // the Glitches' dark kits need a brighter edge to read over court and crowd
     this.pools.forEach((p, i) => p.material.color.set(vc ? (i % 2 ? '#ff8cc2' : '#7ff3ff') : '#ffe6c8'));
     this.streaks.forEach((s, i) => s.material.color.set(vc ? (i % 2 ? '#ff6fd0' : '#6ff3ff') : '#ffd9a0'));
     this.shafts.forEach(s => s.material.color.set(vc ? '#c48cff' : '#ffd6a0'));
@@ -1194,7 +1263,7 @@ class Game {
     if (this.drawBanner) this.drawBanner();
   }
   bindInput() {
-    const map = { ArrowLeft: 'left', a: 'left', A: 'left', ArrowRight: 'right', d: 'right', D: 'right', ArrowUp: 'up', w: 'up', W: 'up', ArrowDown: 'down', s: 'down', S: 'down', j: 'throw', J: 'throw', ' ': 'throw', k: 'catch', K: 'catch', l: 'jump', L: 'jump', Shift: 'pass', q: 'switch', Q: 'switch', Escape: 'pause', p: 'pause', P: 'pause', Enter: 'enter', '1': 'rock', '2': 'paper', '3': 'scissors', f: 'fs', F: 'fs', m: 'menu', M: 'menu' };
+    const map = { ArrowLeft: 'left', a: 'left', A: 'left', ArrowRight: 'right', d: 'right', D: 'right', ArrowUp: 'up', w: 'up', W: 'up', ArrowDown: 'down', s: 'down', S: 'down', j: 'throw', J: 'throw', ' ': 'throw', u: 'sprint', U: 'sprint', k: 'catch', K: 'catch', l: 'jump', L: 'jump', Shift: 'pass', q: 'switch', Q: 'switch', Escape: 'pause', p: 'pause', P: 'pause', Enter: 'enter', '1': 'rock', '2': 'paper', '3': 'scissors', f: 'fs', F: 'fs', m: 'menu', M: 'menu' };
     this.onKeyDown = (e) => {
       const k = map[e.key]; if (!k) return;
       const inGame = this.phase !== 'title' && this.phase !== 'result';
@@ -1237,7 +1306,7 @@ class Game {
       if (fr > 0.85 && Math.abs(dx) > Math.abs(dy) * 1.2) { if (!this.touch.run) { this.touch.run = true; this.edge.dash = dx < 0 ? -1 : 1; } } else if (fr < 0.6) this.touch.run = false;
     };
     zone.addEventListener('pointerdown', (e) => {
-      sid = e.pointerId; zone.setPointerCapture(sid);
+      sid = e.pointerId; try { zone.setPointerCapture(sid); } catch (er) { }
       if (this.mobile) {
         // floating pad: it centers under the thumb wherever it lands in the left zone
         const rr = this.root.getBoundingClientRect(), st = this.$.stick, h = st.offsetHeight || 112;
@@ -1251,7 +1320,7 @@ class Game {
     zone.addEventListener('pointerup', up); zone.addEventListener('pointercancel', up);
     this.root.querySelectorAll('.fbg-tb').forEach(b => {
       const k = b.dataset.b;
-      b.addEventListener('pointerdown', (e) => { e.preventDefault(); b.setPointerCapture(e.pointerId); this.touch.btn[k] = true; this.edge[k] = true; b.classList.add('on'); if (this.phase === 'title') return; });
+      b.addEventListener('pointerdown', (e) => { e.preventDefault(); try { b.setPointerCapture(e.pointerId); } catch (er) { } this.touch.btn[k] = true; this.edge[k] = true; b.classList.add('on'); if (this.phase === 'title') return; });
       const off = () => { this.touch.btn[k] = false; b.classList.remove('on'); };
       b.addEventListener('pointerup', off); b.addEventListener('pointercancel', off); b.addEventListener('contextmenu', e => e.preventDefault());
     });
@@ -1267,10 +1336,13 @@ class Game {
   }
   userIntent() {
     const k = this.keys, t = this.touch, e = this.edge;
+    // P0e: holding Dash (U, or the DASH button) sprints toward the center line; double-tap and the pad flick still work
+    const fwd = this.user ? -this.user.side : 1, sprint = !!(k.sprint || t.btn.sprint);
     let mx = (k.right ? 1 : 0) - (k.left ? 1 : 0) + t.mx;
+    if (sprint && !(mx * fwd > 0.3)) mx = (this.user && this.user.x * this.user.side < 1.0 && this.rushT >= RULES.rushF) ? 0 : fwd;   // DASH alone never carries you over the center line
     let mz = (k.down ? 1 : 0) - (k.up ? 1 : 0) + t.mz;
     mx = Math.max(-1, Math.min(1, mx)); mz = Math.max(-1, Math.min(1, mz));
-    const it = { mx, mz, dash: e.dash || 0, holdRun: (k.left || k.right || t.run), throw: !!e.throw, catch: !!e.catch, catchHeld: !!(k.catch || t.btn.catch), jump: !!e.jump, pass: !!e.pass, sw: !!e.switch };
+    const it = { mx, mz, dash: e.dash || (e.sprint ? fwd : 0), holdRun: (k.left || k.right || t.run || sprint), throw: !!e.throw, catch: !!e.catch, catchHeld: !!(k.catch || t.btn.catch), jump: !!e.jump, pass: !!e.pass, sw: !!e.switch };
     this.edge = {};
     return it;
   }
@@ -1319,6 +1391,13 @@ class Game {
       case 'ko': P = this.poseKO(a); k = 0.2; break;
       case 'walkin': P = this.poseWalk(a); k = 0.3; break;
       case 'drop': P = this.poseHit(a); k = 0.3; break;
+      case 'teeter': P = this.poseTeeter(a); k = 0.5; break;
+      case 'pump': P = a.st < 8 ? this.poseWind(a, false) : this.poseHold(a); k = 0.55; break;
+      case 'lean': P = this.poseLean(a); k = t < 3 ? 0.7 : 0.4; break;
+      case 'spin': P = this.poseRun(a); P.twist = Math.sin(t * 0.8) * 0.6; P.lean = 0.25; k = 0.5; break;
+      case 'matador': P = this.poseLean(a); P.sh = [-2.6, 0.9, -2.6, 0.9]; P.twist = 0.7; k = 0.8; break;
+      case 'dive': P = this.poseKnock(a); P.roll = (a.diveDir || 1) * -Math.min(1.3, t * 0.16); P.lean = 0.6; k = 0.5; break;
+      case 'stagger': P = this.poseHit(a); k = 0.3; break;
       default: P = this.poseIdle(a);
     }
     a.setExpr(exprFor(a, this));
@@ -1354,6 +1433,8 @@ class Game {
   poseDown(a) { const p = this.bp(a); p.roll = -1.5; p.lean = 0; p.sh = [-2.9, 1.0, -2.9, 1.1]; p.el = [-0.2, -0.2]; p.hp = [-0.1, 0.1]; p.kn = [0.2, 0.4]; p.hipY = -0.62; const b = a.st < 8 ? Math.sin(a.st / 8 * Math.PI) * 0.12 : 0; p.hipY += b; return p; }
   poseGetup(a) { const p = this.bp(a); const f = Math.min(1, a.st / 16); p.roll = -1.5 * (1 - f); p.hipY = -0.62 * (1 - f) - 0.1 * Math.sin(f * Math.PI); p.lean = 0.6 * Math.sin(f * Math.PI); p.kn = [1.4 * (1 - f) + 0.3, 1.2 * (1 - f) + 0.3]; p.hp = [-1.1 * (1 - f), -0.8 * (1 - f)]; p.sh = [0.3, 0.3, 0.3, 0.3]; return p; }
   poseTired(a) { const p = this.bp(a); const t = a.st * 0.18; p.lean = 0.7 + Math.sin(t) * 0.06; p.hipY = -0.12; p.kn = [0.55, 0.55]; p.hp = [-0.5, -0.5]; p.sh = [-0.55, 0.05, -0.55, 0.05]; p.el = [-0.2, -0.2]; p.head = 0.15 + Math.sin(t) * 0.08; if (a.st % 16 === 0) this.sweat(a); return p; }
+  poseLean(a) { const p = this.bp(a); p.lean = -0.55; p.twist = 0.35 * (a.leanDir || 1); p.sh = [-1.9, 0.7, -1.9, 0.7]; p.el = [-0.5, -0.5]; p.kn = [0.8, 0.4]; p.hp = [-0.2, 0.3]; p.hipY = -0.08; p.head = 0.3; return p; }
+  poseTeeter(a) { const p = this.bp(a); const t = a.st * 0.55; p.lean = -0.35 + Math.sin(t * 0.5) * 0.1; p.sh = [-2.2 + Math.sin(t) * 0.9, 0.9, -2.2 - Math.sin(t) * 0.9, 0.9]; p.el = [-0.4, -0.4]; p.kn = [0.35, 0.15]; p.hp = [-0.2, 0.25]; p.head = 0.2; return p; }
   poseKO(a) { const p = this.bp(a); p.sh = [-2.2, 1.3, -2.2, 1.3]; p.el = [-0.3, -0.3]; p.kn = [0.6, 0.2]; p.hp = [-0.2, 0.2]; p.lean = -0.2; p.flip = a.st * 0.12; return p; }
   poseBench(a) { const p = this.bp(a); const t = (this.frame + a.num.length * 23) * 0.06; p.hipY = -0.16; p.kn = [0.7, 0.7]; p.hp = [-0.6, -0.6]; p.lean = 0.45; p.sh = [-0.7, 0.1, -0.7, 0.1]; p.el = [-0.5, -0.5]; p.head = -0.2 + Math.sin(t) * 0.05; return p; }
   blend(a, k) {
@@ -1557,7 +1638,7 @@ class Game {
   crowdReact(kind) {
     // the home crowd backs FINAL BOSS: mood -1 (stunned) .. +1 (roaring), excitement 0..1
     const K = { catch: [0.6, 0.6], oppcatch: [-0.5, 0.4], plus: [0.3, 0.35], bigplus: [0.65, 0.75], minus: [-0.25, 0.2], bigminus: [-0.5, 0.4],
-      clutch: [1, 1], tide: [1, 1], opptide: [-0.85, 0.6], lead: [0.95, 0.95], opplead: [-0.75, 0.5], gamewin: [0.9, 0.9], gamelose: [-0.7, 0.4], matchwin: [1, 1], matchlose: [-1, 0.3] }[kind];
+      clutch: [1, 1], tide: [1, 1], bigmoment: [1, 1], oppbig: [-0.9, 0.7], opptide: [-0.85, 0.6], lead: [0.95, 0.95], opplead: [-0.75, 0.5], gamewin: [0.9, 0.9], gamelose: [-0.7, 0.4], matchwin: [1, 1], matchlose: [-1, 0.3] }[kind];
     if (!K) return;
     this.mood = Math.max(-1, Math.min(1, (this.mood || 0) * 0.35 + K[0])); this.exc = Math.max(this.exc || 0, K[1]);
     const S = this.sfx, big = Math.abs(K[0]) >= 0.85;
@@ -1566,9 +1647,33 @@ class Game {
     const VO = { tide: ['vo_tide', 3], opptide: ['vo_opptide', 3], clutch: ['vo_clutch', 3], lead: ['vo_lead', 3] }[kind];
     if (VO) this.sfx.vo(VO[0], VO[1]); else if (kind === 'catch' && Math.random() < 0.45) this.sfx.vo('vo_catch', 1);
     if (kind === 'tide') { this.popBrush('THE TIDE TURNS!', 'THE CROWD IS ON ITS FEET', '', 0.3, 1.8); this.ref('FINAL BOSS fights back'); }
-    if (kind === 'opptide') { this.popBrush('UH OH...', 'THE GLITCHES ARE COMING BACK', 'lime', 0.3, 1.6); }
+    if (kind === 'opptide') { this.popBrush('UH OH...', '' + this.opp.name + ' ARE COMING BACK', 'lime', 0.3, 1.6); }
     if (kind === 'clutch') this.popBrush('CLUTCH!', 'LAST ONE STANDING', '', 0.3, 1.6);
     if (big && K[0] > 0 && !this.rm) this.flash(0.12);
+  }
+  bigMoment(kind, team, who) {
+    // double out, triple out and a deflection SAVE: the top crowd tier, the announcer, a camera punch and confetti in the team's color AND shape
+    const home = team === 0;
+    this.crowdReact(home ? 'bigmoment' : 'oppbig');
+    this.sfx.vo(kind === 'save' ? 'vo_save' : kind === 'triple' ? 'vo_triple' : 'vo_double', 4);
+    this.popBrush(kind === 'save' ? 'SAVE!' : kind === 'triple' ? 'TRIPLE OUT!' : 'DOUBLE OUT!', kind === 'save' ? 'CAUGHT OFF THE DEFLECTION' : (home ? 'FINAL BOSS' : this.opp.short || '' + this.opp.short + '') + ' CLEAN UP', home ? 'gold' : 'lime', 0.3, 1.7);
+    if (who) this.punch(who.x, who.z, kind === 'triple' ? 1.4 : 1.1);
+    if (!this.rm && who) for (let i = 0; i < (kind === 'triple' ? 34 : 22); i++) { const a = Math.random() * Math.PI * 2, v = 2 + Math.random() * 4.5; this.spawnSprite({ tex: home ? this.tex.crown : this.tex.pixel, x: who.x, y: who.h + 2, z: who.z, s: 0.32, s1: 0.22, life: 40 + (Math.random() * 20 | 0), vx: Math.cos(a) * v, vy: 4 + Math.random() * 4, vz: Math.sin(a) * v * 0.5, g: 9, color: home ? '#ffc83d' : '#a6f23a', normal: true, spin: 0.15 }); }
+    this.addMomentum(team, kind === 'triple' ? 0.75 : 0.55);
+    this.qaLog('big', { kind, team });
+  }
+  addMomentum(team, amt) {
+    // one scalar: + favors FINAL BOSS, - the opponent; it decays over several seconds; a flip earns an announcer callback
+    const before = this.mom || 0; this.mom = Math.max(-1, Math.min(1, before + (team === 0 ? amt : -amt)));
+    if (Math.abs(this.mom) > 0.4 && Math.sign(this.mom) !== Math.sign(before) && Math.abs(before) > 0.15) {
+      const lines = this.mom > 0 ? ['vo_mo1', 'vo_mo2', 'vo_mo3'] : ['vo_mo2', 'vo_mo4'];
+      setTimeout(() => this.sfx.vo(lines[(Math.random() * lines.length) | 0], 3), 1200); this.awStat('momFlips');
+    }
+  }
+  momLift(a) {
+    // a small, temporary lift for the hot team and a slight dip for the other (kept modest so skill decides games)
+    const m = this.mom || 0; if (Math.abs(m) < 0.4) return 0;
+    const hot = (m > 0 ? 0 : 1) === a.team; return hot ? 0.08 * Math.abs(m) : -0.05 * Math.abs(m);
   }
   checkTide() {
     // a swing of 2 or more live players back to level (or better) is a tide turn
@@ -1581,6 +1686,8 @@ class Game {
   }
   crowdTick() {
     this.mood = (this.mood || 0) * 0.994; this.exc = (this.exc || 0) * 0.988;
+    if (this.phase === 'play' && !this.paused) this.mom = (this.mom || 0) * 0.9965;   // about 3 s half life
+    if (this.$.mom0) { const m = this.mom || 0, k = Math.round(m * 100); if (k !== this._momK) { this._momK = k; this.$.mom0.style.transform = `scaleX(${Math.max(0, m).toFixed(3)})`; this.$.mom1.style.transform = `scaleX(${Math.max(0, -m).toFixed(3)})`; this.root.classList.toggle('mom0', m > 0.4); this.root.classList.toggle('mom1', m < -0.4); RIM_U.strength.value = 0.85 + (m > 0.4 ? 0.5 * m : 0); RIM_T1.strength.value = 0.95 + (m < -0.4 ? -0.5 * m : 0); } }
     const m = this.mood, e = this.exc;
     this.crowdMood.value = m; this.crowdExc.value = e; this.crowdAmp.value = (this.rm || this.tier === 'low') ? 0 : 1;
     if (!this.$.crowd) { this.sfx.mood(m, e, this.phase !== 'title' && this.phase !== 'result' && !this.paused); return; }
@@ -1665,12 +1772,17 @@ class Game {
       type: 'normal', power: false, age: 0, hitSet: new Set(), target: null, pending: null, squash: 0, spin: b.spin || 0, trailC: '#ffffff', bounces: 0, claim: null, outF: 0, flash: 0, grav: 0, fromSide: 0, deflected: false, defSide: 0, forceHead: false, restF: 0 });
   }
   buildTeams() {
-    const k0 = kitFrom(DEFAULT_LOOK.colors), k1 = kitFrom(BOSS_TEAM.colors);
+    this.opp = oppFrom(this.opts.opponent);
+    const k0 = kitFrom(DEFAULT_LOOK.colors), k1 = kitFrom(this.opp.colors);
     this.kit1 = k1;
     this.all = []; this.teams = [[], []];
     for (const def of ROSTER) { const a = new Athlete(this, def, 0); a.drawKit(k0); this.teams[0].push(a); this.all.push(a); }
-    for (const def of BOSS_TEAM.players) { const a = new Athlete(this, def, 1); a.drawKit(k1); this.teams[1].push(a); this.all.push(a); }
-    const b = new Athlete(this, Object.assign({ isBoss: true }, BOSS_TEAM.boss), 1); b.drawKit(k1); this.boss = b; this.teams[1].splice(3, 0, b); this.all.push(b);
+    for (const def of this.opp.players) { const a = new Athlete(this, def, 1); a.drawKit(k1); a.def = def; this.teams[1].push(a); this.all.push(a); }
+    const b = new Athlete(this, Object.assign({ isBoss: true }, this.opp.boss), 1); b.drawKit(k1); this.boss = b; this.teams[1].splice(3, 0, b); this.all.push(b);
+    this.oppStyle = this.opts.oppStyle && OPP_STYLES[this.opts.oppStyle] ? this.opts.oppStyle : (this.opp.style && OPP_STYLES[this.opp.style] ? this.opp.style : 'glitches');
+    this.assignRatings();
+    this.tactic = [TACTICS.finalboss, Object.assign({}, TACTICS[this.oppStyle] || TACTICS.glitches, this.opp.tactic || {})];
+    this.coach = [{}, {}];
     this.footTex = radialTex([[0, 'rgba(255,255,255,0)'], [0.5, 'rgba(255,255,255,0.08)'], [0.78, 'rgba(255,255,255,0.75)'], [0.9, 'rgba(255,255,255,0.25)'], [1, 'rgba(255,255,255,0)']]);
     this.ringTex = canvasTex(128, 128, (c) => { c.strokeStyle = '#fff'; c.lineWidth = 9; c.beginPath(); c.arc(64, 64, 50, 0, Math.PI * 2); c.stroke(); c.globalAlpha = 0.25; c.fillStyle = '#fff'; c.beginPath(); c.arc(64, 64, 46, 0, Math.PI * 2); c.fill(); });
     for (const a of this.all) {
@@ -1679,8 +1791,27 @@ class Game {
       const ring = new THREE.Mesh(GEO.plane, new THREE.MeshBasicMaterial({ map: this.ringTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, color: '#ffc83d', opacity: 0.9 }));
       ring.rotation.x = -Math.PI / 2; ring.renderOrder = 2; ring.visible = false; this.scene.add(ring); a.ring = ring;
       // a soft team-color disc under every player in the court: the 16-player scrum reads by side even when bodies overlap
-      const foot = new THREE.Mesh(GEO.plane, new THREE.MeshBasicMaterial({ map: this.footTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, color: a.team === 0 ? '#ffc83d' : '#a6f23a', opacity: 0.3 }));
+      this.footTexT = this.footTexT || [teamFootTex(0), teamFootTex(1)];
+      const foot = new THREE.Mesh(GEO.plane, new THREE.MeshBasicMaterial({ map: this.footTexT[a.team], transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, color: a.team === 0 ? '#ffc83d' : '#a6f23a', opacity: 0.42 }));
       foot.rotation.x = -Math.PI / 2; foot.renderOrder = 1; foot.visible = false; this.scene.add(foot); a.foot = foot;
+    }
+  }
+  abil(kind, team) { if (team !== 1) return 0; let v = 0; for (const x of (this.opp.abilities || [])) if (x.kind === kind) v += x.amount; return v; }
+  abilityTell(a, kind) {
+    // the tell: a short call-out in the team's color and shape (plus its sound if the team provides one), at most every few seconds
+    const x = (this.opp.abilities || []).find(y => y.kind === kind); if (!x || a.team !== 1) return;
+    this.abilT = this.abilT || {}; if (this.frame < (this.abilT[kind] || 0)) return; this.abilT[kind] = this.frame + 180;
+    this.pop(a, x.tell.text || x.id, 'small lime sh1'); if (x.tell.sfx) this.sfx.smp(x.tell.sfx, 0.8); this.awStat('ability_' + kind);
+  }
+  assignRatings() {
+    const off = DIFF_OFF[this.opts.difficulty] || 0, st = OPP_STYLES[this.oppStyle] || OPP_STYLES.glitches;
+    for (const a of this.teams[0]) { const s = FB_STRENGTH[a.key] || {}; a.rt = Object.assign({}, FB_BASE, s); a.arch = s.arch || 'balanced'; delete a.rt.arch; }
+    for (const a of this.teams[1]) {
+      if (a.boss) { a.rt = {}; for (const k in BOSS_RT) a.rt[k] = clampR(BOSS_RT[k] + off * 0.5); a.arch = 'boss'; continue; }
+      const given = a.def && a.def.rt;
+      const r = {}; for (const k in st.base) r[k] = Math.min(clampR((given && given[k] != null ? given[k] : st.base[k] + (hash01(a.key + k) - 0.5) * 2 * ((st.spreadK && st.spreadK[k]) || st.spread)) + off), BOSS_RT[k] - 0.04);
+      r.foot = Math.min(BOSS_RT.foot - 0.02, r.foot + this.abil('dodgeBias', 1));
+      a.rt = r; a.arch = r.power >= 0.84 ? 'power arm' : (r.catch >= 0.7 ? 'catcher' : 'scrapper');
     }
   }
   inPlayers(team) { return this.teams[team].filter(a => a.active && a.role === 'in'); }
@@ -1696,7 +1827,7 @@ class Game {
     this.updateHUD(true);
   }
   setupGame() {
-    this.gameNo++; this.p2 = false; this.ctlTeam = -1; this.ctlT = 0; this.lastCtlSec = -1; this.gameEndT = 0; this.rushT = 999; this.falseStart = false;
+    this.gameNo++; this.p2 = false; this.mom = 0; this.coach = [{}, {}]; this.ctlTeam = -1; this.ctlT = 0; this.lastCtlSec = -1; this.gameEndT = 0; this.rushT = 999; this.falseStart = false;
     this.$.boss.classList.remove('on'); this.$.ctl.hidden = true;
     this.queue = [[], []]; this.outSequence = 0; this.tide = { low: 0, high: 0 };
     for (const t of [0, 1]) {
@@ -1704,7 +1835,7 @@ class Game {
       ps.forEach((a, i) => {
         a.reset(); a.active = true; a.root.visible = true; a.shadow.visible = true; a.role = 'in';
         a.x = a.side * (HX - 0.45); a.z = -HZ + 0.6 + i * ((2 * HZ - 1.2) / (ps.length - 1));
-        a.ai.home = [a.side * (3.8 + (i % 3) * 1.7), Math.max(-3.9, Math.min(3.9, a.z * 0.95))];
+        a.ai.home = [a.side * (3.8 + (i % 3) * 1.7), Math.max(-(HZ - 0.6), Math.min(HZ - 0.6, a.z * 0.95))];
         a.yaw = a.team === 0 ? 100 * DEG : -100 * DEG;
       });
     }
@@ -1735,7 +1866,7 @@ class Game {
   showVS() {
     const t0 = this.teams[0], t1 = this.teams[1];
     this.$.vs.innerHTML = `<div class="fbg-vsp l"><small>${esc(this.look.name || '')}</small><h3>FINAL BOSS</h3><ul class="two">${t0.map(a => `<li${a === this.user ? ' class="me"' : ''}><span>#${a.num}</span>${a.name}</li>`).join('')}</ul></div>
-      <div class="fbg-vsp r"><small>Boss team</small><h3>THE GLITCHES</h3><ul class="two">${t1.map(a => `<li>${a.name}<span>#${a.num}</span></li>`).join('')}</ul></div><div class="fbg-vsx">VS</div>`;
+      <div class="fbg-vsp r"><small>Boss team</small><h3>${this.opp.name}</h3><ul class="two">${t1.map(a => `<li>${a.name}<span>#${a.num}</span></li>`).join('')}</ul></div><div class="fbg-vsx">VS</div>`;
     this.$.vs.hidden = false;
   }
   startBrief() {
@@ -1749,7 +1880,7 @@ class Game {
     const ctl = touch ? 'Left pad moves (flick to dash). <b>THROW</b>, <b>CATCH</b> (hold to duck), <b>JUMP</b>, <b>PASS</b>.'
       : '<span class="fbg-kbd">Arrows</span>/<span class="fbg-kbd">WASD</span> move, double-tap to dash. <span class="fbg-kbd">J</span>' + (this.native ? '/<span class="fbg-kbd">Left click</span>' : '') + ' throw, <span class="fbg-kbd">K</span>' + (this.native ? '/<span class="fbg-kbd">Right click</span>' : '') + ' catch (hold to duck), <span class="fbg-kbd">L</span> jump, <span class="fbg-kbd">Shift</span> pass, <span class="fbg-kbd">Q</span> switch.';
     this.$.vs.innerHTML = `<div class="fbg-rps fbg-brief" role="dialog" aria-label="${title} rules"><h3>${title}</h3>
-      <p class="fbg-bwho">${this.lastCtl < 0 ? 'Ro-sham-bo decides who rushes the 3 balls. After that, the 3 balls alternate every game.' : (this.lastCtl === 1 ? 'FINAL BOSS rushes the 3 balls on its right this game. THE GLITCHES rush the 2 on theirs.' : 'THE GLITCHES rush the 3 balls on their right this game. FINAL BOSS rushes the 2 on its right.')}</p>
+      <p class="fbg-bwho">${this.lastCtl < 0 ? 'Ro-sham-bo decides who rushes the 3 balls. After that, the 3 balls alternate every game.' : (this.lastCtl === 1 ? 'FINAL BOSS rushes the 3 balls on its right this game. ' + this.opp.name + ' rush the 2 on theirs.' : '' + this.opp.name + ' rush the 3 balls on their right this game. FINAL BOSS rushes the 2 on its right.')}</p>
       <p>Out by a live ball, a caught throw, or crossing the center or a side line. Clear the other team to win the game.</p>
       <ul class="fbg-rules">${rules.map(r => `<li>${ruleIcon(r[0])}<b>${r[1]}</b><span>${r[2]}</span></li>`).join('')}</ul>
       <p class="fbg-bctl">${ctl}</p>
@@ -1775,7 +1906,7 @@ class Game {
     const w = 1 - this.lastCtl; this.rpsWinner = w;
     this.$.vs.hidden = true; this.placeRushBalls(w);
     this.phase = 'lineup'; this.lineT = 0;
-    this.popCenter('READY', 'big', 0.45, 0.75); this.sfx.vo('vo_ready', 2); this.ref((w === 0 ? 'FINAL BOSS' : 'THE GLITCHES') + ' has the 3 balls. Rush only your right'); this.showLanes(true);
+    this.popCenter('READY', 'big', 0.45, 0.75); this.sfx.vo('vo_ready', 2); this.ref((w === 0 ? 'FINAL BOSS' : '' + this.opp.name + '') + ' has the 3 balls. Rush only your right'); this.showLanes(true);
   }
   startRPS() {
     this.sfx.vo('vo_rps', 2);
@@ -1801,7 +1932,7 @@ class Game {
       this.$.vs.querySelectorAll('[data-r]').forEach(b => b.classList.toggle('on', +b.dataset.r === this.rpsPick));
       const w = this.rpsPick === this.rpsCPU ? -1 : ((this.rpsPick - this.rpsCPU + 3) % 3 === 1 ? 0 : 1);
       this.rpsWinner = w;
-      if (r) r.innerHTML = `You: <b>${names[this.rpsPick]}</b>. GLITCHES: <b>${names[this.rpsCPU]}</b>. ${w < 0 ? 'Tie, go again.' : (w === 0 ? 'FINAL BOSS gets 3 balls.' : 'THE GLITCHES get 3 balls.')}`;
+      if (r) r.innerHTML = `You: <b>${names[this.rpsPick]}</b>. ${this.opp.short}: <b>${names[this.rpsCPU]}</b>. ${w < 0 ? 'Tie, go again.' : (w === 0 ? 'FINAL BOSS gets 3 balls.' : '' + this.opp.name + ' get 3 balls.')}`;
       this.sfx.catch();
     }
     if (this.rpsCPU != null && this.rpsT - this.rpsDone > (this.rpsWinner < 0 ? 50 : 70)) {
@@ -1818,13 +1949,13 @@ class Game {
     if (!this.falseStart && this.lineT > 8 && (Math.abs(ui.mx) + Math.abs(ui.mz) > 0.3 || ui.dash)) {
       this.falseStart = true;
       for (const b of this.balls) if (b.state === 'rest' && b.rushTeam === 0) b.rushTeam = 1;
-      this.popCenter('FALSE START', 'big red', 0.6); this.ref('Balls go to THE GLITCHES'); this.sfx.buzz(); this.sfx.vo('vo_falsestart', 3);
+      this.popCenter('FALSE START', 'big red', 0.6); this.ref('Balls go to ' + this.opp.name + ''); this.sfx.buzz(); this.sfx.vo('vo_falsestart', 3);
     }
     for (const a of this.all) if (a.active) { a.tgt = this.poseSquat(a, 0.45); a.tgt.sq = 1; a.tgt.sh = [-0.6, 0.3, -0.6, 0.3]; this.blend(a, 0.25); this.place(a); }
     for (const b of this.balls) this.placeBallMesh(b);
     if (this.lineT === 45) { this.popCenter('SET', 'big', 0.45, 0.75); this.sfx.vo('vo_set', 2); }
     if (this.lanes && this.lanesOn) for (const m of this.lanes) m.material.opacity = 0.34 + 0.1 * Math.sin(this.lineT * 0.15);
-    if (this.lineT === 90) { this.phase = 'play'; this.rushT = 0; this.cheer('*go'); this.popBrush('RUSH!', (this.rpsWinner === 0 ? 'FINAL BOSS' : 'GLITCHES') + ' rush 3 balls', '', 0.3, 1.3); this.sfx.crowd(true); this.sfx.vo('vo_go', 3); this.sfx.whistle(); }
+    if (this.lineT === 90) { this.phase = 'play'; this.rushT = 0; this.cheer('*go'); this.popBrush('RUSH!', (this.rpsWinner === 0 ? 'FINAL BOSS' : '' + this.opp.short + '') + ' rush 3 balls', '', 0.3, 1.3); this.sfx.crowd(true); this.sfx.vo('vo_go', 3); this.sfx.whistle(); }
   }
   pause(auto) {
     if (this.dead) return;
@@ -2057,12 +2188,16 @@ class Game {
         this.edge = {}; return;
     }
     if (this.hitstop > 0) { this.hitstop--; for (const a of this.all) if (a.shake > 0) a.shake--; return; }
+    // world frames: they stop during hit-stop, so catch windows and AI reaction timing never expire while the world is frozen
+    this.wf = (this.wf || 0) + 1;
     const ui = this.userIntent();
     if (ui.sw) this.switchUser(true);
     this.assignClaims();
+    this.coachTick(0); this.coachTick(1);
     for (const a of this.all) {
       if (!a.active) continue;
-      const it = (a === this.user && a.role === 'in') ? ui : this.aiIntent(a);
+      const it = (a === this.user && a.role === 'in') ? ui : this.lineSense(a, this.aiIntent(a));
+      if (a.state === 'teeter') { a.st++; this.teeterTick(a, it); this.physics(a); this.animate(a); continue; }
       this.control(a, it);
       this.physics(a);
       this.animate(a);
@@ -2082,7 +2217,7 @@ class Game {
     this.edge = {};
     if (this.gameEndT === 150) {
       const lead = Math.abs(this.points[0] - this.points[1]);
-      if (this.ot || this.sudden) return this.endMatch({ win: this.lastGameWinner === 0, msg: this.lastGameWinner === 0 ? 'Overtime goes to FINAL BOSS.' : 'Overtime goes to THE GLITCHES.' });
+      if (this.ot || this.sudden) return this.endMatch({ win: this.lastGameWinner === 0, msg: this.lastGameWinner === 0 ? 'Overtime goes to FINAL BOSS.' : 'Overtime goes to ' + this.opp.name + '.' });
       if (lead >= RULES.mercy) return this.endMatch({ win: this.points[0] > this.points[1], msg: `Mercy rule at ${this.points[0]} to ${this.points[1]}.` });
       this.setupGame(); this.startBrief();
     }
@@ -2132,34 +2267,192 @@ class Game {
     const it = Object.assign({}, NOI);
     if (a.role !== 'in' || a.locked()) return it;
     const ai = a.ai; ai.t++;
-    if (ai.press >= 0 && this.frame >= ai.press) { it.catch = true; ai.press = -1; }
+    if (ai.press >= 0 && (this.wf || 0) >= ai.press && a.catchCool === 0 && a.state !== 'air') { it.catch = true; ai.press = -1; if (ai.react && ai.react.kind === 'duck') it.catchHeld = true; }
+    if (this.reactIntent(a, it)) return it;
     if (a.held) return this.aiWithBall(a, it);
-    const inc = this.incomingFor(a);
-    if (inc) {
-      if (ai.press >= 0) return it;
-      if (!ai.dodgeAt) { ai.dodgeAt = this.frame + this.level.r; ai.dz = a.z > inc.z ? 1 : -1; if (Math.abs(a.z) > HZ - 1) ai.dz = -Math.sign(a.z); ai.duck = inc.h > 1.2 && Math.random() < 0.3; }
-      if (this.frame >= ai.dodgeAt) { if (ai.duck) it.catchHeld = true; else it.mz = ai.dz; }
-      return it;
-    }
-    ai.dodgeAt = 0;
     if (ai.claimBall) { const b = ai.claimBall; const tx = b.state === 'rest' ? b.x + a.side * 0.35 : b.x; return this.seek(a, it, tx, b.z, true); }
     if (this.phase === 'play' && this.rushT < RULES.rushF && !a.held && a.oob === 0) return this.seek(a, it, a.side * (HX - 0.45), a.z, false);
     if (a.oob > 0) return this.seek(a, it, a.side * (HX - 0.8), Math.max(-3.5, Math.min(3.5, a.z)), false);
     // formation: drift around home, back off when the other side holds more balls
     const foeHeld = this.balls.filter(b => b.holder && b.holder.team !== a.team).length;
     const h = ai.home || [a.side * 5, 0];
-    if (!ai.wander || ai.t % 100 === 0) ai.wander = [h[0] + (Math.random() - 0.5) * 2.2, Math.max(-3.9, Math.min(3.9, h[1] + (Math.random() - 0.5) * 2.4))];
+    if (!ai.wander || ai.t % 100 === 0) ai.wander = [h[0] + (Math.random() - 0.5) * 2.2, Math.max(-(HZ - 0.6), Math.min(HZ - 0.6, h[1] + (Math.random() - 0.5) * 2.4))];
     let tx = ai.wander[0], tz = ai.wander[1];
     if (foeHeld >= 3) tx = a.side * Math.max(Math.abs(tx), 6.2);
     const d = Math.hypot(tx - a.x, tz - a.z);
     if (d > 0.4) { it.mx = (tx - a.x) / d * 0.6; it.mz = (tz - a.z) / d * 0.6; }
     return it;
   }
+  lineSense(a, it) {
+    // a soft boundary near the side lines and the center line; sharp players see it from farther, and misjudging is rare and rolled once per approach
+    if (a.role !== 'in' || this.rushT < RULES.rushF) return it;
+    const r = a.rt || FB_BASE, m = 0.45 + 1.1 * r.aware * (this.momLift ? 1 + this.momLift(a) : 1);
+    const own = a.x * a.side, zr = HZ - Math.abs(a.z), near = own < m || zr < m;
+    if (near && !a.ai.nearLine) { a.ai.nearLine = true; a.ai.lineMiss = Math.random() < 0.12 * Math.pow(1 - r.aware, 1.5); if (a.ai.lineMiss) this.awStat('lineMiss'); }
+    else if (!near) a.ai.nearLine = false;
+    if (a.ai.lineMiss) return it;
+    if (own < m && it.mx * a.side < 0) it.mx *= Math.max(0, own / m) - 0.25;
+    if (zr < m && it.mz * Math.sign(a.z) > 0) it.mz *= Math.max(0, zr / m) - 0.25;
+    return it;
+  }
+  startTeeter(a, kind, out, speed) {
+    // toe the line: arms wheel, lean back; recover or carry over (out)
+    a.set('teeter'); a.vx = a.vz = 0; a.tee = { kind, out, speed, f: 0, saved: false };
+    const r = a.rt || FB_BASE;
+    a.tee.fall = this.aiPlays(a) ? Math.random() < Math.min(0.9, Math.max(0, (speed - 1.6) / 4.5)) * (1 - r.foot) * 0.9 : null;
+    this.awStat('teeter'); this.lineFlash = 30;
+  }
+  teeterTick(a, it) {
+    const T = a.tee; T.f++;
+    if (a === this.user && !this.simAll) {
+      // forgiveness: let go of the push (or reverse) during the teeter and you stay in
+      const push = T.kind === 'center' ? it.mx * -a.side : it.mz * T.out;
+      if (push < 0.2) T.saved = true;
+      if (T.saved && T.f >= 6) return this.endTeeter(a, false);
+      if (T.f >= 20) return this.endTeeter(a, !T.saved);
+      return;
+    }
+    if (T.f >= 18) this.endTeeter(a, !!T.fall);
+  }
+  endTeeter(a, fall) {
+    const T = a.tee; a.tee = null;
+    if (!fall) {
+      a.set('idle'); if (T.kind === 'center') a.x -= -a.side * 0.25; else a.z -= T.out * 0.25;
+      this.awStat('teeterSaved'); this.ringFx(a, a.team === 0 ? '#ffc83d' : '#a6f23a');
+      if (a === this.user || Math.random() < 0.4) this.sfx.ooh();
+      return;
+    }
+    this.awStat('teeterFell');
+    if (T.kind === 'center') { a.x = a.side * -0.35; this.eliminate(a, 'line'); if (a === this.user) this.popCenter('CENTER LINE: OUT', 'big red', 0.36); }
+    else { a.z = T.out * (HZ + 0.35); this.eliminate(a, 'side'); if (a === this.user) this.popCenter('SIDE LINE: OUT', 'big red', 0.36); }
+  }
+  wings(t, except) {
+    // far-left and far-right players as the team faces the other team (FINAL BOSS faces +x, so its left is -z)
+    const L = t === 0 ? -1 : 1, ps = this.inPlayers(t).filter(m => m !== except && m.oob === 0 && !LOCKED.has(m.state));
+    if (!ps.length) return { left: null, right: null };
+    const s = ps.slice().sort((p, q) => q.z * L - p.z * L); return { left: s[0], right: s[s.length - 1] };
+  }
+  coachSay(label) {
+    // COACH FIORE's bench card: the FINAL BOSS plan as a one or two word game label (labels, not quotes), at most every few seconds
+    if (!this.$.coach || this.frame < (this.coachNext || 0) || this.coachLast === label) return;
+    this.coachLast = label; this.coachNext = this.frame + 240;
+    this.$.coachB.textContent = label; const el = this.$.coach; el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
+    clearTimeout(this.coachTO); this.coachTO = setTimeout(() => el.classList.remove('on'), 2600);
+    this.qaLog('coach', { label });
+  }
+  smartTactic() {
+    // FINAL BOSS is the best-coached team: it reads the ball count, the clock, the score and how the other team plays
+    const o = this.tactic[1], foes = this.inPlayers(1), aw = foes.length ? foes.reduce((s, f) => s + (f.rt || FB_BASE).aware, 0) / foes.length : 0.6;
+    const behind = this.points[0] < this.points[1], late = !this.ot && this.clock < 60;
+    return Object.assign({}, TACTICS.finalboss, {
+      patience: Math.max(0.05, 0.12 + 0.3 * (1 - o.patience) - (behind && late ? 0.2 : 0)),   // wait out an aggressive team a little; press when behind late
+      fake: Math.min(0.9, aw),                                                          // fakes only bait players who watch
+      push: 0.8, flank: 0.6, calls: 0.5, lastBall: this.liveCount(0) <= 2 ? 0.4 : 0.9,
+    });
+  }
+  coachTick(t) {
+    // the coach above the players: one plan per possession, by team style
+    if (this.rushT < RULES.rushF || this.phase !== 'play') return;
+    const C = this.coach[t], T = this.tactic[t];
+    const holders = this.inPlayers(t).filter(a => a.held && a.held.cleared && a.oob === 0), n = holders.length;
+    if (n !== C.n) {
+      if (t === 0) this.tactic[0] = this.smartTactic();
+      if ((C.n || 0) === 0 && n >= 1) { C.patient = Math.random() < T.patience; C.lastHold = Math.random() < T.lastBall; C.flankLeft = Math.random() < T.flank ? 2 : 0; C.callAt = Math.random() < T.calls ? this.frame + 40 + ((Math.random() * 70) | 0) : 0; if (n === 1) this.awStat('oneBallPoss' + t); }
+      if (n === 1 && (C.n || 0) > 1) this.awStat('oneBallPoss' + t);
+      C.n = n; if (n === 0) C.flankLeft = 0;
+      const ai = holders.filter(a => this.aiPlays(a) && (!a.ai.plan || a.ai.plan.k !== 'sync'));
+      if (n >= 3 && ai.length >= 2 && !C.plan && Math.random() < T.push) {
+        const mode = Math.random() < T.fake ? 'fake' : 'multi';
+        C.plan = { k: 'push', mode, members: ai.slice(0, 3), t0: this.frame }; this.awStat('plan_push_' + mode); if (t === 0) this.coachSay(mode === 'fake' ? 'PUMP FAKE' : 'PUSH');
+        for (const m of C.plan.members) { m.ai.plan = { k: 'coach' }; m.ai.t = 0; }
+      } else if (n >= 1 && C.patient && this.ctlTeam !== t) { this.awStat('plan_patience'); if (t === 0) this.coachSay('HOLD'); }
+      else if (n === 1 && C.lastHold && t === 0) this.coachSay('LAST BALL: KEEP IT');
+    }
+    if (C.plan && C.plan.k === 'push') this.pushTick(t, C);
+    // calls: a wing yells for the ball; the holder passes there (for the player, it is a suggestion to follow with PASS)
+    if (C.callAt && this.frame >= C.callAt && n >= 1) {
+      C.callAt = 0; const h = holders[(Math.random() * n) | 0], W = this.wings(t, h);
+      const side = !W.left ? 'right' : !W.right ? 'left' : (Math.abs(W.left.z - h.z) > Math.abs(W.right.z - h.z) ? 'left' : 'right'), caller = W[side];
+      if (caller && !caller.held && Math.abs(caller.z - h.z) > 1.5) {
+        this.awStat('plan_call'); this.sfx.smp('ball_' + side + '_' + (1 + ((Math.random() * 3) | 0)), 0.85); this.qaLog('call', { side, team: t });
+        this.pop(caller, 'BALL ' + side.toUpperCase() + '!', 'small ' + (t === 0 ? 'gold sh0' : 'lime sh1'));
+        if (h === this.user && !this.simAll) this.callSuggest = { to: caller, until: this.frame + 150 };
+        else if (this.aiPlays(h) && (!h.ai.plan || h.ai.plan.k !== 'coach')) { h.ai.plan = { k: 'pass', to: caller }; h.ai.t = 0; h.ai.delay = 6; }
+      }
+    }
+  }
+  pushTick(t, C) {
+    // coordinated push: the holders walk up to the attack line together, then fake-and-throw or fire together
+    const P = C.plan, M = P.members.filter(m => m.role === 'in' && m.held && m.held.cleared && m.oob === 0);
+    if (M.length < 2 || this.frame - P.t0 > 200) { for (const m of M) if (m.ai.plan && m.ai.plan.k === 'coach') m.ai.plan = null; C.plan = null; return; }
+    const ready = M.every(m => Math.abs(m.x - m.side * (ATK + 0.7)) < 0.45) || this.frame - P.t0 > 80 || (this.ctlTeam === t && this.ctlT > RULES.control - 4);
+    if (!ready) return;
+    C.plan = null;
+    const foes = this.inPlayers(1 - t).filter(f => f.oob === 0); if (!foes.length) return;
+    if (P.mode === 'fake') {
+      const shooter = M.slice().sort((a, b) => (b.rt || FB_BASE).acc - (a.rt || FB_BASE).acc)[0];
+      let baited = [];
+      for (const m of M) {
+        if (m === shooter) continue;
+        // pump fake: a windup that stops short; an aware defender who is watching commits early
+        m.ai.plan = null; m.set('pump'); this.awStat('fakes'); this.qaLog('fake', { team: t });
+        const f = foes[(Math.random() * foes.length) | 0]; m.yaw = Math.atan2(f.x - m.x, f.z - m.z);
+        if (this.aiPlays(f) && this.viewOf(f, m.x, m.z) === 1 && Math.random() < 0.85 * (f.rt || FB_BASE).aware * (1 + this.abil('fakeBait', t)) && !f.locked()) {
+          const chest = Math.random() < 0.5; f.ai.react = { fake: true, B: { state: 'flight' }, aware: true, kind: chest ? 'catch' : 'dodge', at: (this.wf || 0) + 1, impactF: (this.wf || 0) + 16 };
+          if (chest) f.ai.press = (this.wf || 0) + 6; baited.push(f); this.awStat('fakeBaited'); this.pop(f, '!', 'tiny ' + (f.team === 0 ? 'gold sh0' : 'lime sh1'));
+        }
+      }
+      shooter.syncTarget = baited.length ? baited[0] : null; shooter.ai.plan = { k: 'throw' }; shooter.ai.t = 0; shooter.ai.delay = 9; shooter.fakeShot = !!baited.length;
+    } else {
+      const target = this.pickTarget(M[0], null); if (!target) return;
+      M.forEach((m, i) => { m.ai.plan = { k: 'sync', s: { at: this.frame + 2 + (i ? ((Math.random() * 8) | 0) : 0), target, team: t } }; });
+      this.awStat('sync'); this.pop(M[0], 'THREE!', 'small ' + (t === 0 ? 'gold sh0' : 'lime sh1')); this.sfx.smp(t === 0 ? 'call_fb' : 'call_gl', 0.85);
+    }
+  }
+  trySync(a) {
+    // "Two balls beat any dodger": sometimes a holder calls "Three!" and a teammate releases with them at one target
+    const team = a.team; this.syncCool = this.syncCool || [0, 0];
+    if (this.frame < this.syncCool[team]) return false;
+    const st = team === 1 ? (OPP_STYLES[this.oppStyle] || OPP_STYLES.glitches).sync : 0.2;
+    if (Math.random() > st * 0.35) { this.syncCool[team] = this.frame + 30; return false; }
+    const mate = this.inPlayers(team).find(m => m !== a && this.aiPlays(m) && m.held && m.held.cleared && m.oob === 0 && (!m.ai.plan || m.ai.plan.k === 'throw'));
+    if (!mate || a.oob > 0) return false;
+    const target = this.pickTarget(a, null); if (!target) return false;
+    const S = { at: this.frame + 42, target, team };
+    a.ai.plan = { k: 'sync', s: S }; mate.ai.plan = { k: 'sync', s: S }; mate.ai.t = 0;
+    this.syncCool[team] = this.frame + 360;
+    this.awStat('sync');
+    this.pop(a, 'THREE!', 'small ' + (team === 0 ? 'gold' : 'lime')); this.sfx.smp(team === 0 ? 'call_fb' : 'call_gl', 0.85);
+    return true;
+  }
   aiWithBall(a, it) {
     const b = a.held, ai = a.ai;
     if (a.oob > 0) return this.seek(a, it, a.side * (HX - 0.9), Math.max(-3, Math.min(3, a.z)), false);
-    if (!b.cleared) return this.seek(a, it, a.side * (ATK + 1.2), Math.max(-3.8, Math.min(3.8, a.z)), false);
+    if (!b.cleared) return this.seek(a, it, a.side * (ATK + 1.2), Math.max(-(HZ - 0.7), Math.min(HZ - 0.7, a.z)), false);
     const pressure = this.ctlTeam === a.team ? this.ctlT : 0;
+    const foeHeld = this.balls.filter(x => x.holder && x.holder.team !== a.team).length;
+    if (ai.plan == null && this.liveCount(a.team) === 1 && foeHeld > 0 && pressure < RULES.control * 0.5) { ai.plan = { k: 'bait' }; ai.t = 0; ai.delay = 0; }
+    if (ai.plan == null && this.trySync(a)) ai.t = 0;
+    if (ai.plan == null) {
+      const C = this.coach[a.team], T = this.tactic[a.team], mine = this.balls.filter(x => x.holder && x.holder.team === a.team).length;
+      const forced = this.ctlTeam === a.team || this.liveCount(a.team) <= 2 || (this.clock < 20 && !this.ot) || foeHeld === 0 && mine >= 3;
+      if (!forced && mine === 1 && C.lastHold && foeHeld > 0) { ai.plan = { k: 'hold', until: ai.t + 45 }; this.awStat('plan_lastHold'); }
+      else if (!forced && C.patient && mine < 3) { ai.plan = { k: 'hold', until: ai.t + 45 }; }
+      else if (C.flankLeft > 0 && mine <= 2) {
+        // the first two balls go to the wings
+        const W = this.wings(a.team, a), wing = (W.left && !W.left.held && Math.abs(W.left.z - a.z) > 2) ? W.left : (W.right && !W.right.held && Math.abs(W.right.z - a.z) > 2 ? W.right : null);
+        C.flankLeft--; if (wing && wing !== this.user) { ai.plan = { k: 'pass', to: wing }; ai.delay = 4; ai.t = 0; this.awStat('plan_flank'); if (a.team === 0) this.coachSay('FLANK'); }
+      }
+      if (ai.plan) ai.t = 0;
+    }
+    if (ai.plan && ai.plan.k === 'hold') {
+      // patience and the last ball: hold, reposition, block if they throw; re-decide every so often
+      if (ai.t > ai.plan.until) { ai.plan = null; return it; }
+      const h = ai.home || [a.side * 5.5, 0]; const tx = a.side * Math.max(5.2, Math.abs(h[0])), tz = h[1]; const d = Math.hypot(tx - a.x, tz - a.z); if (d > 0.5) { it.mx = (tx - a.x) / d * 0.6; it.mz = (tz - a.z) / d * 0.6; }
+      return it;
+    }
+    if (ai.plan && ai.plan.k === 'coach') { const tx = a.side * (ATK + 0.7); if (Math.abs(tx - a.x) > 0.3) it.mx = Math.sign(tx - a.x) * 0.8; return it; }
+    if (ai.plan && ai.plan.k === 'pass' && ai.plan.to) { if (ai.t < (ai.delay || 0)) return it; const to = ai.plan.to; ai.plan = null; if (to.role === 'in' && !to.held && to.oob === 0) { a.passTarget = to; it.pass = true; } return it; }
     if (ai.plan == null) {
       ai.delay = pressure > RULES.control * 0.55 ? 6 + ((Math.random() * 10) | 0) : 22 + ((Math.random() * 55) | 0);
       const r = Math.random();
@@ -2170,6 +2463,17 @@ class Game {
       ai.t = 0;
     }
     const P = ai.plan;
+    if (P.k === 'bait') {
+      // last one standing: bait a throw, dodge it, then punish while they are empty-handed
+      if (foeHeld === 0 || ai.t > 300 || pressure > RULES.control * 0.5) { it.throw = true; ai.plan = null; return it; }
+      it.mz = Math.sin(ai.t * 0.07) * 0.8; const tx = a.side * 4.6; if (Math.abs(tx - a.x) > 0.5) it.mx = Math.sign(tx - a.x) * 0.5; return it;
+    }
+    if (P.k === 'sync') {
+      const S = P.s;
+      if (!S.target || S.target.role !== 'in' || this.frame > S.at + 30) { ai.plan = null; a.syncTarget = null; return it; }
+      if (this.frame >= S.at) { a.syncTarget = S.target; it.throw = true; ai.plan = null; return it; }
+      const tx = a.side * (ATK + 0.9); if (Math.abs(tx - a.x) > 0.4) it.mx = Math.sign(tx - a.x) * 0.7; return it;
+    }
     if (ai.t < ai.delay) { const tx = a.side * 4.2; if (Math.abs(tx - a.x) > 0.6) it.mx = Math.sign(tx - a.x) * 0.5; return it; }
     if (P.k === 'pass') { const m = this.inPlayers(a.team).filter(x => x !== a && !x.held && Math.abs(x.x) > ATK); if (m.length) { a.passTarget = m[(Math.random() * m.length) | 0]; it.pass = true; } else it.throw = true; ai.plan = null; return it; }
     if (P.k === 'throw') { it.throw = true; ai.plan = null; return it; }
@@ -2198,8 +2502,122 @@ class Game {
       const d = Math.hypot(t.x - B.x, t.z - B.z); const sp = Math.hypot(B.vx, B.vz) || 10;
       const fall = B.deflected ? (B.vh + Math.sqrt(Math.max(0, B.vh * B.vh + 2 * B.grav * (B.h - 1.2 * t.scale)))) / B.grav : 0;
       const eta = Math.round(Math.max(d / sp, fall) * 60);
-      t.ai.press = this.frame + Math.max(1, eta - (2 + ((Math.random() * 7) | 0)));
+      t.ai.press = (this.wf || 0) + Math.max(1, eta - (2 + ((Math.random() * 7) | 0)));
     } else t.ai.press = -1;
+  }
+  // ------------------------------------------------ P0b/P0c: awareness. Every AI player in a throw's path may notice it (facing, time, busy, rating);
+  // aware players catch, block with a held ball, dodge or duck; unaware players do not react (the honest miss)
+  aiPlays(a) { return a.role === 'in' && (a !== this.user || !!this.simAll); }
+  awStat(k, n = 1) { const s = this.aiStats || (this.aiStats = {}); s[k] = (s[k] || 0) + n; }
+  viewOf(a, x, z) { const fv = a.facingVec(), dx = x - a.x, dz = z - a.z, d = Math.hypot(dx, dz) || 1, c = (fv[0] * dx + fv[1] * dz) / d; return c > 0.34 ? 1 : (c > -0.34 ? 0.55 : 0.15); }
+  busyOf(a) { return a.oob > 0 ? 0.35 : (a.ai.claimBall ? 0.55 : (a.locked() ? 0.6 : 1)); }
+  windupNotice(th) {
+    // "Dodge on their load, not their release": a target watching the thrower reads the windup
+    const t = th.throwTarget; if (!t || t.team === th.team || !this.aiPlays(t)) return;
+    if (this.viewOf(t, th.x, th.z) < 1) return;
+    const r = t.rt || FB_BASE; if (Math.random() < clampR(this.busyOf(t) * (0.15 + 0.8 * r.aware))) t.ai.loadRead = { th, f: (this.wf || 0) };
+  }
+  noticeThrow(B) {
+    const th = B.thrower; const sp2 = B.vx * B.vx + B.vz * B.vz; if (!th || sp2 < 1) return;
+    for (const a of this.teams[1 - th.team]) {
+      if (!this.aiPlays(a)) continue;
+      const rx = a.x - B.x, rz = a.z - B.z, t = (rx * B.vx + rz * B.vz) / sp2;
+      if (t < 0 || t > 1.8) continue;
+      if (Math.hypot(B.x + B.vx * t - a.x, B.z + B.vz * t - a.z) > (a === B.target ? 1.3 : 0.9)) continue;
+      this.awStat('inPath'); if (a.held) this.awStat('holderInPath');
+      const r = a.rt || FB_BASE, lr = a.ai.loadRead, read = !!(lr && lr.th === th && (this.wf || 0) - lr.f < 45); a.ai.loadRead = null;
+      // contact happens about half a meter before the closest approach; a player needs about 8 frames (133 ms at 60 Hz) to notice in time
+      const tc = Math.max(0, t - 0.5 / Math.sqrt(sp2)), impactF = (this.wf || 0) + Math.max(1, Math.round(tc * 60));
+      const delay0 = read ? 1 : Math.round(14 - 9 * r.foot);
+      const busyR = a.ai.react && a.ai.react.aware && a.ai.react.B !== B && a.ai.react.B.state === 'flight' && Math.abs(a.ai.react.impactF - impactF) < 15 || !!(a.ai.react && a.ai.react.fake);
+      let aware = read && !busyR;
+      if (!aware) aware = Math.random() < (busyR ? 0.3 : 1) * (1 + (this.momLift ? this.momLift(a) : 0)) * clampR(this.viewOf(a, th.x, th.z) * this.busyOf(a) * (0.3 + 0.65 * r.aware) * (t < 0.3 ? 0.45 : 1));
+      if (aware && impactF - (this.wf || 0) - delay0 < 8) { aware = false; this.awStat('tooClose'); }
+      if (!aware) { this.awStat('unaware'); a.ai.react = { B, aware: false, kind: 'none', impactF }; a.ai.press = -1; continue; }
+      this.awStat('aware'); this.awStat(read ? 'onLoad' : 'onFlight'); if (a.held) this.awStat('holderAware');
+      const sc = a.scale || 1, hImp = B.h + B.vh * t - 0.5 * (B.grav || 0) * t * t;
+      const trick = B.type === 'hook' || B.type === 'zig' || B.type === 'moon' || B.type === 'hop', heavy = B.power || B.heavy;
+      const last = this.liveCount(a.team) === 1;
+      const delay = delay0;
+      let kind;
+      if (a.held) kind = last ? 'dodge' : (Math.random() < 0.8 + 0.18 * r.comp ? 'block' : 'dodge');     // block and hold; the last one standing dodges, then punishes
+      else {
+        // no-sting balls are very catchable: catch first at chest height, then duck high balls, else sidestep
+        const chest = hImp > 0.6 * sc && hImp < 1.5 * sc;
+        let pc = (chest ? 0.4 + 0.55 * r.catch : 0.12 + 0.3 * r.catch) * (1 + this.abil('catchWindow', a.team)); if (trick) pc *= 0.55; if (heavy) pc *= 0.7; if (last) pc *= 0.7;
+        if (Math.random() < pc) kind = 'catch';
+        else kind = this.pickEvade(a, hImp, sc, impactF - (this.wf || 0) - delay);
+      }
+      a.ai.react = { B, aware: true, kind, at: (this.wf || 0) + delay, impactF, src: read ? 'load' : 'flight' };
+      this.awStat('k_' + kind); if (a.held && kind === 'block') this.awStat('holderBlock');
+      if (kind !== 'catch' && kind !== 'block') { const tr = this.dodgeTier(a); this.awStat('ev_' + tr); this.awStat('ev_' + tr + '_' + kind); }
+      this.awStat('aware_' + this.dodgeTier(a));
+      if (kind === 'catch') { this.awStat('catchTry_' + a.arch); if (this.abil('catchWindow', a.team)) this.abilityTell(a, 'catchWindow'); const err = Math.round((Math.random() - 0.5) * 2 * (1 - r.catch) * 8 * (1 - this.abil('catchWindow', a.team))); a.ai.press = Math.max((this.wf || 0) + delay, impactF - (8 + err)); }
+      else a.ai.press = -1;
+      if (kind === 'duck') a.ai.press = Math.max((this.wf || 0) + delay, impactF - TUNE.duckAfter - 3);
+      // the tell: a quick turn toward the throw and a tiny ! (brand gold for FINAL BOSS, lime for the Glitches)
+      if (!a.locked()) a.yaw = Math.atan2(th.x - a.x, th.z - a.z);
+      this.pop(a, '!', 'tiny ' + (a.team === 0 ? 'gold sh0' : 'lime sh1'));
+    }
+  }
+  dodgeTier(a) { const f = (a.rt || FB_BASE).foot; return f < 0.55 ? 'beginner' : f < 0.78 ? 'mid' : 'elite'; }
+  pickEvade(a, hImp, sc, lead) {
+    // P0j athletic evasion, scaled by the dodge (footwork) rating: low balls get a hop, high balls a duck, chest-high balls a sidestep,
+    // lean, spin, dive or (elite only) a late matador pull-back; beginners sometimes freeze
+    const f = (a.rt || FB_BASE).foot, tier = this.dodgeTier(a);
+    if (f < 0.55 && Math.random() < (0.55 - f) * 0.9) return 'freeze';
+    if (hImp < 0.55 * sc && lead > 14) return Math.random() < 0.45 + 0.45 * f ? 'hop' : 'dodge';
+    if (hImp > 1.3 * sc && lead > TUNE.duckAfter + 3) return Math.random() < 0.75 ? 'duck' : 'dodge';
+    const nearLine = Math.abs(a.z) > HZ - 1.6;
+    const W = [['dodge', 1], ['lean', 0.5 + f], ['spin', 0.2 + f * 0.8], ['dive', nearLine ? 0.05 : 0.15 + 0.6 * f], ['matador', tier === 'elite' && lead > 8 ? 1.3 : 0]];
+    let r = Math.random() * W.reduce((t, w) => t + w[1], 0);
+    for (const [k, w] of W) { r -= w; if (r <= 0) return k; }
+    return 'dodge';
+  }
+  evadeDir(a, B) {
+    // step off the ball's line, away from side lines, and never into a teammate who is set to catch
+    const cross = B.vx * (a.z - B.z) - B.vz * (a.x - B.x); let dz = cross >= 0 ? 1 : -1;
+    if (Math.abs(a.z) > HZ - 1.2 && Math.sign(a.z) === dz) dz = -dz;
+    for (const m of this.teams[a.team]) if (m !== a && m.ai.react && m.ai.react.kind === 'catch' && Math.abs(m.x - a.x) < 1.4 && Math.sign(m.z - a.z) === dz && Math.abs(m.z - a.z) < 1.6) { dz = -dz; break; }
+    return dz;
+  }
+  reactIntent(a, it) {
+    // returns true when an aware reaction owns this player's input this tick
+    const R = a.ai.react; if (!R) return false;
+    if (R.fake) { if ((this.wf || 0) > R.impactF) { a.ai.react = null; return false; } if (R.kind === 'dodge') { if (R.dz == null) R.dz = Math.abs(a.z) > HZ - 1.2 ? -Math.sign(a.z) : (Math.random() < 0.5 ? -1 : 1); it.mz = R.dz; } return true; }
+    if (R.B.state !== 'flight' || (this.wf || 0) > R.impactF + 12) { a.ai.react = null; return false; }
+    if (R.kind === 'save' && !R.B.pop) { a.ai.react = null; return false; }
+    if (!R.aware || (this.wf || 0) < R.at) return false;
+    if (R.kind === 'block') { a.yaw = Math.atan2(R.B.x - a.x, R.B.z - a.z); return true; }
+    if (R.kind === 'save') { const d = Math.hypot(R.tx - a.x, R.tz - a.z); if (d > 0.35) { it.mx = (R.tx - a.x) / d; it.mz = (R.tz - a.z) / d; } a.yaw = Math.atan2(R.B.x - a.x, R.B.z - a.z); return true; }
+    if (R.kind === 'catch') { if ((this.wf || 0) < R.impactF + 4) { a.yaw = Math.atan2(R.B.x - a.x, R.B.z - a.z); return true; } return false; }
+    if (R.kind === 'duck') { it.catchHeld = true; return true; }
+    if (R.kind === 'freeze') return true;
+    if (R.kind === 'hop') { if ((this.wf || 0) >= R.impactF - 14 && !R.done && a.h <= 0.001) { it.jump = true; R.done = 1; } return true; }
+    if (R.kind === 'lean' || R.kind === 'spin' || R.kind === 'dive' || R.kind === 'matador') {
+      const lead = { lean: 10, spin: 12, dive: 13, matador: 7 }[R.kind];
+      if (!R.done && (this.wf || 0) >= R.impactF - lead && !LOCKED.has(a.state)) {
+        R.done = 1; const dz = this.evadeDir(a, R.B), sp = { lean: 1.4, spin: 2.8, dive: 6.2, matador: 3.6 }[R.kind] * (0.7 + 0.5 * (a.rt || FB_BASE).foot);
+        a.set(R.kind); a.vz = dz * sp; a.vx = R.kind === 'dive' ? 0 : a.side * 0.6; a.leanDir = dz; a.diveDir = dz;
+        if (R.kind === 'dive') this.dust(a, 4);
+        // elite dodgers sometimes chain a second move (a sidestep the other way)
+        if ((a.rt || FB_BASE).foot > 0.8 && Math.random() < 0.35) { R.chain = { at: (this.wf || 0) + ({ lean: 14, spin: 16, matador: 11, dive: 34 }[R.kind]), dz: -dz }; this.awStat('chain'); }
+      }
+      if (R.chain && (this.wf || 0) >= R.chain.at && !LOCKED.has(a.state)) { it.mz = R.chain.dz; }
+      return true;
+    }
+    if (R.kind === 'dodge') {
+      if (R.dz == null) {
+        // step off the ball's line, never over a side line or the center line
+        const cross = R.B.vx * (a.z - R.B.z) - R.B.vz * (a.x - R.B.x); R.dz = cross >= 0 ? 1 : -1;
+        if (Math.abs(R.B.vx) < Math.abs(R.B.vz)) R.dz = 0;
+        if (Math.abs(a.z) > HZ - 1.1 && Math.sign(a.z) === R.dz) R.dz = -R.dz;
+      }
+      it.mz = R.dz; it.mx = Math.abs(a.x) < HX - 1.2 ? a.side * 0.45 : 0;
+      if (R.dz === 0) { it.mz = a.z > R.B.z ? 1 : -1; }
+      return true;
+    }
+    return false;
   }
   switchUser(manual) {
     const ins = this.inPlayers(0).filter(a => a !== this.user || !manual); if (!ins.length) return;
@@ -2240,8 +2658,15 @@ class Game {
       case 'knock': return;
       case 'down': if (a.st >= 24) a.set('ko'); return;
       case 'walkin': if (a.st >= 20) a.set('idle'); return;
+      case 'stagger': return;
+      case 'lean': if (a.st >= 14) a.set('idle'); return;
+      case 'spin': a.yaw += 0.42; if (a.st >= 16) a.set('idle'); return;
+      case 'matador': if (a.st >= 11) a.set('idle'); return;
+      case 'dive': if (a.st >= 16) { a.set('getup'); a.vx = a.vz = 0; if (Math.abs(a.z) > HZ - 0.3 && this.startTeeter && this.phase === 'play') { a.set('idle'); this.startTeeter(a, 'side', Math.sign(a.z), 2.2); } } return;
+      case 'getup': if (a.st >= 18) a.set('idle'); return;
+      case 'pump': if (a.st >= 14) a.set('idle'); return;
     }
-    if (it.catch && a.catchCool === 0 && st !== 'air') { a.catchF = this.frame; a.set('catchready'); a.catchHeld = 0; }
+    if (it.catch && a.catchCool === 0 && st !== 'air') { a.catchF = this.wf || 0; a.set('catchready'); a.catchHeld = 0; }
     if (a.state === 'catchready') {
       a.catchHeld = it.catchHeld ? a.catchHeld + 1 : 0;
       if (a.catchHeld > TUNE.duckAfter && !a.held) a.set('duck');
@@ -2257,10 +2682,11 @@ class Game {
     if (a.state === 'run') {
       const holding = it.holdRun && Math.sign(it.mx || a.runDir) === a.runDir;
       if (!holding) a.set('idle');
+      else if (this.rushT >= RULES.rushF && a.x * a.side < 0.7 && a.runDir === -a.side) { a.set('idle'); a.vx = a.runDir * 2.2; }
       else { a.runF++; if (a.runF % TUNE.stepF === 0) { a.steps++; if (a === this.user) this.sfx.step(); this.dust(a); } a.vx = a.runDir * TUNE.run; a.vz = it.mz * TUNE.walk * 0.6; return; }
     }
     const mag = Math.hypot(it.mx, it.mz);
-    if (mag > 0.15) { const k = Math.min(1, mag) / mag; const sp = TUNE.walk * (a.boss && this.p2 ? 1.15 : 1); a.vx = it.mx * k * sp; a.vz = it.mz * k * sp * 0.85; if (a.state !== 'walk') a.set('walk'); }
+    if (mag > 0.15) { const k = Math.min(1, mag) / mag; const sp = TUNE.walk * (a.boss && this.p2 ? 1.15 : 1) * (1 + this.abil('moveSpeed', a.team)) * (a.ai.react && a.ai.react.aware && a.ai.react.kind === 'dodge' ? 0.8 + 0.7 * (a.rt || FB_BASE).foot : 1); if (a.team === 1 && mag > 0.8 && this.abil('moveSpeed', 1)) this.abilityTell(a, 'moveSpeed'); a.vx = it.mx * k * sp; a.vz = it.mz * k * sp * 0.85; if (a.state !== 'walk') a.set('walk'); }
     else { a.vx *= 0.6; a.vz *= 0.6; if (a.state !== 'idle') a.set('idle'); }
   }
   walkTo(a, tx, tz, sp) {
@@ -2281,11 +2707,13 @@ class Game {
     if (a.state === 'run') { if (a.steps >= TUNE.powMin && a.steps <= TUNE.powMax) { power = true; type = a.shots[0]; } else type = 'dash'; }
     else if (inAir) { const f = a.airF; if (a.airSteps >= 1 && f >= TUNE.airPowA && f <= TUNE.airPowB) { power = true; type = a.shots[1]; } else type = 'jump'; }
     if (a.boss && this.p2 && Math.random() < 0.6) { power = true; type = a.shots[(Math.random() * 2) | 0]; }
+    if (a.team === 1 && !power && !inAir && Math.random() < this.abil('throwCurve', 1)) { type = 'hook'; this.abilityTell(a, 'throwCurve'); }
     a.wantPower = power; a.throwType = type;
     a.throwTarget = this.pickTarget(a, it);
+    this.windupNotice(a);
     a.set(power ? 'pwind' : 'windup');
     if (!inAir) { a.vx *= power ? 0.5 : 0.35; a.vz *= 0.3; }
-    if (power) { this.aura(a); if (a.team === 0) this.stats.power++; }
+    if (power) { this.aura(a); if (a.team === 0) this.stats.power++; if (a === this.user) { this.meterFire = this.frame + 30; this.haptic([20, 30, 40]); } }
   }
   pickTarget(a, it) {
     const foes = this.inPlayers(1 - a.team).filter(f => f.oob === 0); if (!foes.length) return null;
@@ -2293,10 +2721,13 @@ class Game {
       if (it && Math.abs(it.mz) > 0.3) { const s = foes.slice().sort((p, q) => p.z - q.z); return it.mz < 0 ? s[0] : s[s.length - 1]; }
       return foes.slice().sort((p, q) => (Math.abs(p.z - a.z) + Math.abs(p.x - a.x) * 0.25) - (Math.abs(q.z - a.z) + Math.abs(q.x - a.x) * 0.25))[0];
     }
+    if (a.syncTarget && a.syncTarget.role === 'in') return a.syncTarget;
     let best = null, bs = -1e9;
     for (const f of foes) {
       const fv = f.facingVec(); const tx = a.x - f.x, tz = a.z - f.z; const away = (fv[0] * tx + fv[1] * tz) < 0;
-      const s = (away ? 3 : 0) + (f.locked() ? 2 : 0) + (f.held ? -1.5 : 0) - Math.hypot(tx, tz) * 0.25 + Math.random() * 2.5 + (f === this.user ? 0.6 : 0);
+      // throw where they are not looking, at the busy, and at rushers who linger up front; avoid a set catcher
+      const linger = Math.abs(f.x) < ATK + 0.6 ? 2 : 0, set = f.state === 'catchready' ? -2.5 : 0, busy = f.ai.claimBall ? 1.5 : 0;
+      const s = (away ? 3 : 0) + (f.locked() ? 2 : 0) + (f.held ? -1.5 : 0) + linger + set + busy - Math.hypot(tx, tz) * 0.25 + Math.random() * 2.5 + (f === this.user ? 0.6 : 0);
       if (s > bs) { bs = s; best = f; }
     }
     return best;
@@ -2304,6 +2735,7 @@ class Game {
   pickPass(a, it) {
     const mates = this.inPlayers(a.team).filter(m => m !== a && !m.held && !m.locked());
     if (!mates.length) return null;
+    const cs = this.callSuggest; if (a === this.user && cs && this.frame < cs.until && mates.includes(cs.to) && Math.hypot(it ? it.mx : 0, it ? it.mz : 0) < 0.2) { this.callSuggest = null; return cs.to; }
     const mx = it ? it.mx : 0, mz = it ? it.mz : 0;
     if (Math.hypot(mx, mz) < 0.2) return mates.slice().sort((p, q) => Math.abs(q.x) - Math.abs(p.x))[0];
     let best = null, bs = -1e9;
@@ -2330,25 +2762,32 @@ class Game {
       return;
     }
     const t = a.throwTarget && a.throwTarget.role === 'in' ? a.throwTarget : this.pickTarget(a, null);
-    B.target = t;
-    const spd = { normal: TUNE.vNormal, dash: TUNE.vDash, jump: TUNE.vJump, comet: 23, hook: 20, hop: 20, moon: 13, zig: 19 }[B.type] || 14;
+    B.target = t; B.sync = !!a.syncTarget; a.syncTarget = null;
+    const cpu = a !== this.user || !!this.simAll, rt = a.rt || FB_BASE;
+    // a power arm's ball is heavier: faster, louder, a wider trail
+    B.heavy = cpu && rt.power >= 0.84;
+    const sBoost = this.abil('throwSpeed', a.team); if (sBoost) this.abilityTell(a, 'throwSpeed');
+    const spd = ({ normal: TUNE.vNormal, dash: TUNE.vDash, jump: TUNE.vJump, comet: 23, hook: 20, hop: 20, moon: 13, zig: 19 }[B.type] || 14) * (cpu ? 0.9 + 0.22 * rt.power : 1) * (1 + sBoost);
     let tx = t ? t.x : a.x - a.side * 9, tz = t ? t.z : a.z;
     if (t) { const d0 = Math.hypot(tx - B.x, tz - B.z); const eta0 = d0 / spd; tx += t.vx * eta0 * 0.6; tz += t.vz * eta0 * 0.6; }
+    if (cpu && t) tz += (Math.random() - 0.5) * 1.5 * (1 - rt.acc);   // accuracy: command players hit their spot
     const dx = tx - B.x, dz = tz - B.z, d = Math.hypot(dx, dz) || 1, eta = d / spd;
     B.vx = dx / d * spd; B.vz = dz / d * spd; B.grav = 6;
-    const aimJit = a === this.user ? 0 : (Math.random() - 0.5) * 0.18;
-    const th = (B.forceHead ? 1.78 : 0.9 + aimJit) * (t ? t.scale : 1);
+    // "Hit hips and legs. Never aim at a head": CPU throwers aim between the knees and the hips
+    const aimH = cpu ? 0.5 + Math.random() * 0.42 + (Math.random() - 0.5) * 0.5 * (1 - rt.acc) : 0.9;
+    const th = (B.forceHead ? 1.78 : aimH) * (t ? t.scale : 1);
+    if (cpu && B.type !== 'pass') { this.awStat('aiThrows'); this.awStat('throw_' + a.arch); if (this.balls.filter(x => x.holder && x.holder.team === a.team).length === 0 && this.balls.filter(x => x.state === 'flight' && x.team === a.team && x !== B).length === 0) this.awStat('oneBallThrow' + a.team); B.fakeShot = !!a.fakeShot; a.fakeShot = false; if (B.fakeShot) this.awStat('fakeShots'); if (aimH < 1.1) this.awStat('belowChest'); if (B.sync) this.awStat('syncBalls'); }
     B.vh = (th - B.h) / eta + 0.5 * B.grav * eta;
     if (B.type === 'hook') { const ang = (Math.random() < 0.5 ? -1 : 1) * 0.5; const c = Math.cos(ang), s = Math.sin(ang); const vx = B.vx * c - B.vz * s, vz = B.vx * s + B.vz * c; B.vx = vx; B.vz = vz; B.vh = 0.3; B.grav = 0; }
     if (B.type === 'comet') { B.vh = (1.0 * (t ? t.scale : 1) - B.h) / eta; B.grav = 0; }
     if (B.type === 'hop') { B.vh = -6; B.grav = 20; }
     if (B.type === 'moon') { const e = Math.max(0.9, eta); B.vx = dx / e; B.vz = dz / e; B.grav = 18; B.vh = ((t ? t.scale * 1.15 : 1.2) - B.h) / e + 0.5 * B.grav * e; }
     if (B.type === 'zig') { B.zigBase = { vx: B.vx, vz: B.vz }; B.vh = (1.0 - B.h) / eta; B.grav = 0; }
-    B.trailC = B.power ? ({ comet: '#ffc83d', hook: '#ff6b4a', hop: '#7ff3ff', moon: '#c9a0ff', zig: '#a6f23a' }[B.type] || '#ffffff') : '#ffffff';
-    this.sfx.throw(B.power);
+    B.trailC = B.power ? ({ comet: '#ffc83d', hook: '#ff6b4a', hop: '#7ff3ff', moon: '#c9a0ff', zig: '#a6f23a' }[B.type] || '#ffffff') : (B.heavy ? (a.team === 0 ? '#ffc83d' : '#a6f23a') : '#ffffff');
+    this.sfx.throw(B.power || B.heavy);
     if (B.power) { this.pop(a, SHOT_NAME[B.type] || 'POWER!', a.team === 0 ? 'gold' : 'lime'); B.flash = 6; }
     if (this.ctlTeam === a.team) this.ctlT = Math.max(0, this.ctlT - 0);
-    this.scheduleCatches(B);
+    this.noticeThrow(B);
   }
 
   // ------------------------------------------------ physics
@@ -2365,7 +2804,7 @@ class Game {
     if (a.state === 'air' || a.h > 0) {
       a.vh -= GRAV * DT; a.h += a.vh * DT; a.x += a.vx * DT; a.z += a.vz * DT;
       if (a.h <= 0) { a.h = 0; a.vh = 0; if (a.state === 'air') { a.set('land'); this.dust(a, 3); } a.vx *= 0.3; a.vz *= 0.3; }
-    } else if (!a.locked() || a.state === 'walkin') { a.x += a.vx * DT; a.z += a.vz * DT; }
+    } else if (!a.locked() || a.state === 'walkin' || DODGES.has(a.state)) { a.x += a.vx * DT; a.z += a.vz * DT; if (DODGES.has(a.state)) { a.vx *= 0.93; a.vz *= 0.93; } }
     else { a.vx *= 0.8; a.vz *= 0.8; a.x += a.vx * DT * 0.3; a.z += a.vz * DT * 0.3; }
     this.clampAthlete(a);
     // facing
@@ -2375,7 +2814,7 @@ class Game {
     else if (a.held && a.throwTarget && (a.state === 'windup' || a.state === 'pwind')) { fx = a.throwTarget.x - a.x; fz = a.throwTarget.z - a.z; }
     else if (a.held && a.passTarget && a.passing) { fx = a.passTarget.x - a.x; fz = a.passTarget.z - a.z; }
     else {
-      const inc = this.incomingFor(a);
+      const R = a.ai && a.ai.react, inc = this.aiPlays(a) ? (R && R.aware && !R.fake && R.B.state === 'flight' ? R.B : null) : this.incomingFor(a);
       if (inc) { fx = inc.x - a.x; fz = inc.z - a.z; }
       else if (a.ai.claimBall && !a.held) { fx = a.ai.claimBall.x - a.x; fz = a.ai.claimBall.z - a.z; }
       else { fx = -a.side; fz = 0; }
@@ -2398,11 +2837,11 @@ class Game {
     const h = hazards.filter(h => h.d >= 0 && h.d <= Math.max(0.18, h.out * 0.1) && h.out > 0.3).sort((a, b) => a.d - b.d)[0];
     if (!h || a.boundaryRisk === h.key) return;
     a.boundaryRisk = h.key;
-    const chance = h.out > 4.5 ? 0.55 : 0.88;
+    const foot = (a.rt || FB_BASE).foot, chance = (h.out > 4.5 ? 0.45 : 0.7) + 0.28 * foot;   // P0f: sharper footwork saves more often
     if (this.ruleRandom() < chance) {
       a.balanceNX = h.nx; a.balanceNZ = h.nz; a.vx = h.nx * 1.8; a.vz = h.nz * 1.8; a.set('balance');
-      this.pop(a, 'HOLD THE LINE', 'small cyan');
-    } else { a.stumbleT = 24; this.pop(a, 'OFF BALANCE', 'small'); }
+      this.pop(a, 'HOLD THE LINE', 'small ' + (a.team === 0 ? 'gold sh0' : 'lime sh1')); this.awStat('teeterSaved'); if (a === this.user || Math.random() < 0.4) this.sfx.ooh(); this.lineFlash = 30;
+    } else { a.stumbleT = 24; this.pop(a, 'OFF BALANCE', 'small'); this.awStat('teeterFell'); }
   }
   clampAthlete(a) {
     const s = a.side, rush = this.rushT < RULES.rushF;
@@ -2433,7 +2872,7 @@ class Game {
     if (B.state === 'rest') { this.pickup(B); this.placeBallMesh(B); return; }
     if (B.pending) {
       const p = B.pending; p.f--;
-      if (this.frame - p.a.catchF <= TUNE.catchLate && p.a.catchF >= p.start) { B.pending = null; this.doCatch(p.a, B, false); return; }
+      if ((this.wf || 0) - p.a.catchF <= TUNE.catchLate && p.a.catchF >= p.start) { B.pending = null; this.doCatch(p.a, B, false); return; }
       if (p.f <= 0) { B.pending = null; this.applyHit(p.a, B); }
       this.placeBallMesh(B); return;
     }
@@ -2447,17 +2886,18 @@ class Game {
       // A blocked ball retains its original thrower and remains live over center.
       if (!B.crossed && B.x * B.fromSide < 0) { B.crossed = true; if (B.type !== 'pass') B.live = true; }
       if (B.type === 'hop' && B.h <= 0.22) { B.h = 0.22; B.vh = 3.2 + B.bounces * 0.6; B.bounces++; B.vx *= 1.12; B.vz *= 1.12; this.dustAt(B.x, B.z, 2); }
-      if ((B.power || B.type === 'dash') && B.live) this.trail(B);
+      if ((B.power || B.type === 'dash' || B.heavy || B.pop) && B.live) this.trail(B);
+      if ((B.power || B.heavy) && B.live && B.age % 4 === 0 && !this.rm) this.spawnSprite({ tex: B.team === 0 ? this.tex.crown : this.tex.pixel, x: B.x, y: B.h, z: B.z, s: 0.26, s1: 0.1, life: 14, color: B.team === 0 ? '#ffc83d' : '#a6f23a', alpha: 0.9 });
       if (B.type === 'pass') {
         const t = B.target; if (t && t.role === 'in' && !t.held && Math.hypot(t.x - B.x, t.z - B.z) < 0.7 && Math.abs((t.h + 1.2) - B.h) < 1.3) { this.give(t, B); t.set('catch'); B.squash = 1; this.sfx.catch(); return; }
       }
       if (B.type !== 'hop' && B.h <= 0.22) { B.h = 0.22; this.killBall(B, 'floor'); this.dustAt(B.x, B.z, 2); return; }
       if (B.type === 'hop' && B.bounces > 5) { this.killBall(B, 'floor'); return; }
-      if (Math.abs(B.x) > 12.3 || Math.abs(B.z) > 6.6) {
+      if (Math.abs(B.x) > 12.3 || Math.abs(B.z) > HZ + 2.1) {
         if (!B.deflected) { this.killBall(B, 'wall'); return; }
         // Keep a lofted block in the arena until it reaches the floor.
         if (Math.abs(B.x) > 12.3) { B.x = Math.sign(B.x) * 12.3; B.vx *= -0.35; }
-        if (Math.abs(B.z) > 6.6) { B.z = Math.sign(B.z) * 6.6; B.vz *= -0.35; }
+        if (Math.abs(B.z) > HZ + 2.1) { B.z = Math.sign(B.z) * (HZ + 2.1); B.vz *= -0.35; }
       }
       this.placeBallMesh(B); return;
     }
@@ -2465,7 +2905,7 @@ class Game {
     B.vh -= GRAV * DT; B.x += B.vx * DT; B.z += B.vz * DT; B.h += B.vh * DT;
     if (B.h <= 0.22) { B.h = 0.22; if (Math.abs(B.vh) > 1.5) { this.sfx.bounce(Math.min(1, Math.abs(B.vh) / 7)); B.vh = -B.vh * 0.5; } else B.vh = 0; B.vx *= 0.94; B.vz *= 0.94; }
     if (Math.abs(B.x) > 12) { B.x = Math.sign(B.x) * 12; B.vx = -B.vx * 0.5; }
-    if (Math.abs(B.z) > 6.2) { B.z = Math.sign(B.z) * 6.2; B.vz = -B.vz * 0.5; }
+    if (Math.abs(B.z) > HZ + 1.7) { B.z = Math.sign(B.z) * (HZ + 1.7); B.vz = -B.vz * 0.5; }
     const slow = Math.hypot(B.vx, B.vz) < 0.35 && B.h <= 0.23;
     if (slow) B.restF++; else B.restF = 0;
     // shaggers return balls that rolled out a side line, or sat out the back too long
@@ -2489,13 +2929,14 @@ class Game {
     if (best) { const wasRest = B.state === 'rest'; this.give(best, B); B.cleared = !wasRest; if (wasRest && best === this.user) this.pop(best, 'CLEAR THE LINE', 'small cyan'); }
   }
   killBall(B, why) {
+    if (B.pop) { const P = B.pop; B.state = 'loose'; this.resolvePop(B, null); B.pop = null; void P; }
     B.state = 'loose'; B.live = false; B.thrower = null; B.target = null; B.deflected = false;
     B.vx *= 0.45; B.vz *= 0.45; B.vh = Math.abs(B.vh) * 0.4 + 1.5;
   }
   nearestFoe(B) { let best = null, bd = 1e9; for (const f of this.inPlayers(1 - B.team)) { const d = Math.hypot(f.x - B.x, f.z - B.z); if (d < bd && !B.hitSet.has(f)) { bd = d; best = f; } } return best; }
   give(a, B) {
     B.state = 'held'; B.holder = a; a.held = B; B.team = a.team; B.vx = B.vz = B.vh = 0; B.live = false; B.claim = null; a.ai.plan = null; a.ai.claimBall = null;
-    for (const p of this.all) if (p.ai.press >= 0 && !this.balls.some(b => b.state === 'flight' && b.target === p)) p.ai.press = -1;
+    for (const p of this.all) if (p.ai.press >= 0 && !(p.ai.react && p.ai.react.B.state === 'flight') && !this.balls.some(b => b.state === 'flight' && b.target === p)) p.ai.press = -1;
   }
   ballHits() {
     // live balls against players, then ball against ball in the air (both go dead)
@@ -2504,9 +2945,11 @@ class Game {
       for (const f of this.all) {
         if (!f.active || f.role !== 'in' || (f.team === B.team && !B.deflected) || f.oob > 0 || B.hitSet.has(f)) continue;
         if (f.state === 'knock' || f.state === 'down' || f.state === 'ko' || f.state === 'hitstun') continue;
-        const r = 0.4 * f.scale + 0.22;
+        // evading a ball you saw: the better the footwork, the smaller the target (beginner about 1.06x, elite about 0.76x)
+        const dh = DODGE_HIT[f.state], fr = f.ai && f.ai.react, ev = fr && fr.aware && fr.B === B && fr.kind !== 'catch' && fr.kind !== 'block' && fr.kind !== 'freeze';
+        const r = (0.4 * f.scale + 0.22) * (dh ? dh.r : 1) * (ev ? 1.3 - 0.6 * (f.rt || FB_BASE).foot : 1);
         if (Math.hypot(f.x - B.x, f.z - B.z) > r) continue;
-        const top = (f.state === 'duck' ? 1.0 : 1.98) * f.scale + f.h, bot = f.h - 0.1;
+        const top = (f.state === 'duck' ? 1.0 : (dh ? dh.top : 1.98)) * f.scale + f.h, bot = f.h - 0.1;
         if (B.h > top + 0.12 || B.h < bot) continue;
         if (!B.live) { this.killBall(B, 'notlive'); break; }
         this.contact(f, B); break;
@@ -2526,12 +2969,20 @@ class Game {
     // A returning deflection may be secured by the original throwing team,
     // but is never a friendly-fire out or a catch/reentry reward.
     if (f.team === B.team) {
-      if (B.deflected && B.live && !f.held && f.state === 'catchready' && this.frame - f.catchF <= TUNE.catchBobble) this.doCatch(f, B, true);
+      if (B.deflected && B.live && !f.held && f.state === 'catchready' && (this.wf || 0) - f.catchF <= TUNE.catchBobble) this.doCatch(f, B, true);
       return;
+    }
+    // P0j: a late athletic move (lean, spin, dive, matador) against a ball the player saw is a skill check at contact
+    const fr = f.ai && f.ai.react;
+    if (fr && fr.aware && fr.B === B && fr.done && DODGES.has(fr.kind) && f.state !== 'hitstun') {
+      const base = { lean: 0.55, spin: 0.6, dive: 0.75, matador: 0.85 }[fr.kind], foot = (f.rt || FB_BASE).foot;
+      if (Math.random() < base * (0.5 + 0.55 * foot)) { B.hitSet.add(f); this.awStat('evadeOK_' + this.dodgeTier(f)); this.pop(f, 'MISS', 'tiny ' + (f.team === 0 ? 'gold sh0' : 'lime sh1')); return; }
+      this.awStat('evadeFail_' + this.dodgeTier(f));
     }
     const crouched = f.state === 'duck';
     const headLine = f.h + (crouched ? 0.8 : 1.6) * f.scale;
-    if (B.h > headLine || B.forceHead) {
+    if (B.pop && f.team === B.pop.team && f.state === 'catchready' && ((this.wf || 0) - f.catchF) <= TUNE.catchBobble) { return this.doCatch(f, B, true); }
+    if (!B.pop && (B.h > headLine || B.forceHead)) {
       // direct headshot: dead ball, victim stays in. Standing headshot puts the thrower out.
       B.hitSet.add(f); B.vx *= -0.25; B.vz *= -0.25; B.vh = 4; this.killBall(B, 'head');
       this.spark(B.x, B.h, B.z, 1.3); this.hitstop = 4; f.shake = 8; f.shakeMax = 8;
@@ -2544,15 +2995,20 @@ class Game {
     const fv = f.facingVec(); const bl = Math.hypot(B.vx, B.vz) || 1;
     const facingOK = (fv[0] * -B.vx / bl + fv[1] * -B.vz / bl) > Math.cos(100 * DEG);
     if (facingOK && f.state === 'catchready') {
-      const age = this.frame - f.catchF;
+      const age = (this.wf || 0) - f.catchF;
       if (age <= TUNE.catchBobble) return f.held ? this.block(f, B, true) : this.doCatch(f, B, age <= TUNE.catchClean);
     }
+    const R = f.ai && f.ai.react && f.ai.react.B === B ? f.ai.react : null;
+    if (R && !R.aware && (f.state === 'catchready' || f.state === 'duck')) this.awStat('unawareReacted');
+    if (f.held && this.aiPlays(f) && !(R && R.aware && R.kind === 'block')) return this.applyHit(f, B);   // an unaware holder never raised the ball
     if (f.held && facingOK && !f.locked()) {
-      if (Math.random() < 0.6) return this.block(f, B, false);
+      this.awStat('blockTry');
+      const comp = (f.rt || FB_BASE).comp;
+      if (Math.random() < (this.aiPlays(f) ? 0.8 + 0.18 * comp : 0.6)) { this.awStat('blockOK'); return this.block(f, B, false); }
       // the blocking ball is knocked loose: that counts as out
       this.ref('BLOCK DROPPED'); return this.applyHit(f, B);
     }
-    if (facingOK && !f.locked() && !f.held && f.state !== 'air' && f.state !== 'duck') { B.pending = { a: f, f: TUNE.catchLate, start: this.frame }; return; }
+    if (facingOK && !f.locked() && !f.held && f.state !== 'air' && f.state !== 'duck') { B.pending = { a: f, f: TUNE.catchLate, start: this.wf || 0 }; return; }
     this.applyHit(f, B);
   }
   block(f, B, timed) {
@@ -2567,14 +3023,17 @@ class Game {
     const thrower = B.thrower;
     if (thrower && thrower.team === f.team) { this.give(f, B); B.cleared = true; f.set('catch'); this.sfx.catch(); this.pop(f, 'SECURED', 'small cyan'); return; }
     if (f.team === 0) this.cheer(f.name);
+    if (B.pop && B.pop.team === f.team) this.resolvePop(B, f);
     this.give(f, B); B.squash = 1; B.cleared = true;
     f.set(clean ? 'catch' : 'bobble');
     f.x += f.side * 0.2; this.clampAthlete(f);
     this.hitstop = 6; this.flash(clean ? 0.3 : 0.14); this.ringFx(f, clean ? '#ffffff' : '#ffc83d'); this.catchFlash(f); if (f.team === 0 || f === this.user) this.punch(f.x, f.z, 1);
     this.sfx.catch(); if (f === this.user) this.haptic(clean ? [18, 30, 28] : 22);
+    if (this.aiPlays(f)) { this.awStat('catchOK_' + f.arch); f.ai.react = null; f.ai.plan = { k: 'throw' }; f.ai.delay = 8 + ((Math.random() * 10) | 0); f.ai.t = 0; }   // catch, then answer right away
     this.crowdReact(f.team === 0 ? (this.liveCount(0) === 1 ? 'clutch' : 'catch') : 'oppcatch');
     if (f.team === 0) { this.stats.catches++; this.addScore(clean ? 150 : 90); } else this.breakCombo();
     if (thrower && thrower.role === 'in') this.eliminate(thrower, 'caught');
+    this.addMomentum(f.team, 0.12);
     // the first teammate in the outline comes back in
     const q = this.queue[f.team];
     if (q.length) {
@@ -2587,16 +3046,63 @@ class Game {
     this.renderLive();
     this.say(`${f.name} catches. ${thrower ? thrower.name + ' is out.' : ''}`);
   }
+  popUp(f, B, why) {
+    // "A ball that is deflected is still a live ball": it pops up off the body (or the dropped block) and stays live until the floor, a wall, an out player or the center line
+    const sp = Math.hypot(B.vx, B.vz) || 1, ux = B.vx / sp, uz = B.vz / sp;
+    B.state = 'flight'; B.live = true; B.crossed = true; B.deflected = true; B.defSide = f.side; B.type = 'normal'; B.power = false; B.grav = GRAV; B.pending = null;
+    B.vx = ux * (1.2 + Math.random() * 1.6) + (Math.random() - 0.5) * 2.2; B.vz = uz * 0.8 + (Math.random() - 0.5) * 2.6; B.vh = 5.2 + Math.random() * 2.2; B.h = Math.max(B.h, 1.0);
+    const P = B.pop || (B.pop = { team: f.team, victims: [], saved: false, t0: this.frame });
+    if (!P.victims.includes(f)) P.victims.push(f);
+    f.set('stagger'); f.vx = f.vz = 0; f.pendingOut = B; f.pendWhy = why;
+    this.hitstop = Math.max(this.hitstop, this.rm ? 2 : 7); this.sfx.smp('deflect_pop', 0.9); this.spark(B.x, B.h, B.z, 1.4);
+    this.pop(f, 'LIVE!', 'small ' + (f.team === 0 ? 'gold sh0' : 'lime sh1'));
+    // landing spot: where the ball comes down, so players and people can read it
+    const tl = (B.vh + Math.sqrt(B.vh * B.vh + 2 * GRAV * Math.max(0, B.h - 0.22))) / GRAV; B.land = { x: B.x + B.vx * tl, z: B.z + B.vz * tl, f: (this.wf || 0) + Math.round(tl * 60) };
+    this.awStat('popups');
+    // aware teammates near the landing spot go for the save; unaware ones do not react and can be hit by it
+    for (const m of this.teams[f.team]) {
+      if (m === f || !this.aiPlays(m) || m.held || m.state === 'stagger') continue;
+      const d = Math.hypot(m.x - B.land.x, m.z - B.land.z); if (d > 3.4) continue;
+      const r = m.rt || FB_BASE; const aware = Math.random() < clampR(this.viewOf(m, B.x, B.z) * (0.35 + 0.6 * r.aware) * (1 + (this.momLift ? this.momLift(m) : 0)));
+      if (!aware) { this.awStat('popUnaware'); continue; }
+      this.awStat('popAware');
+      m.ai.react = { B, aware: true, kind: 'save', at: (this.wf || 0) + 3, impactF: B.land.f, tx: B.land.x, tz: B.land.z };
+      m.ai.press = Math.max((this.wf || 0) + 4, B.land.f - 12 - Math.round((1 - r.catch) * 4));
+      this.pop(m, '!', 'tiny ' + (m.team === 0 ? 'gold sh0' : 'lime sh1'));
+    }
+  }
+  resolvePop(B, saver) {
+    const P = B.pop; if (!P) return; B.pop = null; B.land = null;
+    const victims = P.victims.filter(v => v.pendingOut === B);
+    for (const v of victims) { v.pendingOut = null; }
+    if (saver && RULES.saveOnTeammateCatch) {
+      for (const v of victims) { if (v.role === 'in') { v.set('idle'); this.pop(v, 'SAFE!', 'small gold'); } }
+      this.awStat('saves'); this.bigMoment('save', saver.team, saver);
+      return;
+    }
+    for (const v of victims) if (v.role === 'in') this.eliminate(v, v.pendWhy || 'hit');
+    if (victims.length >= 2) { this.awStat(victims.length >= 3 ? 'triples' : 'doubles'); this.bigMoment(victims.length >= 3 ? 'triple' : 'double', 1 - P.team, victims[victims.length - 1]); }
+  }
   applyHit(f, B) {
     if (B.thrower && B.thrower.team === 0) this.cheer(B.thrower.name);
     const power = B.power || B.type === 'zig';
+    // P0g: sometimes the ball pops up off the body and stays live (more off softer hits that land high on the body, never on a headshot)
+    const rel = (B.h - f.h) / (2 * (f.scale || 1)), popP = 0.06 + (power ? 0.04 : 0.1) * Math.min(1, Math.max(0, rel)) + (B.pop ? 0.05 : 0);
+    if ((this.forcePop > 0 ? (this.forcePop--, true) : Math.random() < popP) && (!B.pop || B.pop.victims.length < 3)) { /* forcePop is a QA hook */ B.hitSet.add(f); if (B.thrower && B.thrower.team === 1 - f.team) { /* stats count the pop as a hit */ } this.sfx.hit(false); this.popUp(f, B, power ? 'power' : 'hit'); return; }
+    if (B.pop && B.pop.team === f.team) {
+      // a live pop-up hitting another teammate: that player is out too (double and triple outs)
+      B.hitSet.add(f); if (!B.pop.victims.includes(f)) B.pop.victims.push(f); f.pendingOut = B; f.pendWhy = 'hit';
+      this.sfx.hit(false); this.spark(B.x, B.h, B.z, 1.6); this.killBall(B, 'hit'); return;
+    }
     B.hitSet.add(f);
     this.hitstop = this.rm ? 4 : (power ? TUNE.hsPower : TUNE.hsKO);
     f.shake = this.hitstop + 6; f.shakeMax = f.shake;
     if (!this.rm) { if (power) this.shakeScreen(7, 16); else this.shakeScreen(4, 10); }
     this.spark(B.x, B.h, B.z, power ? 2.6 : 1.8); this.impact(B.x, B.h, B.z, power, B.thrower ? B.thrower.team : 1 - f.team);
     if (!this.rm && power) this.flash(0.22, true);
-    this.sfx.hit(power); if (power) this.sfx.bigHit();
+    this.sfx.hit(power); if (power || B.heavy) this.sfx.bigHit();
+    if (this.aiPlays(f)) { const tr = this.dodgeTier(f); this.awStat('hitTaken_' + tr); const R = f.ai.react; if (R && R.B === B && R.aware && R.kind !== 'catch' && R.kind !== 'block') this.awStat('evHit_' + tr); }
+    if (B.thrower && this.aiPlays(B.thrower)) { this.awStat('hit_' + B.thrower.arch); if (B.sync) this.awStat('syncHits'); else this.awStat('singleHits'); if (B.fakeShot) this.awStat('fakeShotHits'); }
     if (f === this.user) this.haptic([45, 35, 70]); else if (B.thrower === this.user) this.haptic(power ? [24, 20, 30] : 16);
     const dir = Math.sign(B.vx) || -f.side;
     // the ball goes dead off the hit
@@ -2679,7 +3185,7 @@ class Game {
     if (maj >= 0 && this.rushT >= RULES.rushF) {
       this.ctlT += DT; const left = Math.max(0, Math.ceil(RULES.control - this.ctlT));
       if (left !== this.lastCtlSec) {
-        this.lastCtlSec = left; this.$.ctl.hidden = false; this.$.ctl.className = 'fbg-ctl t' + maj; this.$.ctl.innerHTML = `${maj === 0 ? 'FINAL BOSS' : 'GLITCHES'} BALL CONTROL <b>${left}</b>`;
+        this.lastCtlSec = left; this.$.ctl.hidden = false; this.$.ctl.className = 'fbg-ctl t' + maj; this.$.ctl.innerHTML = `${maj === 0 ? 'FINAL BOSS' : '' + this.opp.short + ''} BALL CONTROL <b>${left}</b>`;
         // 10 to 4 counts quietly on the HUD chip; 3, 2, 1 get the big brand numeral, the announcer and a rising tick
         if (left <= 3 && left > 0) this.ctlCountdown(left, maj);
       }
@@ -2744,9 +3250,9 @@ class Game {
     this.points[w]++; this.lastGameWinner = w;
     const after = this.points[0] - this.points[1];
     this.phase = 'gameover'; this.gameEndT = 0;
-    this.popBrush('GAME!', w === 0 ? 'POINT FINAL BOSS' : 'POINT GLITCHES', w === 0 ? '' : 'lime');
+    this.popBrush('GAME!', w === 0 ? 'POINT FINAL BOSS' : 'POINT ' + this.opp.short, w === 0 ? '' : 'lime');
     if (before < 0 && after >= 0) { this.crowdReact('lead'); this.ref(after > 0 ? 'FINAL BOSS takes the lead' : 'All square'); }
-    else if (before > 0 && after <= 0) { this.crowdReact('opplead'); this.ref(after < 0 ? 'THE GLITCHES take the lead' : 'All square'); }
+    else if (before > 0 && after <= 0) { this.crowdReact('opplead'); this.ref(after < 0 ? '' + this.opp.name + ' take the lead' : 'All square'); }
     else this.crowdReact(w === 0 ? 'gamewin' : 'gamelose');
     if (!(before < 0 && after >= 0)) this.sfx.vo(w === 0 ? 'vo_point_fb' : 'vo_point_gl', 2);
     this.sfx.buzz();
@@ -2755,7 +3261,7 @@ class Game {
   timeUp() {
     this.popCenter('TIME! GAME VOID', 'big red'); this.sfx.buzz();
     const [p0, p1] = this.points;
-    if (p0 !== p1) return this.endMatch({ win: p0 > p1, time: true, msg: p0 > p1 ? `Time. FINAL BOSS takes the match, ${p0} games to ${p1}.` : `Time. THE GLITCHES take it, ${p1} games to ${p0}.` });
+    if (p0 !== p1) return this.endMatch({ win: p0 > p1, time: true, msg: p0 > p1 ? `Time. FINAL BOSS takes the match, ${p0} games to ${p1}.` : `Time. ${this.opp.name} take it, ${p1} games to ${p0}.` });
     // tied: overtime game, then sudden death
     this.ot = true; this.otClock = RULES.ot;
     this.phase = 'gameover'; this.gameEndT = 100; this.lastGameWinner = -1;
@@ -2791,17 +3297,32 @@ class Game {
     if (B.state === 'flight' && B.live) { g.opacity = B.power ? 0.9 : 0.55; g.color.set(B.power ? B.trailC : '#ffffff'); B.glow.scale.setScalar(B.power ? 1.9 + Math.sin(this.frame) * 0.2 : 1.1); }
     else if (B.state === 'rest') { g.opacity = 0.5 + 0.3 * Math.sin(this.frame * 0.15 + B.id); g.color.set(B.rushTeam === 0 ? this.kit.accent : '#a6f23a'); B.glow.scale.setScalar(1.3); }
     else { g.opacity = B.state === 'held' ? 0 : 0.18; g.color.set('#ff7a5a'); B.glow.scale.setScalar(0.9); }
-    if (B.mat.emissive) B.mat.emissive.set(B.flash > 0 && !this.rm ? '#ffffff' : (B.state === 'loose' ? '#000000' : '#000000'));
+    // a live ball reads first: bright core and glow; a dead ball goes dull
+    if (B.mat.emissive) B.mat.emissive.set(B.flash > 0 && !this.rm ? '#ffffff' : (B.state === 'flight' && B.live ? '#5a1a10' : '#000000'));
+    if (B.mat.color) B.mat.color.set(B.state === 'loose' ? '#b9aeb0' : '#ffffff');
+    if (B.state === 'flight' && B.live) { B.shadow.material = this.shadowLive || (this.shadowLive = new THREE.MeshBasicMaterial({ map: this.shadowTex, transparent: true, depthWrite: false, color: '#000000', opacity: 1 })); B.shadow.scale.multiplyScalar(0.8 + 0.35 * Math.min(1, (B.h - 0.22) / 2.5)); }
+    else B.shadow.material = this.shadowMat;
+    if (B.land && B.pop && B.state === 'flight') { if (!B.landRing) { B.landRing = new THREE.Mesh(GEO.plane, new THREE.MeshBasicMaterial({ map: this.tex.ring, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); B.landRing.rotation.x = -Math.PI / 2; B.landRing.renderOrder = 2; this.scene.add(B.landRing); } const L = B.landRing; L.visible = true; L.position.set(B.land.x, 0.02, B.land.z); const s0 = 0.9 + 0.15 * Math.sin(this.frame * 0.4); L.scale.set(s0, s0 * 0.62, 1); L.material.color.set(B.pop.team === 0 ? '#ffc83d' : '#a6f23a'); L.material.opacity = 0.85; }
+    else if (B.landRing) B.landRing.visible = false;
   }
   addScore(n) { this.combo++; const m = Math.min(4, 1 + Math.floor((this.combo - 1) / 2) * 0.5); this.score += Math.round(n * m); this.stats.bestCombo = Math.max(this.stats.bestCombo, m); if (this.combo >= 3 && this.combo % 2 === 1) this.popCenter(`COMBO x${m}`, 'small cyan', 0.3); }
   breakCombo() { this.combo = 0; }
   renderLive() {
     const dots = (t) => this.teams[t].map(a => `<i class="${a.role === 'in' || a.role === 'returning' ? '' : 'off'}${a === this.user ? ' me' : ''}" title="${esc(a.name)}"></i>`).join('');
     this.$.l0.innerHTML = dots(0); this.$.l1.innerHTML = dots(1);
+    this.$.l0.classList.toggle('danger', this.liveCount(0) <= 2 && this.phase === 'play'); this.$.l1.classList.toggle('danger', this.liveCount(1) <= 2 && this.phase === 'play');
     const q = (t) => this.queue[t].map((a, i) => `<span>${i === 0 ? 'NEXT ' : ''}#${a.num}</span>`).join('');
     this.$.q0.innerHTML = this.queue[0].length ? 'Outline: ' + q(0) : ''; this.$.q1.innerHTML = this.queue[1].length ? 'Outline: ' + q(1) : '';
   }
+  tutorialTick() {
+    const u = this.user; if (this.tutDone || this.phase !== 'play' || !u || !u.held || !u.held.cleared || u.role !== 'in') return;
+    let seen = false; try { seen = sessionStorage.getItem('fbg-tut-dash') === '1'; } catch (e) { } if (seen) { this.tutDone = true; return; }
+    this.tutDone = true; try { sessionStorage.setItem('fbg-tut-dash', '1'); } catch (e) { }
+    const touch = this.root.classList.contains('has-touch');
+    this.popBrush('DASH, THEN THROW', touch ? 'hold DASH, throw on steps 4 to 7' : 'hold U, throw on steps 4 to 7', '', 0.62, 2.4);
+  }
   updateHUD(force) {
+    this.tutorialTick();
     const c = this.ot ? this.otClock : this.clock; const txt = this.sudden ? 'SD' : fmtClock(Math.max(0, Math.ceil(c)));
     if (force || this.$.clock.textContent !== txt) this.$.clock.textContent = txt;
     this.$.clock.classList.toggle('fever', this.ot || c <= 10);
@@ -2810,12 +3331,12 @@ class Game {
     if (this.$.g0.textContent !== String(this.points[0])) this.$.g0.textContent = this.points[0];
     if (this.$.g1.textContent !== String(this.points[1])) this.$.g1.textContent = this.points[1];
     const sc = this.score.toLocaleString(); if (this.$.score.textContent !== sc) this.$.score.textContent = sc;
-    if (this.native && this.$.keys) {
-      // on-screen key prompts light up with the moment: holding a ball lights Throw and Pass, an incoming throw lights Catch
+    {
+      // the controls light up with the moment: holding a ball lights Throw (and Pass), an incoming throw lights Catch; keys on PC, thumb buttons on Mobile
       const u = this.user, live = this.phase === 'play' && !this.paused && u && u.role === 'in';
       if (this.frame % 6 === 0) this._kInc = !!(live && !u.held && this.incomingFor(u));
       const st = (live ? 'on' : '') + (live && u.held ? ' hold' : '') + (live && this._kInc ? ' inc' : '');
-      if (this._kSt !== st) { this._kSt = st; this.$.keys.className = 'fbg-keys ' + st; }
+      if (this._kSt !== st) { this._kSt = st; if (this.$.keys) this.$.keys.className = 'fbg-keys ' + st; this.root.classList.toggle('k-hold', live && !!u.held); this.root.classList.toggle('k-inc', !!(live && this._kInc)); }
     }
   }
   render() {
@@ -2863,6 +3384,13 @@ class Game {
         a.ring.material.color.set(you ? '#ffc83d' : (a.team === 0 ? '#ffffff' : '#a6f23a')); a.ring.material.opacity = you ? 0.95 : 0.7;
       }
     }
+    if (this.lineStrips) {
+      let dc = 9, ds = [9, 9];
+      for (const a of this.all) if (a.active && a.role === 'in') { dc = Math.min(dc, Math.abs(a.x)); if (a.z < 0) ds[0] = Math.min(ds[0], HZ + a.z); else ds[1] = Math.min(ds[1], HZ - a.z); }
+      const op = (d) => this.phase === 'play' && this.rushT >= RULES.rushF ? Math.max(0, 1 - d / 1.3) * 0.55 : 0;
+      const lf = (this.lineFlash || 0) > 0 ? (this.lineFlash--, 0.25) : 0;
+      this.lineStrips[0].material.opacity = Math.min(0.85, op(dc) + lf); this.lineStrips[1].material.opacity = Math.min(0.85, op(ds[0]) + lf); this.lineStrips[2].material.opacity = Math.min(0.85, op(ds[1]) + lf);
+    }
     this.updateStands();
     this.updateTrails();
     this.renderFrame();
@@ -2890,15 +3418,21 @@ class Game {
     }
   }
   updateMeter() {
+    // the meter only shows when it matters: holding a ball (idle: DASH), dashing (steps 1 to 9, power window 4 to 7), and it flashes on a power throw
     const u = this.user; if (!u) return;
+    const running = u.state === 'run' || (u.state === 'air' && u.airSteps > 0);
     const steps = u.state === 'run' ? u.steps : (u.state === 'air' ? u.airSteps : 0);
-    const lo = TUNE.powMin, hi = TUNE.powMax;
-    const key = steps + '|' + (u.state === 'run');
+    const fire = (this.meterFire || 0) > this.frame;
+    const show = this.phase === 'play' && u.role === 'in' && (!!u.held || running || fire);
+    const lo = TUNE.powMin, hi = TUNE.powMax, win = running && steps >= lo && steps <= hi;
+    const key = [show, steps, running, fire].join('|');
     if (this._mk === key) return; this._mk = key;
     const cells = this.$.steps.children;
     for (let i = 0; i < cells.length; i++) { const n = i + 1; cells[i].className = (n >= lo && n <= hi ? 'win ' : '') + (n <= steps ? 'lit' : ''); }
-    this.$.meter.classList.toggle('on', u.state === 'run' || u.state === 'air');
-    this.$.meter.classList.toggle('power', steps >= lo && steps <= hi && u.state === 'run');
+    const M = this.$.meter; M.classList.toggle('show', show); M.classList.toggle('on', running); M.classList.toggle('power', win); M.classList.toggle('fire', fire);
+    this.$.meterB.textContent = fire ? 'POWER!' : (running ? (win ? 'THROW!' : 'STEPS') : 'DASH');
+    const touch = this.root.classList.contains('has-touch');
+    this.$.mhint.textContent = running || fire ? '' : (touch ? 'hold DASH, throw on 4 to 7' : 'hold U or double-tap, throw on 4 to 7');
   }
   snapshot() {
     const pl = (a) => ({ name: a.name, num: a.num, team: a.team, role: a.role, state: a.state, x: +a.x.toFixed(2), z: +a.z.toFixed(2), h: +a.h.toFixed(2), hasBall: !!a.held, oob: a.oob > 0, boss: a.boss });
@@ -3132,7 +3666,7 @@ class Game {
       const txt = (t, x, col, st) => { c.save(); c.translate(x, h / 2 + 3); c.transform(1, 0, -0.18, 1, 0, 0); c.lineWidth = 5; c.strokeStyle = st; c.strokeText(t, 0, 0); c.fillStyle = col; c.fillText(t, 0, 0); c.restore(); };
       txt('FINAL BOSS', L * 0.5, '#fff7e8', '#2a0a0a'); crown(c, L * 0.18, h / 2 + 2, 16, '#ffc83d', '#3a1a00'); crown(c, L * 0.82, h / 2 + 2, 16, '#ffc83d', '#3a1a00');
       c.font = font(40); txt('B O S S   R U S H', w / 2, vc ? '#7ff3ff' : '#d8d0e8', '#000');
-      c.font = font(54); txt('THE GLITCHES', Rr + (w - Rr) * 0.5, vc ? '#7ff3ff' : '#c8ff6a', '#0a1a02');
+      c.font = font(54); txt('' + this.opp.name + '', Rr + (w - Rr) * 0.5, vc ? '#7ff3ff' : '#c8ff6a', '#0a1a02');
       for (const x of [Rr + (w - Rr) * 0.15, Rr + (w - Rr) * 0.85]) glitchGlyph(c, x, h / 2, 14, vc ? '#7ff3ff' : '#a6f23a');
     });
   }
@@ -3210,6 +3744,7 @@ const API = {
   state() { return G ? (G.dead ? { phase: 'unavailable', paused: true } : G.snapshot()) : null; },
   roster: ROSTER.map(r => ({ name: r.key, num: r.num })),
   rules: RULES,
+  court: { HX, HZ, ATK, width: COURT_W },
   stage(name) { return G && !G.dead ? G.stage(name) : false; },
   destroy() { if (G) { G.destroy(); G = null; } },
   _game() { return G; },

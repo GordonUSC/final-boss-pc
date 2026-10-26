@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<!-- STYLE: FINAL BOSS arcade boss fight, the game IS the page | WHY: a standalone link should open straight into the match on a desktop, full window at native resolution, no site chrome, brand palette only | ALT: the site's game section (gordonusc.github.io/final-boss-pc/) -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Boss Rush PC | FINAL BOSS Dodgeball</title>
+<meta name="description" content="Play Boss Rush, the FINAL BOSS dodgeball game: Sin City style, 8 on 8, five balls, no sting. Pick PC or Mobile and play in your browser.">
+<meta name="theme-color" content="#0E0B16">
+<meta name="color-scheme" content="dark">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Boss Rush | FINAL BOSS Dodgeball">
+<meta property="og:description" content="Sin City style dodgeball in your browser. Catch to bring a teammate back. Pick PC or Mobile and play.">
+<meta property="og:image" content="https://gordonusc.github.io/final-boss-pc/play/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:url" content="https://gordonusc.github.io/final-boss-pc/play/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Boss Rush">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@125,800;125,900&family=Chakra+Petch:wght@600&display=swap">
+<script>
+  // one link for everyone: a saved Mobile choice goes to the Mobile edition's own play page (add ?pick to choose again)
+  (function () { var ed = null; try { ed = localStorage.getItem('fbg-edition'); } catch (e) {}
+    if (ed === 'mobile' && !/[?&]pick/.test(location.search)) location.replace('https://gordonusc.github.io/final-boss/play/'); })();
+</script>
+<style>
+  :root { --bb: #0E0B16; --red: #E8173A; --gold: #FFC93C; --cream: #F6E7C8; }
+  html, body { margin: 0; height: 100%; background: var(--bb); color: var(--cream); overflow: hidden; overscroll-behavior: none; -webkit-text-size-adjust: 100%; }
+  body { font: 600 15px/1.4 'Chakra Petch', system-ui, sans-serif; }
+  #game { position: fixed; inset: 0; }
+  #game > .fbg-root { height: 100%; }
+  .boot, .nojs { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: flex-end; gap: 10px; padding: 24px max(16px, env(safe-area-inset-left)) max(24px, env(safe-area-inset-bottom)); background: var(--bb) url(poster.jpg) 70% 30% / cover no-repeat; }
+  .boot h1, .nojs h1 { margin: 0; font: 900 clamp(34px, 9vw, 72px)/.9 'Archivo', 'Arial Black', sans-serif; font-stretch: 125%; transform: skewX(-8deg); text-shadow: 3px 3px 0 var(--red); max-width: 12ch; }
+  .boot p, .nojs p { margin: 0; max-width: 36ch; background: var(--bb); padding: 8px 12px; box-shadow: inset 3px 0 0 var(--gold); }
+  .home { position: fixed; z-index: 2147483001; right: max(10px, env(safe-area-inset-right)); bottom: max(10px, env(safe-area-inset-bottom)); color: var(--cream); background: var(--bb); text-decoration: none; font: 700 13px/1 'Chakra Petch', sans-serif; padding: 10px 14px 9px; min-height: 36px; display: inline-flex; align-items: center; box-shadow: inset 0 -2px 0 var(--red); clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%); }
+  .home:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .home[hidden] { display: none; }
+</style>
+</head>
+<body>
+<main id="game" aria-label="Boss Rush">
+  <noscript><div class="nojs"><h1>BOSS RUSH</h1>
+    <p>Turn on JavaScript to play Boss Rush, the FINAL BOSS dodgeball game.</p>
+    <p>Sin City style: 8 on 8, five balls, no sting. Rush only the balls on your right, clear your attack line, then throw. Catch a throw and the thrower is out while your next teammate comes back in. Hold 3 of the 5 balls and a 15 second clock starts: 3, 2, 1, then every ball goes to the other side.</p>
+    <p>Also playable: the <a href="https://gordonusc.github.io/final-boss/play/" style="color:var(--gold)">Mobile edition</a>. The team file is at <a href="../" style="color:var(--gold)">the FINAL BOSS site</a>.</p></div></noscript>
+  <div class="boot" id="boot"><h1>BOSS RUSH</h1><p id="boot-p">Loading the arena...</p></div>
+</main>
+<a class="home" id="home" href="../">FINAL BOSS site</a>
+<script>
+(function () {
+  var boot = document.getElementById('boot'), home = document.getElementById('home'), mount = document.getElementById('game');
+  var s = document.createElement('script'); s.src = '../game/game.bundle.js?v=pc-elevate-20261026';
+  var fail = function (msg) { document.getElementById('boot-p').textContent = msg; };
+  var t = setTimeout(function () { if (!window.FBGame) fail('The arena is taking a while. Check your connection, then reload.'); }, 12000);
+  s.onerror = function () { clearTimeout(t); fail('The arena could not load. Reload to try again.'); };
+  s.onload = function () {
+    clearTimeout(t);
+    if (!window.FBGame) return fail('The arena could not start on this browser.');
+    boot.remove();
+    window.FBGame.mount(mount, { edition: 'pc', native: true, fill: true, picker: /[?&]pick/.test(location.search) ? 'always' : undefined });
+    // the site link shows on the picker, title and results, never over a live match
+    setInterval(function () { var st = window.FBGame.state(); home.hidden = !!(st && st.phase && !/title|result/.test(st.phase) && !st.paused); }, 400);
+  };
+  document.body.appendChild(s);
+})();
+</script>
+</body>
+</html>

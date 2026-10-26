@@ -25,7 +25,7 @@ window.runSportsmanshipScenarios = () => {
   });
   test('both teams and both sidelines get equal grounded awareness', () => {
     const evidence = [];
-    for (const team of [0, 1]) for (const sign of [-1, 1]) { reset(1); const a = g.teams[team][0]; a.x = a.side * 4; a.z = sign * 4.6; a.vx = 0; a.vz = sign * 3; g.physics(a); g.rules(); assert(a.state === 'balance' && a.role === 'in', 'side save'); evidence.push({ team, sign, state: a.state }); }
+    for (const team of [0, 1]) for (const sign of [-1, 1]) { reset(1); const a = g.teams[team][0]; a.x = a.side * 4; a.z = sign * (FBGame.court.HZ + 0.1); a.vx = 0; a.vz = sign * 3; g.physics(a); g.rules(); assert(a.state === 'balance' && a.role === 'in', 'side save'); evidence.push({ team, sign, state: a.state }); }
     return evidence;
   });
   test('rush crossing and legal back retrieval are not blocked', () => {

@@ -1,0 +1,10 @@
+{
+  "person_made_it": "Gordon's team, art and voice: the boss-ball mascot, his roster names, a David-voice announcer and teammate calls all made for this game, not stock.",
+  "emcee_who_is_speaking": "The arena announcer (David, ElevenLabs) calls the match; teammates shout 'Three!' and 'Ball left'; COACH FIORE's bench card shows plans as game labels, never quotes.",
+  "what_time_of_day_is_this_room": "Night in a lit Vegas-style rec gym: spotlights, a loud home crowd, Boss Black around a bright maple court.",
+  "did_the_click_pay_me": "One click on PC starts the announcer and music and the next tap is a match; the first catch brings a teammate back with a crowd roar.",
+  "works_for_the_recipient": "Opens full window at native resolution with keyboard and mouse, key legend on screen, Auto quality that trims render scale before detail; tested in WebKit (macOS engine, not iOS Safari) and Chromium.",
+  "taught_me_something": "The rules teach themselves in play: the 15 s control clock counts 3, 2, 1 out loud and the first ball you hold prompts DASH, THEN THROW with the U key.",
+  "told_me_the_truth": "Real Sin City rules (15 s control per the rulebook); FINAL BOSS players get strength-forward ratings from receipts only; the save-on-deflection rule is flagged for Gordon to confirm.",
+  "weakest": "No gamepad support yet (planned P8), so couch players with a controller cannot play."
+}
