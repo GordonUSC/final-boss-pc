@@ -1874,7 +1874,7 @@ class Game {
     this.phase = 'brief'; this.briefT = 0; this.briefGo = false;
     if (this.ot) this.sfx.vo('vo_ot', 3); else if (this.lastCtl >= 0) this.sfx.vo('vo_next', 1);
     const touch = this.root.classList.contains('has-touch');
-    const title = this.ot ? 'OVERTIME' : 'GAME ' + this.gameNo;
+    const title = this.ot ? 'OVERTIME: 60 S' : 'GAME ' + this.gameNo;
     const rules = [['rush', 'Rush right only', 'on GO, run only for the balls on your right as you face the other team'], ['line', 'Clear the line', 'carry a rushed ball past your attack line before you throw'], ['catch', 'Catch = back in', 'the thrower is out and your next teammate returns'],
       ['head', 'No headshots', 'a standing headshot puts the thrower out'], ['clock', '15 s control', 'hold 3 of 5 balls and the clock runs'], ['back', 'Back line only', 'leave only out the back, 10 s to return']];
     const ctl = touch ? 'Left pad moves (flick to dash). <b>THROW</b>, <b>CATCH</b> (hold to duck), <b>JUMP</b>, <b>PASS</b>.'
@@ -1913,7 +1913,7 @@ class Game {
     this.phase = 'rps'; this.rpsT = 0; this.rpsPick = null; this.rpsCPU = null; this.rpsDone = 0;
     const names = ['ROCK', 'PAPER', 'SCISSORS'];
     this.$.vs.innerHTML = `<div class="fbg-rps"><h3>RO-SHAM-BO</h3><p>${this.gameNo === 1 && !this.ot ? 'Winner takes 3 balls on its right.' : (this.ot ? 'Overtime. Winner takes 3 balls.' : 'Game ' + this.gameNo + '. Winner takes 3 balls on its right.')}</p>
-      <div class="fbg-rpsb">${names.map((n, i) => `<button type="button" data-r="${i}">${rpsIcon(i)}<b>${n}</b><small>${i + 1}</small></button>`).join('')}</div><div class="fbg-rpsr" aria-live="polite"></div></div>`;
+      <div class="fbg-rpsb">${names.map((n, i) => `<button type="button" data-r="${i}">${rpsIcon(i)}<b>${n}</b><small>${i + 1}</small></button>`).join('')}</div><div class="fbg-rpsr" aria-live="polite"></div>${this.gameNo > 1 || this.ot ? '<i class="fbg-btime"></i>' : ''}</div>`;
     this.$.vs.hidden = false; this.$.vs.classList.add('live');
     this.$.vs.querySelectorAll('[data-r]').forEach(b => b.addEventListener('click', () => { if (this.rpsPick == null) this.rpsPick = +b.dataset.r; }));
   }
@@ -1922,7 +1922,9 @@ class Game {
     for (const a of this.all) if (a.active) { a.tgt = this.poseIdle(a); this.blend(a, 0.2); this.place(a); }
     if (this.rpsPick == null) {
       if (this.edge.rock) this.rpsPick = 0; else if (this.edge.paper) this.rpsPick = 1; else if (this.edge.scissors) this.rpsPick = 2; else if (this.edge.enter || this.edge.throw) this.rpsPick = (Math.random() * 3) | 0;
-      else if (this.rpsT > 150) this.rpsPick = (Math.random() * 3) | 0;
+      // game 1 waits for the player's pick (a first-timer needs the time); later games pick for you after 2.5 s, with a visible timer
+      else if ((this.gameNo > 1 || this.ot) && this.rpsT > 150) this.rpsPick = (Math.random() * 3) | 0;
+      if ((this.gameNo > 1 || this.ot) && this.rpsPick == null) { const bar = this.$.vs.querySelector('.fbg-btime'); if (bar) bar.style.transform = `scaleX(${Math.max(0, 1 - this.rpsT / 150).toFixed(3)})`; }
     }
     this.edge = {};
     if (this.rpsPick != null && this.rpsCPU == null) {
@@ -2057,13 +2059,13 @@ class Game {
     this.sfx.music('music_menu');
     this.$.card.innerHTML = `${this.edChip()}
       <h2>BOSS <em>RUSH</em></h2>
-      <p>Sin City style. 8 on 8, 5 balls, no sting. Most games in 3 minutes wins.</p>
+      <p>Sin City style, arcade format: 8 on 8, 5 balls, no sting. Most games in 3 minutes wins.</p>
       <ul class="fbg-rules">${rules.map(r => `<li>${ruleIcon(r[0])}<b>${r[1]}</b><span>${r[2]}</span></li>`).join('')}</ul>
       <details class="fbg-more"><summary>How Sin City plays</summary>
         <p>Both teams start on their back line. Ro-sham-bo decides the first game: the winner rushes the 3 balls on its right, the other team the 2 on its right. After that, the 3 balls alternate every game. On GO, rush only the balls on your right as you face the other team. Leave early and you lose those balls.</p>
         <p>You are out if a live ball hits you and nobody catches it, if your throw is caught, if you cross the center line or a side line, or if you stay out the back for more than 10 seconds. A ball held in your hands can block a throw. Deflected balls stay live until the floor. Catch one to put the original thrower out and return your first teammate in line.</p>
         <p>Near an illegal boundary, grounded players may try to balance. Speed and momentum can still carry you out. After the match, both teams meet in a sportsmanship line.</p>
-        <p>A ball is live once it crosses the center line, and dead once it touches the floor, a wall, or another ball. A game ends when a team is out, worth 1 point. Mercy at an 8 game lead. A tie goes to overtime, then sudden death. Play on the honor system.</p>
+        <p>A ball is live once it crosses the center line, and dead once it touches the floor, a wall, or another ball. A game ends when a team is out, worth 1 point. Mercy at an 8 game lead. A tie goes to a shortened 60 second overtime (the tournament plays longer), then sudden death. Play on the honor system.</p>
       </details>
       <ol class="fbg-how">${how}</ol>
       <div class="fbg-lineup"><h3>PICK YOUR PLAYER</h3><div class="fbg-pool"></div></div>
@@ -2299,7 +2301,7 @@ class Game {
     // toe the line: arms wheel, lean back; recover or carry over (out)
     a.set('teeter'); a.vx = a.vz = 0; a.tee = { kind, out, speed, f: 0, saved: false };
     const r = a.rt || FB_BASE;
-    a.tee.fall = this.aiPlays(a) ? Math.random() < Math.min(0.9, Math.max(0, (speed - 1.6) / 4.5)) * (1 - r.foot) * 0.9 : null;
+    a.tee.fall = this.aiPlays(a) ? (this.ruleRandom ? this.ruleRandom() : Math.random()) < Math.min(0.9, Math.max(0, (speed - 1.6) / 4.5)) * (1 - r.foot) * 0.9 : null;
     this.awStat('teeter'); this.lineFlash = 30;
   }
   teeterTick(a, it) {
@@ -2794,7 +2796,7 @@ class Game {
   physics(a) {
     if (!a.active || a.role !== 'in') { this.faceIdle(a); return; }
     if (a.state === 'ko') return;
-    this.boundaryAwareness(a);
+    // boundary behavior now lives in clampAthlete (teeter), identical to the Mobile edition
     if (a.state === 'knock') {
       a.vh -= GRAV * DT; a.h += a.vh * DT; a.x += a.vx * DT; a.z += a.vz * DT;
       if (a.h <= 0) { a.h = 0; a.vh = 0; a.vx *= 0.3; a.vz *= 0.3; a.set('down'); this.dust(a, 5); this.shakeScreen(this.rm ? 0 : 2, 6); }
@@ -2847,9 +2849,12 @@ class Game {
     const s = a.side, rush = this.rushT < RULES.rushF;
     const backOK = this.backLineBallFor(a);
     const isUser = a === this.user;
-    // Both sides can overstep; awareness attempts happen before integration,
-    // then rules() applies the same actual-crossing call to every player.
-    const cen = rush ? -1.0 : -0.6;
+    // P0f, identical in both editions: after the rush a grounded player is held at the line; reaching it with speed starts a visible teeter,
+    // and only momentum that carries over is an out. Airborne players and anyone already across are not held back, so rules() calls the crossing.
+    const grounded = a.h <= 0.001 && a.state !== 'knock' && a.state !== 'air', px = a.x - a.vx * DT, pz = a.z - a.vz * DT;
+    const hold = !rush && grounded && px * s > -0.02;
+    if (hold && a.role === 'in' && a.state !== 'teeter' && a.x * s < 0.11 && a.vx * s < -1.0 && !LOCKED.has(a.state)) this.startTeeter(a, 'center', 0, Math.abs(a.vx));
+    const cen = rush ? -1.0 : (hold ? 0.06 : -9);
     if (s < 0) a.x = Math.min(-cen, a.x); else a.x = Math.max(cen, a.x);
     // back line: only to fetch a ball that is already out
     const maxX = backOK || a.oob > 0 ? HX + 1.6 : HX - 0.25;
@@ -2857,8 +2862,9 @@ class Game {
     const beyondBack = Math.abs(a.x) > HX;
     if (beyondBack && a.oob === 0 && a.role === 'in') { a.oob = 1; if (isUser) this.ref('OUT THE BACK: 10 S'); }
     if (!beyondBack && a.oob > 0) a.oob = 0;
-    const zl = beyondBack ? HZ + 1.2 : HZ + 0.6;
-    a.z = Math.max(-zl, Math.min(zl, a.z));
+    const zl = beyondBack ? HZ + 1.2 : HZ - 0.08, holdZ = !beyondBack && grounded && Math.abs(pz) <= HZ + 0.02;
+    if (holdZ && a.role === 'in' && a.state !== 'teeter' && Math.abs(a.z) > zl - 0.04 && a.vz * Math.sign(a.z) > 1.0 && !LOCKED.has(a.state) && this.phase === 'play') this.startTeeter(a, 'side', Math.sign(a.z), Math.abs(a.vz));
+    if (holdZ || beyondBack) a.z = Math.max(-zl, Math.min(zl, a.z));
   }
   backLineBallFor(a) {
     if (this.liveCount(a.team) <= 1) return false;
@@ -2885,6 +2891,8 @@ class Game {
       B.vh -= (B.grav || 0) * DT; B.x += B.vx * DT; B.z += B.vz * DT; B.h += B.vh * DT;
       // A blocked ball retains its original thrower and remains live over center.
       if (!B.crossed && B.x * B.fromSide < 0) { B.crossed = true; if (B.type !== 'pass') B.live = true; }
+      // "Crossing the center line off a deflection" makes the ball dead (WeHo rulebook; P0g, same in both editions)
+      if (B.deflected && B.x * B.defSide < 0) this.killBall(B, 'over');
       if (B.type === 'hop' && B.h <= 0.22) { B.h = 0.22; B.vh = 3.2 + B.bounces * 0.6; B.bounces++; B.vx *= 1.12; B.vz *= 1.12; this.dustAt(B.x, B.z, 2); }
       if ((B.power || B.type === 'dash' || B.heavy || B.pop) && B.live) this.trail(B);
       if ((B.power || B.heavy) && B.live && B.age % 4 === 0 && !this.rm) this.spawnSprite({ tex: B.team === 0 ? this.tex.crown : this.tex.pixel, x: B.x, y: B.h, z: B.z, s: 0.26, s1: 0.1, life: 14, color: B.team === 0 ? '#ffc83d' : '#a6f23a', alpha: 0.9 });
@@ -3315,10 +3323,14 @@ class Game {
     this.$.q0.innerHTML = this.queue[0].length ? 'Outline: ' + q(0) : ''; this.$.q1.innerHTML = this.queue[1].length ? 'Outline: ' + q(1) : '';
   }
   tutorialTick() {
-    const u = this.user; if (this.tutDone || this.phase !== 'play' || !u || !u.held || !u.held.cleared || u.role !== 'in') return;
-    let seen = false; try { seen = sessionStorage.getItem('fbg-tut-dash') === '1'; } catch (e) { } if (seen) { this.tutDone = true; return; }
-    this.tutDone = true; try { sessionStorage.setItem('fbg-tut-dash', '1'); } catch (e) { }
-    const touch = this.root.classList.contains('has-touch');
+    // first rally teaches one exchange: catch the incoming throw, then throw back, then the dash power window
+    const u = this.user; if (this.phase !== 'play' || !u || u.role !== 'in') return;
+    const touch = this.root.classList.contains('has-touch'), seen = (k) => { try { return sessionStorage.getItem(k) === '1'; } catch (e) { return false; } }, mark = (k) => { try { sessionStorage.setItem(k, '1'); } catch (e) { } };
+    if (!this.tutCatch && !seen('fbg-tut-catch') && !u.held && this._kInc) { this.tutCatch = true; mark('fbg-tut-catch'); this.popBrush('CATCH IT', touch ? 'tap CATCH right before it hits you' : 'press K or right click right before it hits you', '', 0.62, 1.8); }
+    if (this.tutCatch && !this.tutThrow && !seen('fbg-tut-throw') && u.held && u.held.cleared && this.stats.catches > 0) { this.tutThrow = true; mark('fbg-tut-throw'); this.popBrush('NOW THROW IT BACK', touch ? 'tap THROW: they are out of position' : 'press J or left click: they are out of position', '', 0.62, 1.8); return; }
+    if (this.tutDone || !u.held || !u.held.cleared) return;
+    if (seen('fbg-tut-dash')) { this.tutDone = true; return; }
+    this.tutDone = true; mark('fbg-tut-dash');
     this.popBrush('DASH, THEN THROW', touch ? 'hold DASH, throw on steps 4 to 7' : 'hold U, throw on steps 4 to 7', '', 0.62, 2.4);
   }
   updateHUD(force) {

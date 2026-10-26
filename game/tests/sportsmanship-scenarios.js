@@ -8,24 +8,23 @@ window.runSportsmanshipScenarios = () => {
   const idle = { mx: 0, mz: 0, dash: 0, holdRun: false, throw: false, catch: false, catchHeld: false, jump: false, pass: false };
   const reset = (seed = 1) => { g.resetMatch(); g.phase = 'play'; g.rushT = 300; g.ruleRandom = rng(seed); g.$.ov.hidden = true; g.hitstop = 0; return g.teams[0][0]; };
   const test = (name, fn) => { const evidence = fn(); results.push({ name, passed: true, evidence }); };
-  test('walking player balances before center, with one chance per approach', () => {
-    const a = reset(1); a.x = -0.20; a.z = 0; a.vx = 3.2; a.vz = 0; let calls = 0; const seeded = g.ruleRandom; g.ruleRandom = () => { calls++; return seeded(); };
-    g.physics(a); g.rules(); assert(a.state === 'balance' && a.role === 'in', 'expected grounded save');
-    for (let i = 0; i < 18; i++) { g.control(a, idle); g.physics(a); g.rules(); }
-    assert(a.x < -0.20 && a.role === 'in', 'balance must move inward');
-    a.vx = 3.2; for (let i = 0; i < 20 && a.role === 'in'; i++) { g.physics(a); g.rules(); }
-    assert(a.role === 'gone' && calls === 1, 'holding toward line must still risk out without repeated saves');
-    return { seed: 1, randomCalls: calls, finalRole: a.role };
+  // P0f (2026-10-26): boundary behavior is identical in both editions: a grounded player is held at the line, reaching it with speed starts a
+  // visible teeter, and only momentum that carries over is an out (feet never appear over a line while the player is legal)
+  const teeterTicks = (a, n = 22) => { for (let i = 0; i < n && a.state === 'teeter'; i++) { a.st++; g.teeterTick(a, idle); g.physics(a); g.rules(); } };
+  test('walking player teeters at center and recovers inward', () => {
+    const a = reset(1); a.rt = Object.assign({}, a.rt, { foot: 0.9 }); a.x = -0.12; a.z = 0; a.vx = 3.2; a.vz = 0; let calls = 0; const seeded = g.ruleRandom; g.ruleRandom = () => { calls++; return seeded(); };
+    g.physics(a); g.rules(); assert(a.state === 'teeter' && a.role === 'in' && a.x * a.side >= 0.05, 'expected a teeter with feet behind the line');
+    teeterTicks(a); assert(a.role === 'in' && a.x < -0.12 && a.state === 'idle', 'recovery must step back inward');
+    assert(calls === 1, 'one roll per approach'); return { seed: 1, randomCalls: calls, x: +a.x.toFixed(2) };
   });
-  test('running stumble can cross and be called out', () => {
-    const a = reset(1337); a.x = -0.20; a.z = 0; a.vx = 6.5; a.set('run');
-    g.physics(a); assert(a.stumbleT > 0 && a.state !== 'balance', 'seed must stumble');
-    for (let i = 0; i < 8 && a.role === 'in'; i++) { g.physics(a); g.rules(); }
-    assert(a.role === 'gone', 'failed balance should not create an invisible wall'); return { seed: 1337, outOrder: a.outOrder };
+  test('momentum that carries over is called out', () => {
+    const a = reset(1); a.rt = Object.assign({}, a.rt, { foot: 0.05 }); a.x = -0.15; a.z = 0; a.vx = 6.0; a.set('walk');
+    g.physics(a); g.rules(); assert(a.state === 'teeter', 'seed must teeter'); teeterTicks(a);
+    assert(a.role === 'gone' && a.x * a.side < 0, 'a carried-over teeter crosses visibly and is out'); return { seed: 1, outOrder: a.outOrder };
   });
-  test('both teams and both sidelines get equal grounded awareness', () => {
+  test('both teams and both sidelines get the same teeter', () => {
     const evidence = [];
-    for (const team of [0, 1]) for (const sign of [-1, 1]) { reset(1); const a = g.teams[team][0]; a.x = a.side * 4; a.z = sign * (FBGame.court.HZ + 0.1); a.vx = 0; a.vz = sign * 3; g.physics(a); g.rules(); assert(a.state === 'balance' && a.role === 'in', 'side save'); evidence.push({ team, sign, state: a.state }); }
+    for (const team of [0, 1]) for (const sign of [-1, 1]) { reset(1); const a = g.teams[team][0]; a.x = a.side * 4; a.z = sign * (FBGame.court.HZ - 0.12); a.vx = 0; a.vz = sign * 3; g.physics(a); g.rules(); assert(a.state === 'teeter' && a.role === 'in' && Math.abs(a.z) <= FBGame.court.HZ, 'side teeter ' + team + ' ' + sign); evidence.push({ team, sign, z: +a.z.toFixed(2) }); }
     return evidence;
   });
   test('rush crossing and legal back retrieval are not blocked', () => {
@@ -52,11 +51,13 @@ window.runSportsmanshipScenarios = () => {
   const flight = (team = 1) => {
     const b = g.balls[0]; Object.assign(b, { state: 'flight', live: true, crossed: true, cleared: true, fromSide: team === 0 ? -1 : 1, team, thrower: g.teams[team][0], x: -0.02, z: 0, h: 1.2, vx: -15, vz: 0, vh: 0, grav: 6, type: 'normal' }); return b;
   };
-  test('lofted block stays live over center, then dies on first floor touch', () => {
-    reset(1); const defender = g.teams[0][1], b = flight(); g.give(defender, g.balls[1]); g.block(defender, b, true); const thrower = b.thrower;
-    assert(b.vh === 6.5 && b.live, 'timed block loft'); g.updateBall(b); assert(b.x > 0 && b.live && b.state === 'flight' && b.thrower === thrower, 'cross-center deflection stays live');
+  test('lofted block stays live in the defenders half until the floor; crossing center makes it dead', () => {
+    reset(1); const defender = g.teams[0][1]; let b = flight(); b.x = -4; g.give(defender, g.balls[1]); g.block(defender, b, true); const thrower = b.thrower;
+    assert(b.vh === 6.5 && b.live, 'timed block loft'); g.updateBall(b); assert(b.live && b.state === 'flight' && b.thrower === thrower, 'deflection stays live');
     let ticks = 1; while (b.state === 'flight' && ticks++ < 240) g.updateBall(b);
-    assert(b.state === 'loose' && !b.live && b.thrower === null && b.h === 0.22, 'floor ends catchable ball'); return { ticks, state: b.state };
+    assert(b.state === 'loose' && !b.live && b.thrower === null && b.h === 0.22 && b.x * defender.side > 0, 'floor ends catchable ball in the defenders half');
+    reset(1); b = flight(); g.block(g.teams[0][1], b, true); g.updateBall(b);
+    assert(b.x > 0 && !b.live && b.state === 'loose', 'a deflection that crosses the center line is dead (rulebook, P0g)'); return { ticks };
   });
   test('untimed blocks can produce low and high deflections', () => {
     const heights = [];
@@ -75,7 +76,7 @@ window.runSportsmanshipScenarios = () => {
     assert(b.holder === catcher && thrower.role === 'in' && g.queue[0].length === q && g.stats.backIn === 0 && g.stats.catches === 0, 'friendly recovery must not eliminate or reward'); return true;
   });
   test('deflected flight at arena edge remains catchable until floor', () => {
-    reset(); const b = flight(); g.block(g.teams[0][1], b, true); b.x = 12.29; b.vx = 6; b.h = 2; g.updateBall(b); assert(b.live && b.state === 'flight' && b.vx < 0, 'arena-edge loft became dead early'); return true;
+    reset(); const b = flight(); g.block(g.teams[0][1], b, true); b.x = -12.29; b.vx = -6; b.h = 2; g.updateBall(b); assert(b.live && b.state === 'flight' && b.vx > 0, 'arena-edge loft became dead early');   // the defenders' own back wall (a loft over center is dead) return true;
   });
   test('postmatch forms single files, greets all opposing players, then resets cleanly', () => {
     reset(); g.eliminate(g.teams[0][0], 'power'); g.teams[0][0].popScale = 0; g.endMatch({ win: true, msg: 'Fixture complete.' });

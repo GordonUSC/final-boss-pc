@@ -583,3 +583,5 @@ html.fbg-lock, html.fbg-lock body{overflow:hidden}
 .fbg-root.is-fill.is-narrow{justify-content:center}
 .fbg-root.is-fill.is-narrow .fbg-stage{flex:0 0 auto; aspect-ratio:4/5}
 .fbg-root.is-mobile .fbg-btns .fbg-pause{font-size:0; color:transparent}
+/* phones: the title card keeps PLAY in view while the rules scroll */
+.fbg-root.is-mobile .fbg-card > .fbg-row{position:sticky; bottom:-12px; z-index:2; margin-left:-12px; margin-right:-12px; padding:10px 12px; background:var(--fbg-bb); box-shadow:0 -8px 16px rgba(14,11,22,.9)}
