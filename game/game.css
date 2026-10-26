@@ -733,3 +733,5 @@ html.fbg-lock, html.fbg-lock body{overflow:hidden}
   .fbg-root .fbg-card:has(.fbg-lineup) .fbg-lineup h3 { margin: 4px 0 }
 }
 .fbg-btn.fbg-go.fbg-wkb{background:var(--fbg-gold); color:#120818; box-shadow:none}
+/* SWITCH never sits over your own half of the court: on a wide touch screen it stacks above the right-hand buttons */
+.fbg-root.is-wide.has-touch .fbg-touch > .fbg-tb.sw{left:auto; right:calc(10px + var(--sr,0px)); bottom:176px; pointer-events:auto}
