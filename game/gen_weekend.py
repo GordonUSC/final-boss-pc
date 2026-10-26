@@ -54,15 +54,15 @@ SHORT_TELL = {'FIVE, SIX, SEVEN, EIGHT': '5, 6, 7, 8!', 'THREE-PART HARMONY': 'H
 
 # Astra Phase 2 content check (2026-10-26, ASTRA-PHASE2-CONTENT-CHECK.md): corrected card text, applied over the reviewed cards.json
 CARD_FIX = {
-    'A01': {'text': 'The 2027 festival celebrates its twentieth anniversary with a weekend of sport in Las Vegas.'},
-    'A03': {'text': 'The festival advertises more than 10,000 athletes and 24 sports for one fabulous weekend.'},
-    'A04': {'text': 'Organizers describe over a hundred teams, with past appearances from Canada, England, Australia and Denmark.'},
-    'A08': {'text': 'A valid catch eliminates the thrower and lets an eligible queued teammate return.'},
-    'A09': {'text': 'The rulebook calls for soft rubber balls. Bring your best catching hands.'},
-    'A12': {'text': 'The 2026 welcome-party listing advertised disco karaoke, bringing a musical warmup to the festival weekend.'},
+    'A01': {'text': 'The 2027 festival celebrates its twentieth anniversary with a weekend of sport in Las Vegas.', 'voSecs': 4.96},
+    'A03': {'text': 'The festival advertises more than 10,000 athletes and 24 sports for one fabulous weekend.', 'voSecs': 5.46},
+    'A04': {'text': 'Organizers describe over a hundred teams, with past appearances from Canada, England, Australia and Denmark.', 'voSecs': 5.95},
+    'A08': {'text': 'A valid catch eliminates the thrower and lets an eligible queued teammate return.', 'voSecs': 4.28},
+    'A09': {'text': 'The rulebook calls for soft rubber balls. Bring your best catching hands.', 'voSecs': 4.54},
+    'A12': {'text': 'The 2026 welcome-party listing advertised disco karaoke, bringing a musical warmup to the festival weekend.', 'voSecs': 6.27},
 }
-# the recorded announcer reads for these cards still say the old wording, so the card plays its sting without the read until new takes exist
-VO_STALE = {'A01', 'A03', 'A04', 'A08', 'A09', 'A12'}
+# 2026-10-26 the six reads were re-recorded to match the corrected text (ElevenLabs David, eleven_multilingual_v2, about -17.2 LUFS like the rest)
+VO_STALE = set()
 
 
 def emblem_only(svg):
