@@ -724,3 +724,11 @@ html.fbg-lock, html.fbg-lock body{overflow:hidden}
 .fbg-next b{color:var(--fbg-pg); margin-right:4px} .fbg-next i{font-style:normal; color:var(--fbg-ash)}
 .fbg-root:not(.has-touch) .fbg-next{display:none}
 .fbg-wk-pool li i{white-space:nowrap}
+
+/* iPhone landscape (SE 667x375, 15 Pro with Safari bars 734x343): the title card drops the rules grid and how-to so PICK YOUR PLAYER and PLAY fit; the full rules still open every match on the game 1 card, which waits for READY */
+@media (max-height: 430px) {
+  .fbg-root .fbg-card:has(.fbg-lineup) .fbg-rules, .fbg-root .fbg-card:has(.fbg-lineup) .fbg-how, .fbg-root .fbg-card:has(.fbg-lineup) .fbg-more, .fbg-root .fbg-card:has(.fbg-lineup) .fbg-wkp { display: none }
+  .fbg-root .fbg-card:has(.fbg-lineup) h2 { font-size: 34px; margin-bottom: 2px }
+  .fbg-root .fbg-card:has(.fbg-lineup) > p { margin-bottom: 6px; font-size: 13px }
+  .fbg-root .fbg-card:has(.fbg-lineup) .fbg-lineup h3 { margin: 4px 0 }
+}
