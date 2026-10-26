@@ -3186,11 +3186,19 @@ class Game {
       if (this.rushT >= RULES.rushF && a.x * a.side < -0.05) { this.eliminate(a, 'line'); if (a === this.user) this.popCenter('CENTER LINE: OUT', 'big red', 0.36); }
       else if (Math.abs(a.z) > HZ + 0.2 && Math.abs(a.x) < HX) { this.eliminate(a, 'side'); if (a === this.user) this.popCenter('SIDE LINE: OUT', 'big red', 0.36); }
     }
-    // ball control countdown: 3 of 5 held by one team
-    const held = [0, 0]; for (const b of this.balls) if (b.state === 'held') held[b.holder.team]++;
+    // ball control (Gordon 2026-10-26): a team has ball control while 3 or more balls are ON ITS SIDE
+    // (held by its players, including out of bounds, or loose/in the air over its half); the 15 s count
+    // starts the instant it reaches 3 and resets when it drops to 2 or fewer. Rush balls on the center line count for no one.
+    const held = [0, 0];
+    for (const b of this.balls) {
+      if (b.state === 'held' && b.holder) { held[b.holder.team]++; continue; }
+      if (b.state === 'rest' && Math.abs(b.x) < 0.5) continue;
+      if (Math.abs(b.x) < 0.05) continue;
+      held[b.x < 0 ? 0 : 1]++;
+    }
     const maj = held[0] >= 3 ? 0 : (held[1] >= 3 ? 1 : -1);
     if (maj < 0 || maj !== this.ctlTeam) { if (this.ctlTeam >= 0 && maj < 0) this.$.ctl.hidden = true; this.ctlTeam = maj; this.ctlT = 0; this.lastCtlSec = -1; this.ctlCountdown(0); }
-    if (maj >= 0 && this.rushT >= RULES.rushF) {
+    if (maj >= 0) {
       this.ctlT += DT; const left = Math.max(0, Math.ceil(RULES.control - this.ctlT));
       if (left !== this.lastCtlSec) {
         this.lastCtlSec = left; this.$.ctl.hidden = false; this.$.ctl.className = 'fbg-ctl t' + maj; this.$.ctl.innerHTML = `${maj === 0 ? 'FINAL BOSS' : '' + this.opp.short + ''} BALL CONTROL <b>${left}</b>`;
@@ -3223,11 +3231,10 @@ class Game {
   controlViolation(t) {
     this.popCenter('BALL CONTROL: VIOLATION', 'big red', 0.36); this.ref('Every ball goes to the other side'); this.sfx.buzz();
     const other = 1 - t; let k = 0;
+    // Gordon 2026-10-26 + rulebook: on a violation the other team gets ALL the balls, wherever they are
     for (const b of this.balls) {
-      const onSide = b.state === 'held' ? b.holder.team === t : (b.state === 'loose' && Math.sign(b.x) === (t === 0 ? -1 : 1));
-      if (!onSide) continue;
       if (b.holder) { b.holder.held = null; b.holder = null; }
-      b.state = 'loose'; b.live = false; b.cleared = true; b.x = (other === 0 ? -1 : 1) * (4 + (k % 3)); b.z = -3 + k * 1.5; b.h = 1.2; b.vh = 2; b.vx = b.vz = 0; k++;
+      b.state = 'loose'; b.live = false; b.cleared = true; b.thrower = null; b.team = -1; b.x = (other === 0 ? -1 : 1) * (4 + (k % 3)); b.z = -3 + k * 1.5; b.h = 1.2; b.vh = 2; b.vx = b.vz = 0; k++;
     }
     this.qaLog('violation', { team: t });
     this.ctlTeam = -1; this.ctlT = 0; this.$.ctl.hidden = true; this.ctlCountdown(0);
