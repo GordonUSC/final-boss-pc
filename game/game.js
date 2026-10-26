@@ -80,7 +80,7 @@ function ruleIcon(k) {
 const SIGNS = [
   { t: ['GO FIORE', '#1'], who: 'FIORE' }, { t: ['ZABOKRITSKY', '2!'], who: 'ZABOKRITSKY' }, { t: ['HAWKINS 3', 'HYPE'], who: 'HAWKINS' },
   { t: ['BELLAMY 4', 'FINAL BOSS'], who: 'BELLAMY' }, { t: ['BELLAMY III', '#5'], who: 'BELLAMY III' }, { t: ['REED 6', 'ALL DAY'], who: 'REED' },
-  { t: ['KRAMER 31', 'ARM CANNON'], who: 'KRAMER' }, { t: ['KETCHUM 83', 'GOLDEN BOY'], who: 'KETCHUM' }, { t: ['NO STING', 'ALL HEART'], who: '*go' }, { t: ['PHASE TWO!'], who: '*p2' },
+  { t: ['KRAMER 31', 'ARM CANNON'], who: 'KRAMER' }, { t: ['KETCHUM 83', 'GOLDEN BOY'], who: 'KETCHUM' }, { t: ['ALL HEART', 'no sting'], who: '*go' }, { t: ['PHASE TWO!'], who: '*p2' },
 ];
 const CREST_FB = '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M6 6h36v20c0 9-8 15-18 18C14 41 6 35 6 26z" fill="var(--fbg-tb)" stroke="#ffc83d" stroke-width="3"/><path d="M13 30V17l6 6 5-9 5 9 6-6v13z" fill="#ffc83d" stroke="#3a1a00" stroke-width="1.5"/></svg>';
 const CREST_GL = '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M6 6h36v20c0 9-8 15-18 18C14 41 6 35 6 26z" fill="#17131f" stroke="#a6f23a" stroke-width="3"/><g fill="#a6f23a"><rect x="16" y="13" width="16" height="4"/><rect x="13" y="17" width="22" height="8"/><rect x="16" y="25" width="16" height="4"/><rect x="18" y="29" width="3" height="4"/><rect x="27" y="29" width="3" height="4"/></g><g fill="#17131f"><rect x="16" y="19" width="5" height="4"/><rect x="27" y="19" width="5" height="4"/></g></svg>';
@@ -614,17 +614,35 @@ class Athlete {
 const NOI = { mx: 0, mz: 0, dash: 0, holdRun: false, throw: false, catch: false, catchHeld: false, jump: false, pass: false };
 const LOCKED = new Set(['balance', 'windup', 'release', 'recover', 'catch', 'bobble', 'hitstun', 'knock', 'down', 'getup', 'ko', 'tired', 'squat', 'land', 'walkin', 'drop', 'pwind', 'prel', 'prec', 'block']);
 
+// ---------------------------------------------------------------- editions (PC native and Mobile native are two builds; the picker routes between them)
+const ED_KEY = 'fbg-edition';
+const ED_URLS = { pc: 'https://gordonusc.github.io/final-boss-pc/play/', mobile: 'https://gordonusc.github.io/final-boss/play/' };
+function readEd() { try { const v = localStorage.getItem(ED_KEY); return v === 'pc' || v === 'mobile' ? v : null; } catch (e) { return null; } }
+function saveEd(v) { try { localStorage.setItem(ED_KEY, v); } catch (e) { } }
+function guessEdition() {
+  // a mouse or trackpad on a laptop-or-larger screen suggests PC; touch-first or a small screen suggests Mobile
+  const mm = (q) => !!(window.matchMedia && matchMedia(q).matches);
+  const fine = mm('(pointer: fine)'), coarse = mm('(pointer: coarse)');
+  const big = Math.min(screen.width || 0, screen.height || 0) >= 700 && Math.max(screen.width || 0, screen.height || 0) >= 1000;
+  return fine && !coarse && big ? 'pc' : 'mobile';
+}
+function readSnd() { try { return localStorage.getItem('fbg-sound'); } catch (e) { return null; } }
+function saveSnd(v) { try { localStorage.setItem('fbg-sound', v ? 'on' : 'off'); } catch (e) { } }
+
 // ---------------------------------------------------------------- audio
 class Sfx {
   constructor() { this.on = false; this.ctx = null; }
-  enable(v) { this.on = v; if (v && !this.ctx) { try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); this.master = this.ctx.createGain(); this.master.gain.value = 0.55; this.master.connect(this.ctx.destination); this.noiseBuf = this.makeNoise(); } catch (e) { this.on = false; } } if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); }
+  enable(v) { this.on = v; if (!v && this.mus) { try { this.mus.s.stop(); } catch (e) { } this.mus = null; this.musName = null; } if (v && !this.ctx) { try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); this.master = this.ctx.createGain(); this.master.gain.value = 0.55; this.master.connect(this.ctx.destination); this.noiseBuf = this.makeNoise(); } catch (e) { this.on = false; } } if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); }
   makeNoise() { const b = this.ctx.createBuffer(1, this.ctx.sampleRate * 1.5, this.ctx.sampleRate); const d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; return b; }
-  tone(type, f0, f1, dur, vol = 0.3, delay = 0) {
+  // synthesized tones and noise are retired (2026-10-26): every sound is an ElevenLabs or Kenney sample; WebAudio only mixes
+  tone() { }
+  noise() { }
+  _toneRetired(type, f0, f1, dur, vol = 0.3, delay = 0) {
     if (!this.on || !this.ctx) return; const t = this.ctx.currentTime + delay;
     const o = this.ctx.createOscillator(), g = this.ctx.createGain(); o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
     g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur); o.connect(g); g.connect(this.master); o.start(t); o.stop(t + dur + 0.02);
   }
-  noise(dur, f0, f1, q = 1, vol = 0.3, delay = 0, type = 'bandpass') {
+  _noiseRetired(dur, f0, f1, q = 1, vol = 0.3, delay = 0, type = 'bandpass') {
     if (!this.on || !this.ctx) return; const t = this.ctx.currentTime + delay;
     const s = this.ctx.createBufferSource(); s.buffer = this.noiseBuf; const f = this.ctx.createBiquadFilter(); f.type = type; f.Q.value = q;
     f.frequency.setValueAtTime(f0, t); f.frequency.exponentialRampToValueAtTime(Math.max(30, f1), t + dur);
@@ -634,12 +652,12 @@ class Sfx {
   _throw(p) { this.noise(p ? 0.45 : 0.22, p ? 500 : 900, p ? 4000 : 2400, 2, p ? 0.5 : 0.3); if (p) this.tone('sawtooth', 220, 880, 0.4, 0.08); }
   _hit(p) { this.tone('sine', p ? 150 : 190, 45, p ? 0.35 : 0.2, 0.7); this.noise(0.12, 1800, 300, 0.8, 0.5); }
   _catch() { this.tone('square', 660, 990, 0.08, 0.18); this.tone('square', 990, 1320, 0.1, 0.14, 0.06); this.noise(0.06, 3000, 2000, 1, 0.25); }
-  bobble() { this.tone('triangle', 500, 300, 0.15, 0.2); }
+  bobble() { this.smp('catch', 0.5, 0.8); }
   _crowd(big) { this.noise(big ? 1.4 : 0.9, 600, 1400, 0.4, big ? 0.35 : 0.2); }
   _step() { this.tone('sine', 120, 80, 0.04, 0.12); }
-  ko() { [523, 659, 784, 1047].forEach((f, i) => this.tone('triangle', f, f, 0.12, 0.15, i * 0.07)); }
+  ko() { this.smp('ko_sting', 0.55); }
   _buzz() { this.tone('square', 140, 120, 0.7, 0.18); }
-  tick() { this.tone('square', 1400, 1400, 0.03, 0.06); }
+  tick() { this.smp('ui_move', 0.35); }
   _roar(l = 1) {
     this.noise(0.9 + 1.6 * l, 520, 1300, 0.5, 0.18 + 0.2 * l); this.noise(0.8 + 1.2 * l, 160, 240, 0.7, 0.12 * l, 0, 'lowpass');
     for (let k = 0; k < Math.round(l * 3); k++) this.tone('sine', 1800 + Math.random() * 500, 2500 + Math.random() * 400, 0.3, 0.04, 0.15 + k * 0.32);
@@ -656,6 +674,8 @@ class Sfx {
     this.bedBus = C.createGain(); this.bedBus.connect(this.master);
     this.vBus = C.createGain(); this.vBus.gain.value = 1.15; this.vBus.connect(this.master);
     const names = ['crowd_bed', 'crowd_hype', 'crowd_roar', 'crowd_groan', 'crowd_ooh', 'crowd_chant', 'hit', 'catch', 'throw', 'whistle', 'buzzer', 'squeak', 'bounce',
+      'ui_move', 'ui_select', 'ui_back', 'big_hit', 'ko_sting', 'vo_choose', 'vo_pc', 'vo_mobile', 'vo_ko', 'vo_boss',
+      'vo_three', 'vo_two', 'vo_one', 'tick_3', 'tick_2', 'tick_1',
       'vo_open', 'vo_rps', 'vo_ready', 'vo_set', 'vo_go', 'vo_next', 'vo_catch', 'vo_headshot', 'vo_tide', 'vo_opptide', 'vo_lead', 'vo_point_fb', 'vo_point_gl', 'vo_phase2', 'vo_ot', 'vo_win', 'vo_lose', 'vo_clutch', 'vo_falsestart'];
     for (let i = 0; i < 5; i++) names.push('k_hit' + i, 'k_power' + i, 'k_step' + i, 'k_bounce' + i);
     for (const n of names) {
@@ -675,7 +695,9 @@ class Sfx {
     if (now < (this.voUntil || 0) && prio <= (this.voPrio || 0)) return;
     const s = this.smp(n, 1, 1, 0, this.vBus); if (!s) return;
     const d = s.buffer.duration; this.voUntil = now + d; this.voPrio = prio;
+    if (this.onVo) this.onVo(n);
     this.bedBus.gain.cancelScheduledValues(now); this.bedBus.gain.setTargetAtTime(0.4, now, 0.04); this.bedBus.gain.setTargetAtTime(1, now + d, 0.35);
+    if (this.musBus) { this.musBus.gain.cancelScheduledValues(now); this.musBus.gain.setTargetAtTime(0.14, now, 0.05); this.musBus.gain.setTargetAtTime(0.3, now + d, 0.4); }
   }
   mood(m, e, live) {
     // crowd beds: a steady murmur that swells with excitement, plus a cheering loop that rises with a happy crowd
@@ -703,7 +725,35 @@ class Sfx {
   whistle() { this.smp('whistle', 0.35, 1 + Math.random() * 0.05); }
   squeak() { const t = this.ctx ? this.ctx.currentTime : 0; if (t - (this.lastSq || 0) < 0.25) return; this.lastSq = t; this.smp('squeak', 0.4, 0.9 + Math.random() * 0.25); }
   bounce(k) { const t = this.ctx ? this.ctx.currentTime : 0; if (t - (this.lastBn || 0) < 0.05) return; this.lastBn = t; if (!this.any('k_bounce', 0.25 + 0.5 * k, 1.15)) this.smp('bounce', 0.3 + 0.5 * k); }
-  stinger() { [392, 494, 587, 784].forEach((f, i) => this.tone('sawtooth', f, f * 1.01, 0.16, 0.08, i * 0.09)); }
+  stinger() { this.smp('ui_select', 0.8); }
+  ui(n) { this.smp('ui_' + n, n === 'move' ? 0.45 : 0.8); }
+  bigHit() { this.smp('big_hit', 0.85); }
+  unlock() {
+    // iOS: create and resume the context inside the first tap, and play one silent frame so later sounds are allowed
+    try {
+      if (!this.ctx) { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); this.master = this.ctx.createGain(); this.master.gain.value = 0.55; this.master.connect(this.ctx.destination); }
+      if (this.ctx.state === 'suspended') this.ctx.resume();
+      const b = this.ctx.createBuffer(1, 1, 22050), s = this.ctx.createBufferSource(); s.buffer = b; s.connect(this.ctx.destination); s.start(0);
+      this.unlocked = true;
+    } catch (e) { }
+  }
+  music(name) {
+    // one music loop at a time (menu or match), streamed in only when sound is on; crossfades and ducks under the announcer
+    this.wantMusic = name;
+    if (!this.on || !this.ctx || !this.base) return;
+    const C = this.ctx;
+    if (!this.musBus) { this.musBus = C.createGain(); this.musBus.gain.value = 0.3; this.musBus.connect(this.master); }
+    if (this.musName === name) return;
+    const t = C.currentTime;
+    if (this.mus) { const o = this.mus; o.g.gain.setTargetAtTime(0, t, 0.25); try { o.s.stop(t + 1.5); } catch (e) { } this.mus = null; }
+    this.musName = name; if (!name) return;
+    this.buf = this.buf || {};
+    const go = (b) => { if (this.musName !== name || !this.on) return; const s = C.createBufferSource(), g = C.createGain(); s.buffer = b; s.loop = true;
+      // exact bar lengths, so MP3 padding never leaves a gap in Safari
+      const L = { music_menu: 30.0, music_match: 46.286 }[name]; if (L && b.duration > L) { s.loopStart = 0; s.loopEnd = L; } g.gain.value = 0; s.connect(g); g.connect(this.musBus); s.start(); g.gain.setTargetAtTime(1, C.currentTime, 0.4); this.mus = { s, g }; };
+    if (this.buf[name]) return go(this.buf[name]);
+    fetch(this.base + name + '.mp3').then(r => r.ok ? r.arrayBuffer() : null).then(ab => { if (ab) C.decodeAudioData(ab, b => { this.buf[name] = b; go(b); }, () => { }); }).catch(() => { });
+  }
 }
 
 // ---------------------------------------------------------------- the game
@@ -719,6 +769,9 @@ class Game {
     this.controlKey = rosterKey(this.opts.player) || rosterKey(this.opts.control) || 'BELLAMY';
     this.squad = ROSTER.map(r => r.key);
     this.sfx = new Sfx(); this.sfx.base = this.base + 'assets/audio/';
+    // QA ring buffer: countdown and announcer events with sim time, so automated playtests can measure timing
+    this.qa = []; this.qaLog = (ev, o) => { this.qa.push(Object.assign({ ev, frame: this.frame, ctlT: +(this.ctlT || 0).toFixed(3), ms: Math.round(performance.now()) }, o || {})); if (this.qa.length > 80) this.qa.shift(); };
+    this.sfx.onVo = (n) => this.qaLog('vo', { n });
     this.keys = {}; this.edge = {}; this.lastTap = { dir: 0, f: -99 };
     this.touch = { mx: 0, mz: 0, run: false, btn: {} };
     this.frame = 0; this.phase = 'title'; this.paused = false; this.visible = true; this.hitstop = 0;
@@ -728,6 +781,9 @@ class Game {
     // PC native: a page opts in with { native: true }; it only takes effect with a fine pointer (mouse or trackpad), never on touch
     const finePtr = !!(window.matchMedia && matchMedia('(pointer: fine)').matches);
     this.native = !!this.opts.native && finePtr && !this.opts.touch;
+    this.edition = this.opts.edition === 'mobile' ? 'mobile' : 'pc'; // this build is the PC native edition
+    this.edUrls = Object.assign({}, ED_URLS, this.opts.editions || {});
+    this.mobile = this.edition === 'mobile' && (!finePtr || !!this.opts.touch || !!(window.matchMedia && matchMedia('(pointer: coarse)').matches));
     this.texQ = this.native ? 2 : 1; this.full = false; this.rs = 1; this.dts = [];
     this.buildDOM();
     if (!this.initGL()) return;
@@ -740,6 +796,7 @@ class Game {
     this.bindInput();
     this.resetMatch();
     this.showTitle();
+    if (this.wantPicker()) this.showPicker();
     this.last = performance.now(); this.acc = 0;
     this.loop = this.loop.bind(this); this.raf = requestAnimationFrame(this.loop);
     if (document.fonts && document.fonts.load) {
@@ -760,6 +817,9 @@ class Game {
       const f3 = document.createElement('link'); f3.rel = 'stylesheet'; f3.href = 'https://fonts.googleapis.com/css2?family=Knewave&display=swap'; document.head.appendChild(f3);
       const f2 = document.createElement('link'); f2.rel = 'stylesheet'; f2.href = 'https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Yellowtail&display=swap'; document.head.appendChild(f2);
     }
+    if (!document.querySelector('link[href*="family=Archivo"]')) {
+      const fa = document.createElement('link'); fa.rel = 'stylesheet'; fa.href = 'https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@125,800;125,900&display=swap'; document.head.appendChild(fa);
+    }
     if (!document.querySelector('link[href*="family=Teko"]')) {
       const f = document.createElement('link'); f.rel = 'stylesheet'; f.href = 'https://fonts.googleapis.com/css2?family=Teko:wght@500;600;700&family=Chakra+Petch:wght@400;600;700&display=swap'; document.head.appendChild(f);
     }
@@ -778,12 +838,14 @@ class Game {
   <div class="fbg-crowd" aria-hidden="true"><span>CROWD WATCHING</span><i><b></b></i></div>
   <div class="fbg-ctl" hidden></div>
   <div class="fbg-bossbar"><span>GLITCH KING</span><i></i></div>
+  <div class="fbg-cd" hidden aria-hidden="true"><div class="fbg-cd-disc"><b class="fbg-cd-n"></b></div><span class="fbg-cd-t"></span></div>
   <div class="fbg-meter"><b>STEPS</b><div class="fbg-steps"></div></div>
   <div class="fbg-keys" aria-hidden="true"><span><i>WASD</i>Move</span><span class="k-throw"><i>J</i><i class="m">LMB</i>Throw</span><span class="k-catch"><i>K</i><i class="m">RMB</i>Catch</span><span><i>L</i>Jump</span><span class="k-pass"><i>Shift</i>Pass</span><span><i>Q</i>Switch</span><span><i>Esc</i>Time out</span><span><i>M</i>Menu</span></div>
   <div class="fbg-btns"><button class="fbg-btn ghost fbg-qual" type="button">Quality: Auto</button><button class="fbg-btn ghost fbg-menu" type="button" hidden>Menu <span class="fbg-kbd">M</span></button><button class="fbg-btn ghost fbg-sound" type="button" aria-pressed="false">Sound off</button><button class="fbg-btn ghost fbg-pause" type="button">Time out</button></div>
   <div class="fbg-vs" hidden></div>
   <div class="fbg-poster"><p>Boss Rush needs WebGL. This is a still from the game.</p></div>
   <div class="fbg-sr" aria-live="polite"></div>
+  <div class="fbg-rotate" hidden role="dialog" aria-label="Turn your phone sideways"><div class="fbg-rot-card"><i class="fbg-rot-phone" aria-hidden="true"></i><b>TURN IT SIDEWAYS</b><span>Boss Rush plays best in landscape: the whole court, thumbs on both sides.</span><button type="button" class="fbg-btn ghost fbg-rot-tall">Play tall anyway</button></div></div>
 </div>
 <div class="fbg-touch" aria-label="Touch controls">
   <div class="fbg-stickzone"><div class="fbg-stick"><div class="fbg-knob"></div></div></div>
@@ -801,13 +863,26 @@ class Game {
       looknm: q('.fbg-looknm') || document.createElement('div'), chip: q('.fbg-chip'), l0: q('.fbg-live[data-t="0"]'), l1: q('.fbg-live[data-t="1"]'), q0: q('.fbg-q[data-t="0"]'), q1: q('.fbg-q[data-t="1"]'),
       g0: q('.fbg-g0'), g1: q('.fbg-g1'), sub: q('.fbg-sub'), ctl: q('.fbg-ctl'), boss: q('.fbg-bossbar'), bossI: q('.fbg-bossbar i'),
       meter: q('.fbg-meter'), steps: q('.fbg-steps'), vs: q('.fbg-vs'), ov: q('.fbg-ov'), card: q('.fbg-card'), sound: q('.fbg-sound'), qual: q('.fbg-qual'), pause: q('.fbg-pause'), sr: q('.fbg-sr'),
-      poster: q('.fbg-poster'), touch: q('.fbg-touch'), knob: q('.fbg-knob'), stick: q('.fbg-stick'), keys: q('.fbg-keys'), menu: q('.fbg-menu') };
+      poster: q('.fbg-poster'), cd: q('.fbg-cd'), cdN: q('.fbg-cd-n'), cdT: q('.fbg-cd-t'), touch: q('.fbg-touch'), knob: q('.fbg-knob'), stick: q('.fbg-stick'), keys: q('.fbg-keys'), menu: q('.fbg-menu') };
     this.$.poster.style.backgroundImage = `url(${assetURL(this.base, 'poster.jpg')})`;
     for (let i = 1; i <= 9; i++) { const c = document.createElement('i'); this.$.steps.appendChild(c); }
     if (this.rm) r.classList.add('rm');
     const coarse = window.matchMedia && matchMedia('(pointer: coarse)').matches;
     if (coarse || this.opts.touch) r.classList.add('has-touch');
     if (this.native) { r.classList.add('is-native'); this.$.menu.hidden = false; this.$.qual.hidden = true; }
+    r.classList.add('ed-' + this.edition);
+    if (this.mobile) {
+      // Mobile native: no page scroll or pinch zoom inside the game, and the first tap unlocks audio on iOS
+      r.classList.add('is-mobile'); this.$.qual.hidden = true;
+      const stop = (e) => { if (e.cancelable) e.preventDefault(); };
+      r.addEventListener('gesturestart', stop); r.addEventListener('dblclick', stop);
+      r.addEventListener('touchmove', (e) => { if (!(e.target.closest && e.target.closest('.fbg-card'))) stop(e); }, { passive: false });
+      try { this.tallOK = sessionStorage.getItem('fbg-tall') === '1'; } catch (e) { }
+      r.querySelector('.fbg-rot-tall').addEventListener('click', () => { this.tallOK = true; try { sessionStorage.setItem('fbg-tall', '1'); } catch (e) { } this.checkRotate(); });
+    }
+    this.onFirstTap = () => { this.sfx.unlock(); r.removeEventListener('pointerdown', this.onFirstTap, true); };
+    r.addEventListener('pointerdown', this.onFirstTap, true);
+    if (this.opts.fill) r.classList.add('is-fill');
     // settings buttons live inside whichever card is open (title, menu, results); one delegated handler serves them all
     this.$.card.addEventListener('click', (e) => {
       const b = e.target.closest && e.target.closest('[data-q],[data-d]'); if (!b) return;
@@ -863,14 +938,15 @@ class Game {
     if (req) { try { const p = req.call(this.root, { navigationUI: 'hide' }); if (p && p.catch) p.catch(() => {}); } catch (e) {} }
   }
   toggleSound(v) {
-    const on = v != null ? v : !this.sfx.on; this.sfx.enable(on);
+    const on = v != null ? v : !this.sfx.on; this.sfx.enable(on); saveSnd(on);
+    if (on) this.sfx.music(this.phase === 'title' || this.phase === 'result' ? 'music_menu' : 'music_match');
     this.$.sound.setAttribute('aria-pressed', String(on)); this.$.sound.textContent = on ? 'Sound on' : 'Sound off';
     const b = this.$.card.querySelector('.fbg-snd'); if (b) b.textContent = on ? 'Sound on' : 'Sound off';
   }
 
   initGL() {
     try {
-      this.renderer = new THREE.WebGLRenderer({ canvas: this.$.canvas, antialias: true, alpha: false, powerPreference: 'high-performance' });
+      this.renderer = new THREE.WebGLRenderer({ canvas: this.$.canvas, antialias: !this.mobile, alpha: false, powerPreference: 'high-performance' });
       if (!this.renderer.getContext()) throw new Error('no gl');
     } catch (e) { this.graphicsFallback('WebGL is unavailable. The team file still works; try another browser to play.'); return false; }
     const R = this.renderer;
@@ -909,6 +985,7 @@ class Game {
     if (this.dead) return;
     const w = this.root.clientWidth;
     const narrow = w < 700;
+    this.root.classList.toggle('is-short', Math.min(this.root.clientHeight || 999, window.innerHeight || 999) < 680 && !narrow);
     this.root.classList.toggle('is-narrow', narrow); this.root.classList.toggle('is-wide', !narrow);
     const st = this.$.stage; const W = st.clientWidth, H = st.clientHeight; if (!W || !H) return;
     this.W = W; this.H = H;
@@ -928,6 +1005,7 @@ class Game {
     this.pxPerUnit = H / (2 * v.d * Math.tan(v.fov / 2 * DEG));
     this.placeBackdrop();
     if (this.layoutStands) this.layoutStands();
+    this.checkRotate();
   }
   buildWorld() {
     const S = this.scene;
@@ -1158,9 +1236,18 @@ class Game {
       const fr = d / R;
       if (fr > 0.85 && Math.abs(dx) > Math.abs(dy) * 1.2) { if (!this.touch.run) { this.touch.run = true; this.edge.dash = dx < 0 ? -1 : 1; } } else if (fr < 0.6) this.touch.run = false;
     };
-    zone.addEventListener('pointerdown', (e) => { sid = e.pointerId; zone.setPointerCapture(sid); const r = this.$.stick.getBoundingClientRect(); ox = r.left + r.width / 2; oy = r.top + r.height / 2; move(e); e.preventDefault(); });
+    zone.addEventListener('pointerdown', (e) => {
+      sid = e.pointerId; zone.setPointerCapture(sid);
+      if (this.mobile) {
+        // floating pad: it centers under the thumb wherever it lands in the left zone
+        const rr = this.root.getBoundingClientRect(), st = this.$.stick, h = st.offsetHeight || 112;
+        st.classList.add('free'); st.style.left = (e.clientX - rr.left) + 'px'; st.style.bottom = (rr.bottom - e.clientY) + 'px'; st.style.margin = `0 0 ${-h / 2}px ${-h / 2}px`;
+        ox = e.clientX; oy = e.clientY;
+      } else { const r = this.$.stick.getBoundingClientRect(); ox = r.left + r.width / 2; oy = r.top + r.height / 2; }
+      move(e); e.preventDefault();
+    });
     zone.addEventListener('pointermove', (e) => { if (e.pointerId === sid) move(e); });
-    const up = (e) => { if (e.pointerId !== sid) return; sid = null; this.touch.mx = 0; this.touch.mz = 0; this.touch.run = false; this.$.knob.style.transform = ''; };
+    const up = (e) => { if (e.pointerId !== sid) return; sid = null; this.touch.mx = 0; this.touch.mz = 0; this.touch.run = false; this.$.knob.style.transform = ''; const st = this.$.stick; st.classList.remove('free'); st.style.left = st.style.bottom = st.style.margin = ''; };
     zone.addEventListener('pointerup', up); zone.addEventListener('pointercancel', up);
     this.root.querySelectorAll('.fbg-tb').forEach(b => {
       const k = b.dataset.b;
@@ -1641,8 +1728,9 @@ class Game {
     if (this.native && this.opts.autoFull !== false) this.setFull(true);
     this.phase = 'intro'; this.introT = 0;
     this.showVS();
-    this.sfx.stinger(); this.sfx.vo('vo_open', 3);
+    this.sfx.stinger(); this.sfx.vo('vo_open', 3); this.sfx.music('music_match');
     this.$.stage.focus({ preventScroll: true });
+    this.checkRotate();
   }
   showVS() {
     const t0 = this.teams[0], t1 = this.teams[1];
@@ -1746,8 +1834,8 @@ class Game {
     const timeout = !auto && !this.timeoutUsed, menu = auto === 'menu';
     if (timeout) { this.timeoutUsed = true; this.timeoutT = RULES.timeout * 60; }
     else this.timeoutT = 0;
-    this.$.card.innerHTML = `<h2>${timeout ? 'TIME <em>OUT</em>' : menu ? '<em>MENU</em>' : 'PAUSED'}</h2><p class="fbg-to">${timeout ? 'Your one 30 second time out. Play resumes on its own at 0.' : menu ? 'The clock is stopped. Your time out is saved for when you need it.' : (auto ? 'The game paused while it was off screen.' : 'Your time out is used, so this is a plain pause.')}</p>${this.settingsHTML()}<div class="fbg-row"><button class="fbg-btn fbg-res-go" type="button">RESUME</button><button class="fbg-btn ghost fbg-restart" type="button">RESTART</button><button class="fbg-btn ghost fbg-snd" type="button">${this.sfx.on ? 'Sound on' : 'Sound off'}</button></div>`;
-    this.syncMenu();
+    this.$.card.innerHTML = `<h2>${timeout ? 'TIME <em>OUT</em>' : menu ? '<em>MENU</em>' : 'PAUSED'}</h2><p class="fbg-to">${timeout ? 'Your one 30 second time out. Play resumes on its own at 0.' : menu ? 'The clock is stopped. Your time out is saved for when you need it.' : (auto ? 'The game paused while it was off screen.' : 'Your time out is used, so this is a plain pause.')}</p>${this.settingsHTML()}<div class="fbg-row"><button class="fbg-btn fbg-res-go" type="button">RESUME</button><button class="fbg-btn ghost fbg-restart" type="button">RESTART</button><button class="fbg-btn ghost fbg-snd" type="button">${this.sfx.on ? 'Sound on' : 'Sound off'}</button></div>${this.edChip()}`;
+    this.syncMenu(); this.bindEdChip('pause');
     this.$.card.querySelector('.fbg-res-go').addEventListener('click', () => this.resume());
     this.$.card.querySelector('.fbg-restart').addEventListener('click', () => this.start());
     this.$.card.querySelector('.fbg-snd').addEventListener('click', () => this.toggleSound());
@@ -1759,7 +1847,7 @@ class Game {
     if (this.timeoutT % 60 === 0) { const p = this.$.card.querySelector('.fbg-to'); if (p) p.textContent = `Your one 30 second time out: ${this.timeoutT / 60} s left.`; }
     if (this.timeoutT === 0) this.resume();
   }
-  resume() { if (!this.paused) return; this.paused = false; this.timeoutT = 0; this.$.ov.hidden = true; this.$.pause.textContent = this.timeoutUsed ? 'Pause' : 'Time out'; this.$.stage.focus({ preventScroll: true }); }
+  resume() { if (!this.paused) return; const rot = this.root.querySelector('.fbg-rotate'); if (rot && !rot.hidden) return; this.paused = false; this.timeoutT = 0; this.$.ov.hidden = true; this.$.pause.textContent = this.timeoutUsed ? 'Pause' : 'Time out'; this.$.stage.focus({ preventScroll: true }); }
   endMatch(result) {
     if (this.over) return; this.over = true; this.phase = 'handshake'; this.resultT = 0; this.result = result;
     this.paused = false; this.keys = {}; this.edge = {}; this.timeoutT = 0; this.hitstop = 0;
@@ -1811,6 +1899,7 @@ class Game {
   showResults() {
     if (this.phase !== 'result') return;
     const r = this.result, s = this.stats;
+    this.sfx.music('music_menu');
     this.$.card.innerHTML = `<h2>${r.win ? 'YOU <em>WIN</em>' : 'NICE <em>TRY</em>'}</h2><p>${esc(r.msg)}</p>
       <div class="fbg-res"><div><b>${this.points[0]} to ${this.points[1]}</b><span>Games</span></div><div><b>${this.score.toLocaleString()}</b><span>Score</span></div><div><b>${s.kos}</b><span>Outs you made</span></div>
       <div><b>${s.catches}</b><span>Catches</span></div><div><b>${s.backIn}</b><span>Teammates back in</span></div><div><b>${s.headshots}</b><span>Headshot calls</span></div></div>
@@ -1833,9 +1922,11 @@ class Game {
          <li data-n="3"><span class="fbg-kbd">K</span>${this.native ? ' or <span class="fbg-kbd">Right click</span>' : ''} catches or blocks right before impact (hold to duck). <span class="fbg-kbd">L</span> jumps, <span class="fbg-kbd">Shift</span> passes.</li>`;
     const rules = [['rush', 'Rush right', 'grab only the balls on your right'], ['line', 'Clear the line', 'carry it past your attack line first'], ['catch', 'Catch = back in', 'thrower out, your next teammate returns'],
       ['head', 'No headshots', 'a standing headshot puts the thrower out'], ['clock', '10 s control', 'hold 3 of 5 balls and the clock runs'], ['back', 'Back line only', 'leave only out the back, 10 s to return']];
-    this.$.card.innerHTML = `
+    this.$.card.classList.remove('is-picker'); this.$.ov.classList.remove('picker');
+    this.sfx.music('music_menu');
+    this.$.card.innerHTML = `${this.edChip()}
       <h2>BOSS <em>RUSH</em></h2>
-      <p>Sin City rules. 8 on 8, 5 balls, no sting. Most games in 3 minutes wins.</p>
+      <p>Sin City style. 8 on 8, 5 balls, no sting. Most games in 3 minutes wins.</p>
       <ul class="fbg-rules">${rules.map(r => `<li>${ruleIcon(r[0])}<b>${r[1]}</b><span>${r[2]}</span></li>`).join('')}</ul>
       <details class="fbg-more"><summary>How Sin City plays</summary>
         <p>Both teams start on their back line. Ro-sham-bo decides the first game: the winner rushes the 3 balls on its right, the other team the 2 on its right. After that, the 3 balls alternate every game. On GO, rush only the balls on your right as you face the other team. Leave early and you lose those balls.</p>
@@ -1846,10 +1937,91 @@ class Game {
       <ol class="fbg-how">${how}</ol>
       <div class="fbg-lineup"><h3>PICK YOUR PLAYER</h3><div class="fbg-pool"></div></div>
       ${this.settingsHTML()}<div class="fbg-row"><button class="fbg-btn fbg-go" type="button">PLAY</button><button class="fbg-btn ghost fbg-snd" type="button">${this.sfx.on ? 'Sound on' : 'Sound off'}</button></div>`;
-    this.renderPicker(); this.syncMenu();
+    this.renderPicker(); this.syncMenu(); this.bindEdChip('title');
     this.$.card.querySelector('.fbg-go').addEventListener('click', () => this.start());
     this.$.card.querySelector('.fbg-snd').addEventListener('click', () => this.toggleSound());
     this.$.ov.hidden = false;
+  }
+  wantPicker() {
+    const p = this.opts.picker;
+    if (p === false) return false;
+    if (p === 'always') return true;
+    return !readEd();
+  }
+  edName(k) { return k === 'pc' ? 'PC' : 'MOBILE'; }
+  showPicker(from) {
+    // the first screen: pick PC or MOBILE so the controls, HUD and quality fit the hands holding the game
+    this.phase = 'title'; this.picking = true; this.pickFrom = from || null;
+    const guess = readEd() || guessEdition();
+    const art = (k) => assetURL(this.base, 'picker-' + k + (this.native ? '-2x' : '') + '.jpg');
+    const tile = (k, sub, how) => `<button type="button" class="fbg-ed fbg-ed-${k}" data-ed="${k}" aria-describedby="fbg-ed-${k}-d"${k === guess ? ' data-guess="1"' : ''}>
+        <span class="fbg-ed-art" style="background-image:url('${art(k)}')"></span>
+        <span class="fbg-ed-name">${this.edName(k)}</span>
+        <span class="fbg-ed-sub" id="fbg-ed-${k}-d">${sub}</span>
+        <span class="fbg-ed-how">${how}</span>
+        ${k === guess ? '<span class="fbg-ed-best">Best for this screen</span>' : ''}</button>`;
+    this.$.card.innerHTML = `<div class="fbg-picker" role="group" aria-labelledby="fbg-pick-h">
+      <h2 id="fbg-pick-h">CHOOSE YOUR <em>CONTROLS</em></h2>
+      <p class="fbg-pick-p">Same Sin City match, two native builds. Pick the one that fits your hands.</p>
+      <div class="fbg-eds">${tile('pc', 'Keyboard and mouse', 'Full window at your screen\'s resolution. Click to throw, right click to catch.')}${tile('mobile', 'Touch, landscape', 'Big thumb buttons, a floating pad, haptics, tuned for 60 fps on a phone.')}</div>
+      <p class="fbg-pick-note">${from === 'pause' ? 'Switching ends this match.' : 'You can switch any time from the pause menu.'}</p></div>`;
+    this.$.card.classList.add('is-picker'); this.$.ov.hidden = false; this.$.ov.classList.add('picker');
+    const tiles = [...this.$.card.querySelectorAll('.fbg-ed')];
+    tiles.forEach((b, i) => {
+      b.addEventListener('click', () => this.chooseEdition(b.dataset.ed));
+      b.addEventListener('focus', () => { tiles.forEach(t => t.classList.toggle('fbg-hot', t === b)); if (this._edFocus !== undefined && this._edFocus !== i) this.sfx.ui('move'); this._edFocus = i; });
+      b.addEventListener('pointerenter', () => { if (!this.mobile) b.focus({ preventScroll: true }); });
+      b.addEventListener('keydown', (e) => { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); tiles[1 - i].focus({ preventScroll: true }); } });
+    });
+    this._edFocus = undefined;
+    const g = tiles.find(t => t.dataset.guess) || tiles[0];
+    try { if (this.root.getBoundingClientRect().top < (window.innerHeight || 800) && this.root.getBoundingClientRect().bottom > 0) g.focus({ preventScroll: true }); } catch (e) { }
+    g.classList.add('fbg-hot');
+    this.sfx.music('music_menu');
+    if (this.sfx.on) this.sfx.vo('vo_choose', 2);
+  }
+  chooseEdition(k) {
+    if (!this.picking) return;
+    saveEd(k);
+    // the choice is a tap or click, so this is the moment sound can start on a phone (unless the player turned it off before)
+    if (readSnd() !== 'off' && !this.sfx.on) this.toggleSound(true);
+    this.sfx.ui('select'); this.sfx.vo(k === 'pc' ? 'vo_pc' : 'vo_mobile', 3);
+    this.$.card.querySelectorAll('.fbg-ed').forEach(b => b.classList.toggle('picked', b.dataset.ed === k));
+    if (k !== this.edition) {
+      // the other edition is its own native build: go there (its play page skips the picker because the choice is saved)
+      this.picking = false;
+      const url = this.edUrls[k];
+      setTimeout(() => { try { window.location.href = url; } catch (e) { } }, this.rm ? 150 : 900);
+      return;
+    }
+    setTimeout(() => {
+      this.picking = false; this.$.card.classList.remove('is-picker'); this.$.ov.classList.remove('picker');
+      if (this.pickFrom === 'pause') this.pause('menu'); else this.showTitle();
+      this.checkRotate();
+    }, this.rm ? 60 : 420);
+  }
+  edChip() {
+    const other = this.edition === 'pc' ? 'mobile' : 'pc';
+    return `<p class="fbg-edchip"><b>${this.edName(this.edition)} EDITION</b><button type="button" class="fbg-edsw" data-other="${other}">Switch to ${this.edName(other) === 'PC' ? 'PC' : 'Mobile'}</button></p>`;
+  }
+  bindEdChip(from) {
+    const b = this.$.card.querySelector('.fbg-edsw'); if (!b) return;
+    b.addEventListener('click', () => { this.sfx.ui('back'); this.showPicker(from); });
+  }
+  haptic(p) {
+    // short, guarded vibration on Mobile only (Android Chrome; iOS Safari ignores it); never with reduced motion
+    if (!this.mobile || this.rm || !navigator.vibrate) return;
+    try { navigator.vibrate(p); } catch (e) { }
+  }
+  checkRotate() {
+    // landscape first: in portrait, a phone gets a turn-it-sideways card over the match (with a play-tall escape)
+    const el = this.root.querySelector('.fbg-rotate'); if (!el) return;
+    const portrait = this.mobile && (window.innerHeight || 0) > (window.innerWidth || 0) * 1.05;
+    const inMatch = this.phase !== 'title' && this.phase !== 'result' && !this.picking;
+    const show = portrait && inMatch && !this.tallOK;
+    if (el.hidden === !show) return;
+    el.hidden = !show;
+    if (show && this.phase === 'play' && !this.paused) this.pause(true);
   }
   renderPicker() {
     const pool = this.$.card.querySelector('.fbg-pool'); if (!pool) return;
@@ -1870,7 +2042,7 @@ class Game {
       case 'intro':
         this.introT++;
         for (const a of this.all) if (a.active) this.animate(a);
-        if (this.introT === 112) this.popBrush('NO STING!', 'SIN CITY RULES', '', 0.5, 1.2);
+        if (this.introT === 112) this.popBrush('ALL HEART!', 'Sin City style, no sting', '', 0.5, 1.2);
         if (this.introT === 150) { this.$.vs.hidden = true; this.startBrief(); }
         this.edge = {}; return;
       case 'brief': this.briefTick(); return;
@@ -2144,6 +2316,7 @@ class Game {
     B.fromSide = a.side; B.crossed = false; B.live = false; B.deflected = false; B.forceHead = !!a.forceHead; a.forceHead = false;
     const hx = a.x + Math.sin(a.yaw) * 0.4, hz = a.z + Math.cos(a.yaw) * 0.4;
     B.x = hx; B.z = hz; B.h = a.h + 1.45 * a.scale; B.state = 'flight'; B.type = a.throwType; B.power = a.wantPower; B.pierce = 0;
+    if (a === this.user) this.haptic(B.power ? [14, 18, 22] : 10);
     if (B.type === 'pass') {
       const t = a.passTarget; B.target = t;
       const d = Math.hypot(t.x - B.x, t.z - B.z); const eta = Math.max(0.35, d / TUNE.vPass);
@@ -2398,7 +2571,7 @@ class Game {
     f.set(clean ? 'catch' : 'bobble');
     f.x += f.side * 0.2; this.clampAthlete(f);
     this.hitstop = 6; this.flash(clean ? 0.3 : 0.14); this.ringFx(f, clean ? '#ffffff' : '#ffc83d'); this.catchFlash(f); if (f.team === 0 || f === this.user) this.punch(f.x, f.z, 1);
-    this.sfx.catch();
+    this.sfx.catch(); if (f === this.user) this.haptic(clean ? [18, 30, 28] : 22);
     this.crowdReact(f.team === 0 ? (this.liveCount(0) === 1 ? 'clutch' : 'catch') : 'oppcatch');
     if (f.team === 0) { this.stats.catches++; this.addScore(clean ? 150 : 90); } else this.breakCombo();
     if (thrower && thrower.role === 'in') this.eliminate(thrower, 'caught');
@@ -2423,7 +2596,8 @@ class Game {
     if (!this.rm) { if (power) this.shakeScreen(7, 16); else this.shakeScreen(4, 10); }
     this.spark(B.x, B.h, B.z, power ? 2.6 : 1.8); this.impact(B.x, B.h, B.z, power, B.thrower ? B.thrower.team : 1 - f.team);
     if (!this.rm && power) this.flash(0.22, true);
-    this.sfx.hit(power);
+    this.sfx.hit(power); if (power) this.sfx.bigHit();
+    if (f === this.user) this.haptic([45, 35, 70]); else if (B.thrower === this.user) this.haptic(power ? [24, 20, 30] : 16);
     const dir = Math.sign(B.vx) || -f.side;
     // the ball goes dead off the hit
     B.vx = -B.vx * 0.18 + (Math.random() - 0.5) * 2; B.vz = -B.vz * 0.18 + (Math.random() - 0.5) * 2; B.vh = 6; this.killBall(B, 'hit'); B.vh = 6;
@@ -2501,12 +2675,13 @@ class Game {
     // ball control countdown: 3 of 5 held by one team
     const held = [0, 0]; for (const b of this.balls) if (b.state === 'held') held[b.holder.team]++;
     const maj = held[0] >= 3 ? 0 : (held[1] >= 3 ? 1 : -1);
-    if (maj < 0 || maj !== this.ctlTeam) { if (this.ctlTeam >= 0 && maj < 0) this.$.ctl.hidden = true; this.ctlTeam = maj; this.ctlT = 0; this.lastCtlSec = -1; }
+    if (maj < 0 || maj !== this.ctlTeam) { if (this.ctlTeam >= 0 && maj < 0) this.$.ctl.hidden = true; this.ctlTeam = maj; this.ctlT = 0; this.lastCtlSec = -1; this.ctlCountdown(0); }
     if (maj >= 0 && this.rushT >= RULES.rushF) {
       this.ctlT += DT; const left = Math.max(0, Math.ceil(RULES.control - this.ctlT));
       if (left !== this.lastCtlSec) {
         this.lastCtlSec = left; this.$.ctl.hidden = false; this.$.ctl.className = 'fbg-ctl t' + maj; this.$.ctl.innerHTML = `${maj === 0 ? 'FINAL BOSS' : 'GLITCHES'} BALL CONTROL <b>${left}</b>`;
-        if (left <= 5 && left > 0) { this.popCenter(`${left}...`, maj === 0 ? 'gold' : 'lime', 0.62); this.sfx.tick(); }
+        // 10 to 4 counts quietly on the HUD chip; 3, 2, 1 get the big brand numeral, the announcer and a rising tick
+        if (left <= 3 && left > 0) this.ctlCountdown(left, maj);
       }
       if (this.ctlT >= RULES.control) this.controlViolation(maj);
     }
@@ -2540,7 +2715,23 @@ class Game {
       if (b.holder) { b.holder.held = null; b.holder = null; }
       b.state = 'loose'; b.live = false; b.cleared = true; b.x = (other === 0 ? -1 : 1) * (4 + (k % 3)); b.z = -3 + k * 1.5; b.h = 1.2; b.vh = 2; b.vx = b.vz = 0; k++;
     }
-    this.ctlTeam = -1; this.ctlT = 0; this.$.ctl.hidden = true;
+    this.qaLog('violation', { team: t });
+    this.ctlTeam = -1; this.ctlT = 0; this.$.ctl.hidden = true; this.ctlCountdown(0);
+  }
+  ctlCountdown(n, team) {
+    // Gordon 2026-10-26: a vocal and visual 3, 2, 1 when the ball control clock is down to 3 seconds
+    const el = this.$.cd; if (!el) return;
+    if (!n) { if (!el.hidden) { el.hidden = true; el.classList.remove('go'); this.root.classList.remove('cd-on'); } return; }
+    this.root.classList.add('cd-on');
+    const mine = team === 0; // the player is always on FINAL BOSS
+    el.className = 'fbg-cd t' + team + (mine ? ' mine' : ' theirs'); el.hidden = false;
+    this.$.cdN.textContent = String(n);
+    this.$.cdT.textContent = mine ? 'THROW IT!' : 'THEY MUST THROW';
+    void el.offsetWidth; el.classList.add('go');
+    this.sfx.smp('tick_' + n, 0.9); this.sfx.vo(['', 'vo_one', 'vo_two', 'vo_three'][n], 5);
+    if (mine) this.haptic(n === 1 ? [30, 40, 30] : 18);
+    this.say(n + '. ' + (mine ? 'Throw it.' : 'They must throw.'));
+    this.qaLog('cd', { n, team, left: +(RULES.control - this.ctlT).toFixed(3) });
   }
   bigCountdown(before, now) {
     const s = Math.ceil(now);
@@ -2548,6 +2739,7 @@ class Game {
   }
   gameOver(w) {
     if (this.phase !== 'play') return;
+    this.ctlCountdown(0);
     const before = this.points[0] - this.points[1];
     this.points[w]++; this.lastGameWinner = w;
     const after = this.points[0] - this.points[1];
@@ -3021,6 +3213,7 @@ const API = {
   stage(name) { return G && !G.dead ? G.stage(name) : false; },
   destroy() { if (G) { G.destroy(); G = null; } },
   _game() { return G; },
+  qa() { return G ? G.qa.slice() : []; },
 };
 window.FBGame = API;
 window.__bossrush = { state: () => API.state(), start: () => API.start(), stage: (n) => API.stage(n) };

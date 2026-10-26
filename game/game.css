@@ -387,3 +387,128 @@ html.fbg-lock, html.fbg-lock body{overflow:hidden}
 .fbg-sb .fbg-kbd{border-color:currentColor; font-size:11px; line-height:14px}
 .fbg-setnote{margin:0; font-size:12px; color:var(--fbg-ash)}
 .fbg-root.is-native .fbg-btn{cursor:pointer}
+
+/* ===================================================================== elevate 2026-10-26: editions, brand HUD, Mobile native */
+.fbg-root{--fbg-bb:#0E0B16; --fbg-hr:#E8173A; --fbg-pg:#FFC93C; --fbg-cream:#F6E7C8; --fbg-boss:'Archivo','Arial Black','Impact',sans-serif;
+  --sl:env(safe-area-inset-left,0px); --sr:env(safe-area-inset-right,0px); --st:env(safe-area-inset-top,0px); --sb:env(safe-area-inset-bottom,0px)}
+
+/* the brand's eight-segment health bar: one segment per player, keyline black, never rounded */
+.fbg-live{gap:2px; margin-top:5px; padding:2px; background:var(--fbg-bb); box-shadow:0 0 0 2px var(--fbg-cream); width:max-content; transform:skewX(-12deg)}
+.fbg-live i, .fbg-team.r .fbg-live i{width:14px; height:12px; border-radius:0; border:0; transform:none; outline:0; box-shadow:none; background:var(--fbg-hr); opacity:1}
+.fbg-team.r .fbg-live i{background:var(--fbg-lime)}
+.fbg-live i.off{background:#2b2333 !important; opacity:1}
+.fbg-live i.me{background:var(--fbg-pg); box-shadow:inset 0 -3px 0 var(--fbg-hr)}
+.fbg-root.is-narrow .fbg-live i{width:9px; height:9px}
+
+/* edition picker: two big tiles on Boss Black, gold means power */
+.fbg-ov.picker{background:rgba(8,5,14,.86)}
+.fbg-card.is-picker{max-width:960px; background:var(--fbg-bb); border:0; box-shadow:inset 0 0 0 2px var(--fbg-cream); padding:clamp(12px,2.4vw,26px)}
+.fbg-picker h2{font:900 clamp(26px,4.4vw,54px)/.92 var(--fbg-boss); font-stretch:125%; transform:skewX(-8deg); letter-spacing:.01em; margin:0 0 6px; color:var(--fbg-cream); text-shadow:3px 3px 0 var(--fbg-hr)}
+.fbg-picker h2 em{color:var(--fbg-pg); font-style:normal}
+.fbg-pick-p{margin:0 0 12px; color:#d8cfe4; font-size:15px}
+.fbg-eds{display:grid; grid-template-columns:1fr 1fr; gap:clamp(8px,1.6vw,18px)}
+.fbg-ed{position:relative; display:flex; flex-direction:column; align-items:flex-start; text-align:left; gap:2px; padding:0 0 12px; border:0; background:#17111f; color:var(--fbg-cream); cursor:pointer; font:inherit;
+  clip-path:polygon(0 0,100% 0,100% calc(100% - 18px),calc(100% - 18px) 100%,0 100%); box-shadow:inset 0 0 0 2px #3a2f48; transition:transform .12s, box-shadow .12s}
+.fbg-ed-art{display:block; width:100%; aspect-ratio:16/10; background:#0E0B16 center/cover no-repeat; margin-bottom:8px; box-shadow:inset 0 -40px 40px -20px rgba(14,11,22,.9)}
+.fbg-ed-name{font:900 clamp(28px,4.6vw,58px)/.9 var(--fbg-boss); font-stretch:125%; transform:skewX(-8deg); padding:0 14px; letter-spacing:.01em}
+.fbg-ed-sub{font:700 14px/1.2 var(--fbg-ui); color:var(--fbg-pg); padding:0 14px; letter-spacing:.04em; text-transform:uppercase}
+.fbg-ed-how{font-size:13px; line-height:1.35; color:#c9bfd8; padding:2px 14px 0}
+.fbg-ed-best{position:absolute; top:10px; left:0; background:var(--fbg-pg); color:var(--fbg-bb); font:800 12px/1 var(--fbg-ui); letter-spacing:.06em; text-transform:uppercase; padding:6px 14px 5px 10px; clip-path:polygon(0 0,100% 0,calc(100% - 8px) 100%,0 100%)}
+.fbg-ed.fbg-hot, .fbg-ed:focus-visible{outline:none; box-shadow:inset 0 0 0 4px var(--fbg-pg); background:#21182b}
+.fbg-ed.fbg-hot .fbg-ed-name{color:#fff; text-shadow:3px 3px 0 var(--fbg-hr)}
+.fbg-ed.picked{box-shadow:inset 0 0 0 4px var(--fbg-hr); animation:fbg-picked .42s ease-out}
+@keyframes fbg-picked{0%{background:#21182b}35%{background:#5a1020}100%{background:#21182b}}
+.fbg-pick-note{margin:12px 0 0; font-size:13px; color:#a99fba}
+.fbg-root.rm .fbg-ed, .fbg-root.rm .fbg-ed.picked{transition:none; animation:none; transform:none}
+.fbg-root.is-narrow .fbg-pick-p, .fbg-root.is-narrow .fbg-ed-how{display:none}
+.fbg-root.is-narrow .fbg-ed-name{font-size:28px; padding:0 8px}
+.fbg-root.is-narrow .fbg-ed-sub{font-size:11px; padding:0 8px}
+.fbg-root.is-narrow .fbg-ed-best{font-size:10px; padding:4px 10px 3px 6px; top:6px}
+.fbg-root.is-narrow .fbg-pick-note{font-size:11px; margin-top:8px}
+
+/* edition chip on the title and pause cards */
+.fbg-edchip{display:flex; align-items:center; gap:10px; margin:0 0 8px; font:800 13px/1 var(--fbg-ui); letter-spacing:.08em; color:var(--fbg-pg)}
+.fbg-edchip b{font-weight:800}
+.fbg-edsw{font:600 13px/1 var(--fbg-ui); color:var(--fbg-cream); background:none; border:0; border-bottom:2px solid var(--fbg-hr); padding:8px 2px 4px; cursor:pointer; min-height:32px}
+.fbg-edsw:focus-visible{outline:3px solid var(--fbg-cream); outline-offset:2px}
+.fbg-card .fbg-edchip:last-child{margin:14px 0 0}
+
+/* turn-it-sideways card (Mobile, portrait, mid match) */
+.fbg-rotate{position:absolute; inset:0; z-index:9; display:flex; align-items:center; justify-content:center; background:rgba(14,11,22,.94); padding:20px}
+.fbg-rotate[hidden]{display:none}
+.fbg-rot-card{display:flex; flex-direction:column; align-items:center; text-align:center; gap:10px; max-width:300px}
+.fbg-rot-card b{font:900 30px/.95 var(--fbg-boss); font-stretch:125%; color:var(--fbg-cream); transform:skewX(-8deg); text-shadow:3px 3px 0 var(--fbg-hr)}
+.fbg-rot-card span{font-size:14px; color:#d8cfe4}
+.fbg-rot-phone{width:46px; height:76px; border:4px solid var(--fbg-pg); border-radius:8px; position:relative; animation:fbg-rot 2.2s ease-in-out infinite}
+.fbg-rot-phone::after{content:''; position:absolute; left:50%; bottom:5px; width:10px; height:3px; margin-left:-5px; background:var(--fbg-pg)}
+@keyframes fbg-rot{0%,25%{transform:rotate(0)}55%,85%{transform:rotate(-90deg)}100%{transform:rotate(0)}}
+.fbg-root.rm .fbg-rot-phone{animation:none; transform:rotate(-90deg)}
+
+/* fill mode: the standalone play page gives the game the whole screen */
+.fbg-root.is-fill{height:100%; display:flex; flex-direction:column}
+.fbg-root.is-fill .fbg-stage{flex:1 1 auto; aspect-ratio:auto; min-height:0}
+.fbg-root.is-fill.is-narrow .fbg-stage{aspect-ratio:auto}
+
+/* ---------------- Mobile native, landscape first: floating pad on the left, a thumb arc on the right, court visible between */
+.fbg-root.is-mobile{touch-action:none; overscroll-behavior:none}
+.fbg-root.is-mobile .fbg-qual, .fbg-root.is-mobile .fbg-sound, .fbg-root.is-mobile .fbg-crowd, .fbg-root.is-mobile .fbg-keys, .fbg-root.is-mobile .fbg-q{display:none !important}
+.fbg-root.is-mobile.is-wide .fbg-hud{padding:calc(6px + var(--st)) calc(60px + var(--sr)) 14px calc(8px + var(--sl))}
+.fbg-root.is-mobile.is-wide .fbg-tname{font-size:18px}
+.fbg-root.is-mobile.is-wide .fbg-team{padding:4px 12px 5px 8px; max-width:260px}
+.fbg-root.is-mobile.is-wide .fbg-crest{width:24px; height:24px}
+.fbg-root.is-mobile .fbg-btns{top:calc(8px + var(--st)); right:calc(8px + var(--sr)); bottom:auto}
+.fbg-root.is-mobile .fbg-pause{width:44px; height:44px; min-height:44px; padding:0; font-size:0; clip-path:none; border-radius:0; position:relative}
+.fbg-root.is-mobile .fbg-pause::before, .fbg-root.is-mobile .fbg-pause::after{content:''; position:absolute; top:13px; width:6px; height:18px; background:var(--fbg-cream)}
+.fbg-root.is-mobile .fbg-pause::before{left:14px} .fbg-root.is-mobile .fbg-pause::after{right:14px}
+.fbg-root.is-mobile.is-wide .fbg-ctl{top:calc(66px + var(--st)); left:50%; right:auto; transform:translateX(-50%); font-size:15px}
+.fbg-root.is-mobile.is-wide .fbg-meter{left:50%; bottom:calc(10px + var(--sb)); transform:translateX(-50%) scale(.85); transform-origin:center bottom}
+.fbg-root.is-mobile.is-wide .fbg-touch{top:0; height:auto}
+.fbg-root.is-mobile.is-wide .fbg-stickzone{left:0; top:28%; bottom:0; width:44%}
+.fbg-root.is-mobile .fbg-stick{left:calc(70px + var(--sl)); top:auto; bottom:calc(70px + var(--sb)); margin:0 0 -56px -56px; width:112px; height:112px; border:3px solid rgba(246,231,200,.45); background:rgba(14,11,22,.28); transition:opacity .2s}
+.fbg-root.is-mobile .fbg-stick.free{transition:none}
+.fbg-root.is-mobile .fbg-knob{width:50px; height:50px; margin:-25px 0 0 -25px; background:var(--fbg-cream); box-shadow:0 0 0 4px rgba(14,11,22,.6)}
+.fbg-root.is-mobile.is-wide .fbg-tbtns{display:block; left:auto; top:auto; right:calc(6px + var(--sr)); bottom:calc(6px + var(--sb)); width:204px; height:184px; padding:0}
+.fbg-root.is-mobile .fbg-tb{position:absolute; border-radius:50%; clip-path:none; display:flex; align-items:center; justify-content:center; font:800 13px/1 var(--fbg-ui); letter-spacing:.06em; padding:0; min-height:0;
+  color:var(--fbg-cream); background:rgba(14,11,22,.62); box-shadow:inset 0 0 0 3px rgba(246,231,200,.7); backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px); transition:transform .06s}
+.fbg-root.is-mobile .fbg-tb.throw{width:88px; height:88px; right:6px; bottom:8px; background:rgba(232,23,58,.88); box-shadow:inset 0 0 0 3px #fff3, 0 4px 0 #7a0b1f; font-size:16px; color:#fff}
+.fbg-root.is-mobile .fbg-tb.catch{width:74px; height:74px; right:102px; bottom:2px; background:rgba(255,201,60,.9); color:var(--fbg-bb); box-shadow:0 4px 0 #8a6a12; font-size:14px}
+.fbg-root.is-mobile .fbg-tb[data-b="jump"]{width:58px; height:58px; right:20px; bottom:108px}
+.fbg-root.is-mobile .fbg-tb[data-b="pass"]{width:58px; height:58px; right:96px; bottom:90px}
+.fbg-root.is-mobile .fbg-tb.on{transform:scale(.9); filter:brightness(1.3)}
+/* tall (portrait) fallback: the pad and buttons live under the court */
+.fbg-root.is-mobile.is-narrow .fbg-touch{height:calc(176px + var(--sb)); background:var(--fbg-bb)}
+.fbg-root.is-mobile.is-narrow .fbg-stick{left:calc(76px + var(--sl)); bottom:calc(88px + var(--sb))}
+.fbg-root.is-mobile.is-narrow .fbg-tbtns{display:block; left:auto; right:calc(6px + var(--sr)); top:auto; bottom:calc(0px + var(--sb)); width:204px; height:176px; padding:0}
+.fbg-root.is-mobile.is-narrow .fbg-btns{top:auto; bottom:auto}
+.fbg-root.is-mobile.is-narrow .fbg-pause{position:absolute}
+.fbg-root.is-mobile.is-narrow .fbg-btns{position:absolute; right:calc(6px + var(--sr)); top:calc(56px + var(--st))}
+
+/* ball control 3, 2, 1 (brand numerals: Archivo expanded black, Boss Black keyline and disc, Power-Up Gold for FINAL BOSS, lime for the Glitches; flat color, no gradients) */
+.fbg-cd{position:absolute; left:50%; top:24%; z-index:5; display:flex; flex-direction:column; align-items:center; gap:8px; pointer-events:none; transform:translate(-50%,-50%)}
+.fbg-cd[hidden]{display:none}
+.fbg-cd-disc{width:clamp(110px,17vmin,220px); aspect-ratio:1; border-radius:50%; background:var(--fbg-bb); box-shadow:0 0 0 5px var(--fbg-cream), 0 0 0 11px var(--fbg-bb), 0 0 60px 30px rgba(14,11,22,.55); display:flex; align-items:center; justify-content:center}
+.fbg-cd-n{font:900 clamp(78px,12.5vmin,164px)/1 var(--fbg-boss); font-stretch:125%; color:var(--fbg-pg); transform:skewX(-8deg) translateY(4%); -webkit-text-stroke:0; text-shadow:4px 4px 0 var(--fbg-hr)}
+.fbg-cd.t1 .fbg-cd-n{color:var(--fbg-lime); text-shadow:4px 4px 0 #2b4a0c}
+.fbg-cd.t1 .fbg-cd-disc{box-shadow:0 0 0 5px var(--fbg-lime), 0 0 0 11px var(--fbg-bb), 0 0 60px 30px rgba(14,11,22,.55)}
+.fbg-cd-t{font:900 clamp(16px,2.6vmin,30px)/1 var(--fbg-boss); font-stretch:125%; letter-spacing:.03em; padding:8px 16px 7px; transform:skewX(-8deg); white-space:nowrap}
+.fbg-cd.mine .fbg-cd-t{background:var(--fbg-hr); color:#fff; box-shadow:0 0 0 3px var(--fbg-bb)}
+.fbg-cd.theirs .fbg-cd-t{background:var(--fbg-bb); color:var(--fbg-cream); box-shadow:0 0 0 3px var(--fbg-lime)}
+.fbg-cd.go .fbg-cd-disc{animation:fbg-cd-in .34s cubic-bezier(.2,1.5,.35,1) both}
+@keyframes fbg-cd-in{0%{transform:scale(1.9); opacity:0}55%{transform:scale(.94); opacity:1}100%{transform:scale(1)}}
+.fbg-root.rm .fbg-cd.go .fbg-cd-disc{animation:none}
+.fbg-root.is-full .fbg-cd{zoom:var(--fbg-z,1)}
+.fbg-root.is-mobile.is-wide .fbg-cd{top:calc(42% + var(--st))}
+.fbg-root.is-narrow .fbg-cd{top:36%}
+
+/* short screens (a landscape phone): the picker and the stage fit the visible height */
+.fbg-root.is-short .fbg-card.is-picker{padding:10px 12px}
+.fbg-root.is-short .fbg-picker h2{font-size:24px; margin-bottom:6px}
+.fbg-root.is-short .fbg-pick-p, .fbg-root.is-short .fbg-ed-how{display:none}
+.fbg-root.is-short .fbg-ed-art{aspect-ratio:2.25/1; margin-bottom:4px}
+.fbg-root.is-short .fbg-ed{padding-bottom:8px}
+.fbg-root.is-short .fbg-ed-name{font-size:28px}
+.fbg-root.is-short .fbg-ed-sub{font-size:12px}
+.fbg-root.is-short .fbg-pick-note{margin-top:6px; font-size:12px}
+.fbg-root.is-mobile.is-wide:not(.is-fill) .fbg-stage{max-height:100vh; max-height:100svh}
+.fbg-root.cd-on .fbg-ctl{visibility:hidden}
+.fbg-root.is-short .fbg-ed-art{background-position:50% 18%}
