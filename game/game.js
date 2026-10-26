@@ -696,6 +696,11 @@ function guessEdition() {
   return fine && !coarse && big ? 'pc' : 'mobile';
 }
 function readSnd() { try { return localStorage.getItem('fbg-sound'); } catch (e) { return null; } }
+// Gordon 2026-10-26: "IN FIELD MOVEMENT" moves you relative to the court as you face the other team: W toward the center line,
+// A your left, D your right, S back toward your own back line (S confirmed by Gordon). Arrow keys follow the same scheme. STANDARD stays the default.
+const KM_KEY = 'fbg-keys';
+function readKM() { try { return localStorage.getItem(KM_KEY) === 'infield' ? 'infield' : 'standard'; } catch (e) { return 'standard'; } }
+function saveKM(v) { try { localStorage.setItem(KM_KEY, v === 'infield' ? 'infield' : 'standard'); } catch (e) { } }
 function saveSnd(v) { try { localStorage.setItem('fbg-sound', v ? 'on' : 'off'); } catch (e) { } }
 
 // ---------------------------------------------------------------- audio
@@ -843,7 +848,7 @@ class Game {
     // QA ring buffer: countdown and announcer events with sim time, so automated playtests can measure timing
     this.qa = []; this.qaLog = (ev, o) => { this.qa.push(Object.assign({ ev, frame: this.frame, ctlT: +(this.ctlT || 0).toFixed(3), ms: Math.round(performance.now()) }, o || {})); if (this.qa.length > 80) this.qa.shift(); };
     this.sfx.onVo = (n) => this.qaLog('vo', { n });
-    this.keys = {}; this.edge = {}; this.lastTap = { dir: 0, f: -99 };
+    this.keys = {}; this.edge = {}; this.lastTap = { dir: 0, f: -99 }; this.km = readKM();
     this.touch = { mx: 0, mz: 0, run: false, btn: {} };
     this.frame = 0; this.phase = 'title'; this.paused = false; this.visible = true; this.hitstop = 0;
     this.shakeAmp = 0; this.shakeF = 0; this.shakeMax = 1; this.fever = false;
@@ -857,6 +862,7 @@ class Game {
     this.mobile = this.edition === 'mobile' && (!finePtr || !!this.opts.touch || !!(window.matchMedia && matchMedia('(pointer: coarse)').matches));
     this.texQ = this.native ? 2 : 1; this.full = false; this.rs = 1; this.dts = [];
     this.buildDOM();
+    if (this.km === 'infield') this.setKM('infield');
     if (!this.initGL()) return;
     this.buildWorld();
     this.buildStands();
@@ -913,7 +919,7 @@ class Game {
   <div class="fbg-next" aria-live="polite" hidden></div>
   <div class="fbg-cd" hidden aria-hidden="true"><div class="fbg-cd-disc"><b class="fbg-cd-n"></b></div><span class="fbg-cd-t"></span></div>
   <div class="fbg-meter"><b>DASH</b><div class="fbg-steps"></div><span class="fbg-mhint"></span></div>
-  <div class="fbg-keys" aria-hidden="true"><span><i>WASD</i>Move</span><span class="k-throw"><i>J</i><i class="m">LMB</i>Throw</span><span class="k-catch"><i>K</i><i class="m">RMB</i>Catch</span><span class="k-dash"><i>U</i>Dash</span><span><i>L</i>Jump</span><span class="k-pass"><i>Shift</i>Pass</span><span><i>Q</i>Switch</span><span><i>Esc</i>Time out</span><span><i>M</i>Menu</span></div>
+  <div class="fbg-keys" aria-hidden="true"><span class="fbg-kmkeys"><i>WASD</i>Move</span><span class="k-throw"><i>J</i><i class="m">LMB</i>Throw</span><span class="k-catch"><i>K</i><i class="m">RMB</i>Catch</span><span class="k-dash"><i>U</i>Dash</span><span><i>L</i>Jump</span><span class="k-pass"><i>Shift</i>Pass</span><span><i>Q</i>Switch</span><span><i>Esc</i>Time out</span><span><i>M</i>Menu</span></div>
   <div class="fbg-btns"><button class="fbg-btn ghost fbg-qual" type="button">Quality: Auto</button><button class="fbg-btn ghost fbg-menu" type="button" hidden>Menu <span class="fbg-kbd">M</span></button><button class="fbg-btn ghost fbg-sound" type="button" aria-pressed="false">Sound off</button><button class="fbg-btn ghost fbg-pause" type="button">Time out</button></div>
   <div class="fbg-vs" hidden></div>
   <div class="fbg-poster"><p>Boss Rush needs WebGL. This is a still from the game.</p></div>
@@ -960,8 +966,9 @@ class Game {
     if (this.opts.fill) r.classList.add('is-fill');
     // settings buttons live inside whichever card is open (title, menu, results); one delegated handler serves them all
     this.$.card.addEventListener('click', (e) => {
-      const b = e.target.closest && e.target.closest('[data-q],[data-d]'); if (!b) return;
-      if (b.dataset.q) this.setQuality(b.dataset.q);
+      const b = e.target.closest && e.target.closest('[data-q],[data-d],[data-km]'); if (!b) return;
+      if (b.dataset.km) this.setKM(b.dataset.km);
+      else if (b.dataset.q) this.setQuality(b.dataset.q);
       else if (b.dataset.d === 'full') this.setFull(!this.full);
       else if (b.dataset.d === 'fs') this.toggleFullscreen();
       this.syncMenu();
@@ -977,13 +984,31 @@ class Game {
     if (!this.native) return '';
     const q = (k, n) => `<button type="button" class="fbg-sb" data-q="${k}" aria-pressed="${this.qMode === k}">${n}</button>`;
     return `<div class="fbg-set"><div class="fbg-seg" role="group" aria-label="Quality"><span>Quality</span>${q('auto', 'Auto')}${q('high', 'High')}${q('ultra', 'Ultra')}</div>
+      <div class="fbg-seg fbg-kmseg" role="group" aria-label="Keyboard movement"><span>Keys</span><button type="button" class="fbg-sb" data-km="standard" aria-pressed="${this.km !== 'infield'}">STANDARD</button><button type="button" class="fbg-sb" data-km="infield" aria-pressed="${this.km === 'infield'}">IN FIELD MOVEMENT</button></div>
       <div class="fbg-seg" role="group" aria-label="Display"><span>Display</span><button type="button" class="fbg-sb" data-d="full"></button><button type="button" class="fbg-sb" data-d="fs"></button></div>
       <p class="fbg-setnote"></p></div>`;
+  }
+  kmAxes(a, k) {
+    // world move from the keys: STANDARD follows the screen; IN FIELD MOVEMENT follows the court as this player faces the other team
+    if (this.km !== 'infield') return { mx: (k.right ? 1 : 0) - (k.left ? 1 : 0), mz: (k.down ? 1 : 0) - (k.up ? 1 : 0), run: !!(k.left || k.right) };
+    const side = a ? a.side : -1, fwd = (k.up ? 1 : 0) - (k.down ? 1 : 0), lat = (k.left ? 1 : 0) - (k.right ? 1 : 0);
+    // facing the other team, forward is -side in x; your left is +side in z (FINAL BOSS faces +x, so its left is -z)
+    return { mx: fwd * -side, mz: lat * side, run: !!(k.up || k.down) };
+  }
+  kmLine() { return this.km === 'infield' ? 'IN FIELD MOVEMENT: <span class="fbg-kbd">W</span> toward the center line, <span class="fbg-kbd">A</span> left, <span class="fbg-kbd">D</span> right, <span class="fbg-kbd">S</span> back (arrows too)' : '<span class="fbg-kbd">Arrows</span> or <span class="fbg-kbd">WASD</span> move'; }
+  kmHow() { return 'IN FIELD MOVEMENT is on: you move as you face the other team. W or Up runs toward the center line, A or Left moves to your left on the court, D or Right to your right, S or Down back toward your own back line. Double-tap W to dash at the line.'; }
+  setKM(v) {
+    this.km = v === 'infield' ? 'infield' : 'standard'; saveKM(this.km);
+    this.root.querySelectorAll('.fbg-kmtext').forEach(el => { el.innerHTML = this.kmLine(); });
+    this.root.querySelectorAll('.fbg-kmp').forEach(el => { el.hidden = this.km !== 'infield'; el.innerHTML = this.kmHow(); });
+    const kk = this.root.querySelector('.fbg-kmkeys'); if (kk) kk.innerHTML = this.km === 'infield' ? '<i>W</i>Center <i>A</i><i>D</i>Left/Right <i>S</i>Back' : '<i>WASD</i>Move';
+    this.qaLog('km', { km: this.km }); this.syncMenu();
   }
   syncMenu() {
     const c = this.$ && this.$.card; if (!c || !this.native) return;
     const fs = !!(document.fullscreenElement || document.webkitFullscreenElement);
     c.querySelectorAll('[data-q]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.q === this.qMode)));
+    c.querySelectorAll('[data-km]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.km === this.km)));
     c.querySelectorAll('[data-d="full"]').forEach(b => { b.textContent = this.full ? 'Back to the page' : 'Full window'; });
     c.querySelectorAll('[data-d="fs"]').forEach(b => { b.setAttribute('aria-pressed', String(fs)); b.innerHTML = (fs ? 'Exit fullscreen' : 'Fullscreen') + ' <span class="fbg-kbd">F</span>'; });
     const n = c.querySelector('.fbg-setnote'), cv = this.$.canvas;
@@ -1059,7 +1084,8 @@ class Game {
   resize() {
     if (this.dead) return;
     const w = this.root.clientWidth;
-    const narrow = w < 700;
+    // small landscape phones (iPhone SE 667x375) keep the wide 16:9 layout: narrow means a narrow AND tall view, not every view under 700 px
+    const narrow = w < 700 && !((window.innerWidth || 0) > (window.innerHeight || 0) * 1.2);
     this.root.classList.toggle('is-short', Math.min(this.root.clientHeight || 999, window.innerHeight || 999) < 680 && !narrow);
     this.root.classList.toggle('is-narrow', narrow); this.root.classList.toggle('is-wide', !narrow);
     const st = this.$.stage; const W = st.clientWidth, H = st.clientHeight; if (!W || !H) return;
@@ -1289,15 +1315,16 @@ class Game {
       }
       // in full window, Esc on the title or results card goes back to the page
       if (!inGame && k === 'pause' && this.full) { this.setFull(false); e.preventDefault(); return; }
-      if (!inGame) { if (k === 'enter' && this.phase === 'title' && document.activeElement === this.$.stage) { this.start(); e.preventDefault(); } return; }
+      if (!inGame) { if (k === 'enter' && this.phase === 'title' && document.activeElement === this.$.stage && !this.picking) { if (this.wkView) this.startWeekendMatch(); else this.showBracket(); e.preventDefault(); } return; }
       if (this.phase === 'handshake') { if (k === 'enter' || k === 'throw' || k === 'pause') this.finishHandshake(); e.preventDefault(); return; }
       if (k === 'pause') { this.paused ? this.resume() : this.pause(); e.preventDefault(); return; }
       if (this.paused) return;
       e.preventDefault();
       if (!this.keys[k]) {
         this.edge[k] = true;
-        if (k === 'left' || k === 'right') {
-          const dir = k === 'left' ? -1 : 1;
+        const ax = this.km === 'infield' ? (k === 'up' || k === 'down') : (k === 'left' || k === 'right');
+        if (ax) {
+          const fw = this.user ? -this.user.side : 1, dir = this.km === 'infield' ? (k === 'up' ? fw : -fw) : (k === 'left' ? -1 : 1);
           if (this.lastTap.dir === dir && this.frame - this.lastTap.f <= 14) this.edge.dash = dir;
           this.lastTap = { dir, f: this.frame };
         }
@@ -1350,11 +1377,12 @@ class Game {
     const k = this.keys, t = this.touch, e = this.edge;
     // P0e: holding Dash (U, or the DASH button) sprints toward the center line; double-tap and the pad flick still work
     const fwd = this.user ? -this.user.side : 1, sprint = !!(k.sprint || t.btn.sprint);
-    let mx = (k.right ? 1 : 0) - (k.left ? 1 : 0) + t.mx;
+    const km = this.kmAxes(this.user, k);
+    let mx = km.mx + t.mx;
     if (sprint && !(mx * fwd > 0.3)) mx = (this.user && this.user.x * this.user.side < 1.0 && this.rushT >= RULES.rushF) ? 0 : fwd;   // DASH alone never carries you over the center line
-    let mz = (k.down ? 1 : 0) - (k.up ? 1 : 0) + t.mz;
+    let mz = km.mz + t.mz;
     mx = Math.max(-1, Math.min(1, mx)); mz = Math.max(-1, Math.min(1, mz));
-    const it = { mx, mz, dash: e.dash || (e.sprint ? fwd : 0), holdRun: (k.left || k.right || t.run || sprint), throw: !!e.throw, catch: !!e.catch, catchHeld: !!(k.catch || t.btn.catch), jump: !!e.jump, pass: !!e.pass, sw: !!e.switch };
+    const it = { mx, mz, dash: e.dash || (e.sprint ? fwd : 0), holdRun: (km.run || t.run || sprint), throw: !!e.throw, catch: !!e.catch, catchHeld: !!(k.catch || t.btn.catch), jump: !!e.jump, pass: !!e.pass, sw: !!e.switch };
     this.edge = {};
     return it;
   }
@@ -1908,7 +1936,7 @@ class Game {
     const rules = [['rush', 'Rush right only', 'on GO, run only for the balls on your right as you face the other team'], ['line', 'Clear the line', 'carry a rushed ball past your attack line before you throw'], ['catch', 'Catch = back in', 'the thrower is out and your next teammate returns'],
       ['head', 'No headshots', 'a standing headshot puts the thrower out'], ['clock', '15 s control', '3 or more balls on your side, held or loose, starts 15 s. Drop to 2 and it resets. At 0, all 5 balls go over'], ['back', 'Back line only', 'leave only out the back, 10 s to return']];
     const ctl = touch ? 'Left pad moves (flick to dash). <b>THROW</b>, <b>CATCH</b> (hold to duck), <b>JUMP</b>, <b>PASS</b>.'
-      : '<span class="fbg-kbd">Arrows</span>/<span class="fbg-kbd">WASD</span> move, double-tap to dash. <span class="fbg-kbd">J</span>' + (this.native ? '/<span class="fbg-kbd">Left click</span>' : '') + ' throw, <span class="fbg-kbd">K</span>' + (this.native ? '/<span class="fbg-kbd">Right click</span>' : '') + ' catch (hold to duck), <span class="fbg-kbd">L</span> jump, <span class="fbg-kbd">Shift</span> pass, <span class="fbg-kbd">Q</span> switch.';
+      : '<span class="fbg-kmtext">' + this.kmLine() + '</span>, double-tap to dash. <span class="fbg-kbd">J</span>' + (this.native ? '/<span class="fbg-kbd">Left click</span>' : '') + ' throw, <span class="fbg-kbd">K</span>' + (this.native ? '/<span class="fbg-kbd">Right click</span>' : '') + ' catch (hold to duck), <span class="fbg-kbd">L</span> jump, <span class="fbg-kbd">Shift</span> pass, <span class="fbg-kbd">Q</span> switch.';
     this.$.vs.innerHTML = `<div class="fbg-rps fbg-brief" role="dialog" aria-label="${title} rules"><h3>${title}</h3>
       <p class="fbg-bwho">${this.lastCtl < 0 ? 'Ro-sham-bo decides who rushes the 3 balls. After that, the 3 balls alternate every game.' : (this.lastCtl === 1 ? 'FINAL BOSS rushes the 3 balls on its right this game. ' + this.opp.name + ' rush the 2 on theirs.' : '' + this.opp.name + ' rush the 3 balls on their right this game. FINAL BOSS rushes the 2 on its right.')}</p>
       <p>Out by a live ball, a caught throw, or crossing the center or a side line. Clear the other team to win the game.</p>
@@ -2089,7 +2117,7 @@ class Game {
       ? `<li data-n="1">Drag the left pad to move. Flick it hard to <b>dash</b>.</li>
          <li data-n="2"><b>THROW</b>. Dash 4 to 7 steps first for a <b>power shot</b>.</li>
          <li data-n="3"><b>CATCH</b> right before impact (hold to duck). <b>JUMP</b>, <b>PASS</b>.</li>`
-      : `<li data-n="1"><span class="fbg-kbd">Arrows</span> or <span class="fbg-kbd">WASD</span> move. Double-tap to <b>dash</b>. <span class="fbg-kbd">Q</span> switches player.</li>
+      : `<li data-n="1"><span class="fbg-kmtext">${this.kmLine()}</span>. Double-tap to <b>dash</b>. <span class="fbg-kbd">Q</span> switches player.</li>
          <li data-n="2"><span class="fbg-kbd">J</span>${this.native ? ', <span class="fbg-kbd">Left click</span>' : ''} or <span class="fbg-kbd">Space</span> throws. Throw on dash steps 4 to 7 for a <b>power shot</b>.</li>
          <li data-n="3"><span class="fbg-kbd">K</span>${this.native ? ' or <span class="fbg-kbd">Right click</span>' : ''} catches or blocks right before impact (hold to duck). <span class="fbg-kbd">L</span> jumps, <span class="fbg-kbd">Shift</span> passes.</li>`;
     const rules = [['rush', 'Rush right', 'grab only the balls on your right'], ['line', 'Clear the line', 'carry it past your attack line first'], ['catch', 'Catch = back in', 'thrower out, your next teammate returns'],
@@ -2101,6 +2129,7 @@ class Game {
       <p>Sin City style, arcade format: 8 on 8, 5 balls, no sting. Most games in 3 minutes wins.</p>
       <ul class="fbg-rules">${rules.map(r => `<li>${ruleIcon(r[0])}<b>${r[1]}</b><span>${r[2]}</span></li>`).join('')}</ul>
       <details class="fbg-more"><summary>How Sin City plays</summary>
+        <p class="fbg-kmp"${this.km === 'infield' ? '' : ' hidden'}>${this.kmHow()}</p>
         <p>Both teams start on their back line. Ro-sham-bo decides the first game: the winner rushes the 3 balls on its right, the other team the 2 on its right. After that, the 3 balls alternate every game. On GO, rush only the balls on your right as you face the other team. Leave early and you lose those balls.</p>
         <p>You are out if a live ball hits you and nobody catches it, if your throw is caught, if you cross the center line or a side line, or if you stay out the back for more than 10 seconds. A ball held in your hands can block a throw. Deflected balls stay live until the floor. Catch one to put the original thrower out and return your first teammate in line.</p>
         <p>Near an illegal boundary, grounded players may try to balance. Speed and momentum can still carry you out. After the match, both teams meet in a sportsmanship line.</p>
@@ -2108,11 +2137,12 @@ class Game {
       </details>
       <ol class="fbg-how">${how}</ol>
       <div class="fbg-lineup"><h3>PICK YOUR PLAYER</h3><div class="fbg-pool"></div></div>
-      ${this.settingsHTML()}<div class="fbg-row"><button class="fbg-btn fbg-go" type="button">PLAY</button><button class="fbg-btn fbg-wkb" type="button">${(() => { const w = wkLoad(); return w && !w.done && w.fb.length ? 'CONTINUE WEEKEND' : 'SIN CITY WEEKEND'; })()}</button><button class="fbg-btn ghost fbg-snd" type="button">${this.sfx.on ? 'Sound on' : 'Sound off'}</button></div>
-      <p class="fbg-wkp">Quick match: one match against THE GLITCHES. Sin City Weekend: Saturday pools, then Sunday double elimination against 16 fabulous teams.</p>`;
+      ${this.settingsHTML()}<div class="fbg-row"><button class="fbg-btn fbg-go fbg-wkb" type="button">${(() => { const w = wkLoad(); return w && !w.done && w.fb.length ? 'CONTINUE WEEKEND' : 'SIN CITY WEEKEND'; })()}</button><button class="fbg-btn ghost fbg-quick" type="button">Quick match</button><button class="fbg-btn ghost fbg-snd" type="button">${this.sfx.on ? 'Sound on' : 'Sound off'}</button></div>
+      <p class="fbg-wkp">Sin City Weekend: Saturday pools, then Sunday double elimination against 16 fabulous teams. Quick match: one match against THE GLITCHES.</p>`;
     this.renderPicker(); this.syncMenu(); this.bindEdChip('title');
-    this.$.card.querySelector('.fbg-go').addEventListener('click', () => { this.wkMatch = null; this.start(); });
+    // Gordon 10/26: Sin City Weekend is the default; a quick match is one tap away
     this.$.card.querySelector('.fbg-wkb').addEventListener('click', () => { this.sfx.ui('select'); this.showBracket(); });
+    this.$.card.querySelector('.fbg-quick').addEventListener('click', () => { this.wkMatch = null; this.start(); });
     this.$.card.querySelector('.fbg-snd').addEventListener('click', () => this.toggleSound());
     this.$.ov.hidden = false;
   }
