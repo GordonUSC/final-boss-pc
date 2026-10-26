@@ -2093,7 +2093,7 @@ class Game {
          <li data-n="2"><span class="fbg-kbd">J</span>${this.native ? ', <span class="fbg-kbd">Left click</span>' : ''} or <span class="fbg-kbd">Space</span> throws. Throw on dash steps 4 to 7 for a <b>power shot</b>.</li>
          <li data-n="3"><span class="fbg-kbd">K</span>${this.native ? ' or <span class="fbg-kbd">Right click</span>' : ''} catches or blocks right before impact (hold to duck). <span class="fbg-kbd">L</span> jumps, <span class="fbg-kbd">Shift</span> passes.</li>`;
     const rules = [['rush', 'Rush right', 'grab only the balls on your right'], ['line', 'Clear the line', 'carry it past your attack line first'], ['catch', 'Catch = back in', 'thrower out, your next teammate returns'],
-      ['head', 'No headshots', 'a standing headshot puts the thrower out'], ['clock', '15 s control', '3 or more balls on your side, held or loose, starts 15 s. Drop to 2 and it resets. At 0, all 5 balls go over'], ['back', 'Back line only', 'leave only out the back, 10 s to return']];
+      ['head', 'No headshots', 'a standing headshot puts the thrower out'], ['clock', '15 s control', '3+ on your side, held or loose. 2 resets it. At 0, all 5 go over'], ['back', 'Back line only', 'leave only out the back, 10 s to return']];
     this.$.card.classList.remove('is-picker'); this.$.ov.classList.remove('picker');
     this.sfx.music('music_menu');
     this.$.card.innerHTML = `${this.edChip()}

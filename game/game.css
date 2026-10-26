@@ -723,3 +723,4 @@ html.fbg-lock, html.fbg-lock body{overflow:hidden}
 .fbg-next{position:absolute; left:50%; transform:translateX(-50%); top:58px; z-index:3; background:rgba(14,11,22,.86); color:var(--fbg-cream); font:700 12px/1 var(--fbg-ui); padding:5px 10px 4px; box-shadow:inset 0 -2px 0 var(--fbg-pg); pointer-events:none; white-space:nowrap}
 .fbg-next b{color:var(--fbg-pg); margin-right:4px} .fbg-next i{font-style:normal; color:var(--fbg-ash)}
 .fbg-root:not(.has-touch) .fbg-next{display:none}
+.fbg-wk-pool li i{white-space:nowrap}
