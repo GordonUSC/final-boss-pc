@@ -3849,9 +3849,9 @@ const FF = (function () {
   }
   function fit(root) {
     root.querySelectorAll('.ff-num').forEach(svg => {
-      const t = svg.querySelector('text'); let fs = 380; t.setAttribute('font-size', fs);
+      const t = svg.querySelector('text'); let fs = +t.getAttribute('font-size') || 380; if (!svg.dataset.fit) { fs = 380; t.setAttribute('font-size', fs); }
       try { while (t.getComputedTextLength() > 980 && fs > 120) { fs -= 10; t.setAttribute('font-size', fs); } } catch (e) { }
-      const h = Math.round(fs * 0.93); svg.setAttribute('viewBox', `0 0 1000 ${h}`); t.setAttribute('y', Math.round(fs * 0.83)); svg.style.height = `calc(${h} * var(--u))`;
+      const h = Math.round(fs * 0.93); svg.setAttribute('viewBox', `0 0 1000 ${h}`); t.setAttribute('y', Math.round(fs * 0.83)); svg.style.height = `calc(${h} * var(--u))`; svg.dataset.fit = '1';
     });
   }
   const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x)), seg = (t, a, d) => clamp((t - a) / d), outCubic = p => 1 - Math.pow(1 - p, 3);
@@ -3868,7 +3868,7 @@ const FF = (function () {
     const pl = R ? 1 : outCubic(seg(t, T.label, 0.2));
     root.querySelectorAll('.ff-label, .ff-prism').forEach(e => { e.style.opacity = pl; e.style.transform = `translateX(${((1 - pl) * -24).toFixed(1)}px)`; });
     const txt = root.querySelector('.ff-num text');
-    if (txt && card.count != null) { const pc = R ? 1 : outCubic(seg(t, T.count, T.countD)); txt.textContent = pc >= 1 ? card.num : fmt(card.count * pc, card); txt.parentNode.style.opacity = R ? 1 : seg(t, T.count - 0.05, 0.1); }
+    if (txt && card.count != null) { const pc = R ? 1 : outCubic(seg(t, T.count, T.countD)); txt.textContent = pc >= 1 ? card.num : fmt(card.count * pc, card); /* a count-up number never runs under the medallion */ try { if (txt.getComputedTextLength() > 980) fit(root); } catch (e) { } txt.parentNode.style.opacity = R ? 1 : seg(t, T.count - 0.05, 0.1); }
     const portal = root.querySelector('.ff-portal'), img = portal && portal.querySelector('img');
     if (portal) {
       const pp = R ? 1 : outBack(seg(t, T.portal, 0.28)); portal.style.transform = `scale(${pp.toFixed(4)})`; portal.style.opacity = R ? 1 : clamp(pp * 2);
