@@ -63,6 +63,8 @@ CARD_FIX = {
 }
 # 2026-10-26 the six reads were re-recorded to match the corrected text (ElevenLabs David, eleven_multilingual_v2, about -17.2 LUFS like the rest)
 VO_STALE = set()
+# 2026-10-27 Gordon: thank the Sin City staff. General wording, no numbers. VO: ElevenLabs David, eleven_multilingual_v2, matched to the deck level
+EXTRA_CARDS = [{'id': 'S01', 'deck': 'A', 'layout': 'dyk', 'head': 'Thank you, Staff!', 'text': 'Behind every Sin City weekend is a staff who plan the brackets, run the courts and welcome everyone in. Gratitude is the attitude.', 'spot': 'staff-thanks', 'vo': 'S01', 'status': 'GORDON-OK', 'voSecs': 7.99}]
 
 
 def emblem_only(svg):
@@ -95,7 +97,7 @@ def main():
     teams = [team(t) for t in T['teams']]
     br = T['bracket']
     bracket = {'pools': {k: v['teams'] for k, v in br['saturday']['pools'].items()}, 'seeded': br['saturday']['seeded']}
-    cards = json.load(open(CARDS))
+    cards = json.load(open(CARDS)) + [dict(c) for c in EXTRA_CARDS]
     for c in cards:
         c.update(CARD_FIX.get(c['id'], {}))
         if c['id'] in VO_STALE: c['voStale'] = True
