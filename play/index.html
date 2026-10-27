@@ -60,7 +60,7 @@
 <script>
 (function () {
   var boot = document.getElementById('boot'), home = document.getElementById('home'), mount = document.getElementById('game');
-  var s = document.createElement('script'); s.src = '../game/game.bundle.js?v=pc-nopop-20261026';
+  var s = document.createElement('script'); s.src = '../game/game.bundle.js?v=pc-post-20261026';
   var fail = function (msg) { document.getElementById('boot-p').textContent = msg; };
   var t = setTimeout(function () { if (!window.FBGame) fail('The arena is taking a while. Check your connection, then reload.'); }, 12000);
   s.onerror = function () { clearTimeout(t); fail('The arena could not load. Reload to try again.'); };

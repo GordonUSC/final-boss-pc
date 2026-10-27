@@ -735,3 +735,46 @@ html.fbg-lock, html.fbg-lock body{overflow:hidden}
 .fbg-btn.fbg-go.fbg-wkb{background:var(--fbg-gold); color:#120818; box-shadow:none}
 /* SWITCH never sits over your own half of the court: on a wide touch screen it stacks above the right-hand buttons */
 .fbg-root.is-wide.has-touch .fbg-touch > .fbg-tb.sw{left:auto; right:calc(10px + var(--sr,0px)); bottom:176px; pointer-events:auto}
+
+/* post-match: Coach Nina Fiore's card. 2 to 3 s of restrained entrance, then it holds; reduced motion shows it still */
+.fbg-post{max-width:640px; margin:0 auto; text-align:left}
+.fbg-post-top{display:flex; gap:14px; align-items:center; margin-bottom:6px}
+.fbg-post-nina{width:96px; height:96px; border-radius:50%; object-fit:cover; flex:none; border:3px solid var(--fbg-gold); background:#2a1838}
+.fbg-post-kick{margin:0; font:700 13px/1 var(--fbg-ui); letter-spacing:.14em; color:var(--fbg-gold)}
+.fbg-post h2{margin:4px 0 0; font:700 34px/1 var(--fbg-disp); text-align:left; overflow-wrap:anywhere}
+.fbg-post-body{display:grid; gap:8px; margin:8px 0 10px}
+.fbg-post-s{background:#120818; border-left:4px solid var(--fbg-gold); padding:8px 12px}
+.fbg-post-s h3{margin:0 0 2px; font:700 20px/1.05 var(--fbg-disp); letter-spacing:.03em; color:var(--fbg-gold)}
+.fbg-post-s p{margin:0; font:500 15px/1.35 var(--fbg-ui); color:var(--fbg-bone); overflow-wrap:anywhere}
+.fbg-post-next{border-left-color:var(--fbg-lime)}
+.fbg-post-next h3{color:var(--fbg-lime)}
+.fbg-post-scout{border-left-color:var(--fbg-pink)}
+.fbg-post-scout h3{color:var(--fbg-pink)}
+.fbg-post-disc{font-size:13px !important; color:var(--fbg-ash) !important; margin-bottom:4px !important}
+.fbg-post-jake{display:flex; gap:12px; align-items:center; border-left-color:var(--fbg-violet)}
+.fbg-post-jake h3{color:var(--fbg-bone)}
+.fbg-jake-art{width:96px; height:128px; object-fit:cover; border-radius:8px; flex:none; background:#2a1838}
+.fbg-post .fbg-post-go{min-height:48px; min-width:200px}
+.fbg-post:not(.still) .fbg-post-top, .fbg-post:not(.still) .fbg-post-s{animation:fbg-post-in .55s cubic-bezier(.2,.8,.3,1) both}
+.fbg-post:not(.still) .fbg-post-s:nth-child(1){animation-delay:.35s}
+.fbg-post:not(.still) .fbg-post-s:nth-child(2){animation-delay:.75s}
+.fbg-post:not(.still) .fbg-post-s:nth-child(3){animation-delay:1.15s}
+.fbg-post:not(.still) .fbg-post-s:nth-child(4){animation-delay:1.55s}
+.fbg-post:not(.still) .fbg-post-s:nth-child(5){animation-delay:1.95s}
+@keyframes fbg-post-in{from{opacity:0; transform:translateY(10px)}to{opacity:1; transform:none}}
+@media (prefers-reduced-motion: reduce){.fbg-post .fbg-post-top, .fbg-post .fbg-post-s{animation:none !important}}
+@media (max-width:700px), (max-height:500px){
+  .fbg-post-nina{width:64px; height:64px}
+  .fbg-post h2{font-size:26px}
+  .fbg-post-s{padding:6px 10px}
+  .fbg-post-s h3{font-size:18px}
+  .fbg-post-s p{font-size:15px}
+  .fbg-jake-art{width:72px; height:96px}
+}
+/* the way on is always on screen: the button row sticks to the bottom of the scrolling card */
+.fbg-post .fbg-row{position:sticky; bottom:-20px; margin:0 -20px -20px; padding:10px 20px 14px; background:linear-gradient(180deg,rgba(18,8,24,0),#120818 35%); z-index:1}
+.fbg-post-body{gap:6px}
+.fbg-post-s{padding:6px 12px}
+.fbg-post-nina{width:84px; height:84px}
+.fbg-jake-art{width:72px; height:96px}
+.fbg-post h2{text-shadow:2px 2px 0 var(--fbg-red),4px 4px 0 #2a0f48}

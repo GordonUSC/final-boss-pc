@@ -15,6 +15,13 @@ HERE = Path(__file__).resolve()
 ROOT = HERE.parents[2] if HERE.parent.parent.name == 'game' else HERE.parents[1]
 ED = 'pc' if HERE.parent.parent.name == 'game' else 'mobile'
 NATIVE = ED == 'pc'
+import subprocess, re
+def receipt():
+    """dot 10/26: every receipt names the commit and the bundle ?v= tag it ran against (dirty = uncommitted changes in the tree)."""
+    sha = subprocess.run(['git', '-C', str(ROOT), 'rev-parse', '--short', 'HEAD'], capture_output=True, text=True).stdout.strip()
+    dirty = bool(subprocess.run(['git', '-C', str(ROOT), 'status', '--porcelain', '--untracked-files=no'], capture_output=True, text=True).stdout.strip())
+    m = re.search(r'game\.bundle\.js\?v=([\w.-]+)', (ROOT / 'play' / 'index.html').read_text())
+    return {'edition': ED, 'commit': sha + ('+dirty' if dirty else ''), 'v': m.group(1) if m else None}
 class Quiet(SimpleHTTPRequestHandler):
     def log_message(self, *a): pass
 srv = ThreadingHTTPServer(('127.0.0.1', 0), functools.partial(Quiet, directory=str(ROOT)))
@@ -101,6 +108,6 @@ try:
             b.close()
     print(json.dumps(res, indent=1))
     bad = [e for e, r in res.items() if r['popups'] or r['pages'] != 1 or r['errors'] or r['mainNavs'] or not r['mainUrl'] or not r['reachedPlay'] or not r['inputOK'] or not r['listenersOK'] or not r['chipOnPause']]
-    print('PASS' if not bad else 'FAIL ' + ', '.join(bad)); sys.exit(1 if bad else 0)
+    print(('PASS' if not bad else 'FAIL ' + ', '.join(bad)) + ' @ ' + json.dumps(receipt())); sys.exit(1 if bad else 0)
 finally:
     srv.shutdown()

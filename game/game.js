@@ -1880,7 +1880,7 @@ class Game {
   // ------------------------------------------------ match flow
   resetMatch() {
     this.clock = RULES.match; this.points = [0, 0]; this.gameNo = 0; this.ot = false; this.otClock = RULES.ot; this.sudden = false; this.over = false;
-    this.score = 0; this.combo = 0; this.stats = { hits: 0, catches: 0, power: 0, kos: 0, bestCombo: 0, headshots: 0, backIn: 0, blocks: 0 };
+    this.mlog = []; this.mseq = 0; this.pm = null; this.score = 0; this.combo = 0; this.stats = { hits: 0, catches: 0, power: 0, kos: 0, bestCombo: 0, headshots: 0, backIn: 0, blocks: 0 };
     this.handshake = null; this.keys = {}; this.edge = {}; this.paused = false;
     this.rushWins = [0, 0];
     this.timeoutUsed = false; this.timeoutT = 0; this.result = null; this.lastBig = -1; this.lastCtl = -1;
@@ -2060,6 +2060,7 @@ class Game {
     if (this.lanes) this.showLanes(false);
     this.sfx.buzz(); this.crowdReact(result.win ? 'matchwin' : 'matchlose'); this.sfx.vo(result.win ? 'vo_win' : 'vo_lose', 4);
     if (this.wkMatch) this.wkRecord(result.win, this.points);
+    this.pm = this.buildPost(result);
     this.popCenter('GOOD GAME', 'big gold'); this.say('Match complete. Teams form a sportsmanship line. Press Enter or View result to skip.');
   }
   handshakeTick() {
@@ -2103,6 +2104,7 @@ class Game {
     if (this.phase !== 'result') return;
     const r = this.result, s = this.stats, wk = !!this.wkMatch, w = this.wk, n = wk ? this.wkInfo(w) : null;
     this.sfx.music('music_menu');
+    if (this.pm && !this.pm.seen) return this.showPost();
     let wkLine = '';
     if (wk && w) {
       wkLine = w.done ? (w.done.champion ? 'CHAMPIONS! FINAL BOSS wins the weekend.' : w.done.why) : (n ? 'Next: ' + n.label.toLowerCase().replace(/^\w/, c => c.toUpperCase()) + ' against ' + wkTeam(n.opp).name + '.' : '');
@@ -2847,7 +2849,7 @@ class Game {
   }
   release(a) {
     const B = a.held; if (!B) return;
-    a.held = null; B.holder = null; B.thrower = a; B.team = a.team; B.age = 0; B.hitSet = new Set(); B.pending = null; B.bounces = 0; B.claim = null;
+    a.held = null; B.holder = null; B.byUser = a === this.user; B.thrower = a; B.team = a.team; B.age = 0; B.hitSet = new Set(); B.pending = null; B.bounces = 0; B.claim = null;
     B.fromSide = a.side; B.crossed = false; B.live = false; B.deflected = false; B.forceHead = !!a.forceHead; a.forceHead = false;
     const hx = a.x + Math.sin(a.yaw) * 0.4, hz = a.z + Math.cos(a.yaw) * 0.4;
     B.x = hx; B.z = hz; B.h = a.h + 1.45 * a.scale; B.state = 'flight'; B.type = a.throwType; B.power = a.wantPower; B.pierce = 0; this.abRelease0(a, B);
@@ -3160,6 +3162,7 @@ class Game {
       if (f.team === 0) this.stats.backIn++;
       this.layoutQueue(f.team);
     } else if (save) { /* the sequence below says it */ } else if (f.team === 0) this.popBrush(clean ? 'CATCH!' : 'BOBBLE!', thrower ? `${thrower.name} OUT` : '', ''); else this.pop(f, 'CATCH!', 'lime');
+    if (f.team === 0 && !save && thrower && thrower.team !== f.team) this.mev(back ? 'catchBack' : 'catch', f, { you: f === this.user, out: thrower.name, back: back ? back.name : '' });
     if (save) { const cl = f.team === 0 ? 'gold' : 'lime'; this.calloutSeq([{ t: 'SAVE!', sub: (saved.length ? saved.map(v => v.name).join(' AND ') + (saved.length > 1 ? ' STAY IN' : ' STAYS IN') : 'CAUGHT OFF THE DEFLECTION'), cls: cl, dur: 1.05 }, { t: (thrower ? thrower.name : 'THROWER') + ' OUT', sub: 'CAUGHT OFF THE DEFLECTION', cls: 'red', dur: 1.0 }].concat(back ? [{ t: 'BACK IN', sub: `${back.name} ${back.num}`, cls: cl, dur: 1.1 }] : [])); this.qaLog('saveSeq', { steps: back ? 3 : 2 }); }
     this.checkTide();
     this.renderLive();
@@ -3170,7 +3173,7 @@ class Game {
     const sp = Math.hypot(B.vx, B.vz) || 1, ux = B.vx / sp, uz = B.vz / sp;
     B.state = 'flight'; B.live = true; B.crossed = true; B.deflected = true; B.defSide = f.side; B.type = 'normal'; B.power = false; B.grav = GRAV; B.pending = null;
     B.vx = ux * (1.2 + Math.random() * 1.6) + (Math.random() - 0.5) * 2.2; B.vz = uz * 0.8 + (Math.random() - 0.5) * 2.6; B.vh = 5.2 + Math.random() * 2.2; B.h = Math.max(B.h, 1.0);
-    const P = B.pop || (B.pop = { team: f.team, victims: [], saved: false, t0: this.frame });
+    const P = B.pop || (B.pop = { team: f.team, victims: [], saved: false, t0: this.frame, thrower: B.thrower, byUser: !!B.byUser });
     if (!P.victims.includes(f)) P.victims.push(f);
     f.set('stagger'); f.vx = f.vz = 0; f.pendingOut = B; f.pendWhy = why;
     this.hitstop = Math.max(this.hitstop, this.rm ? 2 : 7); this.sfx.smp('deflect_pop', 0.9); this.spark(B.x, B.h, B.z, 1.4);
@@ -3199,9 +3202,11 @@ class Game {
     if (saver && RULES.saveOnTeammateCatch) {
       // confirmed by Gordon 2026-10-26 ("that is in the rules"): a teammate catching a deflection off a hit player before the floor saves that player and puts the thrower out
       for (const v of victims) { if (v.role === 'in') v.set('idle'); }
-      this.awStat('saves'); if (saver.team === 0) this.stats.saves = (this.stats.saves || 0) + 1; this.bigMoment('save', saver.team, saver, true);
+      if (saver.team === 0) this.mev('save', saver, { you: saver === this.user, saved: victims.map(v => v.name), out: P.thrower ? P.thrower.name : '' }); this.awStat('saves'); if (saver.team === 0) this.stats.saves = (this.stats.saves || 0) + 1; this.bigMoment('save', saver.team, saver, true);
       return victims;
     }
+    const gone = victims.filter(v => v.role === 'in');
+    if (P.team === 1 && gone.length && P.thrower && P.thrower.team === 0) this.mev(gone.length >= 2 ? 'double' : 'out', P.thrower, { you: !!P.byUser, victims: gone.map(v => v.name) });
     for (const v of victims) if (v.role === 'in') this.eliminate(v, v.pendWhy || 'hit');
     if (victims.length >= 2 && P.team === 1) this.stats.doubles = (this.stats.doubles || 0) + 1;
     if (victims.length >= 2) { this.awStat(victims.length >= 3 ? 'triples' : 'doubles'); this.bigMoment(victims.length >= 3 ? 'triple' : 'double', 1 - P.team, victims[victims.length - 1]); }
@@ -3232,6 +3237,7 @@ class Game {
     B.vx = -B.vx * 0.18 + (Math.random() - 0.5) * 2; B.vz = -B.vz * 0.18 + (Math.random() - 0.5) * 2; B.vh = 6; this.killBall(B, 'hit'); B.vh = 6;
     B.squash = 1;
     if (f.team === 1) { this.stats.hits++; this.addScore(power ? 200 : 100); } else this.breakCombo();
+    if (f.team === 1 && f.role === 'in' && B.thrower && B.thrower.team === 0) this.mev('out', B.thrower, { you: !!B.byUser, victims: [f.name] });
     this.eliminate(f, power ? 'power' : 'hit', dir);
   }
   eliminate(a, why, dir) {
@@ -3846,6 +3852,18 @@ const FACTS_GORDON_STORY = true;   // deck B (Gordon's own Sin City story) is ap
 // simulation (tools: sim by round, FINAL BOSS win rate measured per opponent); Phase 1 found the catch-first and power-arm
 // profiles crushed FINAL BOSS early, so the easy pools sit well below the defaults.
 const WK_OFF = {1: -0.2, 2: -0.16, 3: -0.15, 4: -0.12, 5: -0.1, 6: -0.1, 7: -0.12, 8: -0.12, 9: -0.11, 10: -0.07, 11: -0.09, 12: -0.04, 13: -0.08, 14: -0.06, 15: -0.02, 16: -0.04};
+const POST_KEY = 'fbg-post-v1';
+const POST_PRI = { double: 5, save: 4, catchBack: 3, catch: 2, out: 1 };
+// Coach Fiore's next steps: each one is a rule the game enforces (RULES, the title card), never a diagnosis of the player
+const FIORE_STEPS = [
+  'Catch, then answer right away: a catch puts the thrower out and brings your next teammate back in.',
+  'When a ball pops off a teammate, go get it. Catch it before the floor and your teammate stays in.',
+  'Carry the ball past your attack line before you throw, and rush only the balls on your right.',
+  'Throw on dash steps 4 to 7 for a power shot.',
+  'Hold a ball to block: a ball in your hands can stop a throw.',
+];
+// Commissioner Jake Mason's sportsmanship lines (dot's brief): encouragement, never a claim that sportsmanship was measured
+const JAKE_LINES = ['Big respect for every player. Let\'s keep it kind!', 'Win or lose, there\'s room for a fresh start.', 'Make room to celebrate each other.', 'Take a bow, take a breath, and bring kindness next round!'];
 const WK_KEY = 'fbg-weekend-v1';
 const SUN_ROUNDS = ['WINNERS ROUND 1', 'WINNERS QUARTERFINAL', 'WINNERS SEMIFINAL', 'WINNERS FINAL', 'GRAND FINAL'];
 function wkTeam(id) { return id === 'glitches' ? GLITCHES_WK : (WK_TEAMS.find(t => t.id === id) || null); }
@@ -4443,6 +4461,101 @@ Object.assign(Game.prototype, {
 
 
 Object.assign(Game.prototype, {
+
+  // ------------------------------------------------ post-match: Coach Nina Fiore's card (dot's brief, Studio thread uids 849/850, 2026-10-26)
+  // Every line comes from a recorded event or a recorded team total; nothing is inferred. Personal lines use only events whose actor
+  // the human controlled (you); team totals are labeled as the team's. Event priority for the highlight: double out, save,
+  // catch that brought a teammate back, other catch, out; ties go to the earliest event, then the lowest id.
+  mev(kind, a, x) {
+    if (!this.mlog || this.over) return;
+    this.mlog.push(Object.assign({ id: ++this.mseq, kind, t: this.frame, game: this.gameNo || 1, actor: a ? a.name : '', num: a ? a.num : '', team: a ? a.team : 0, you: false }, x || {}));
+  },
+  postCount(bump) {
+    // completed matches, stored per browser; without storage the scouting note stays off (no reliable counter)
+    let st = null; try { st = JSON.parse(localStorage.getItem(POST_KEY) || 'null') || { n: 0, scoutAt: 0 }; } catch (e) { st = null; }
+    if (!st) { this._postMem = (this._postMem || 0) + (bump ? 1 : 0); return { n: this._postMem, scoutAt: 0, ok: false }; }
+    if (bump) { st.n = (st.n || 0) + 1; try { localStorage.setItem(POST_KEY, JSON.stringify(st)); } catch (e) { } }
+    st.ok = true; return st;
+  },
+  postSaveScout(n) { try { const st = JSON.parse(localStorage.getItem(POST_KEY) || 'null') || { n }; st.scoutAt = n; localStorage.setItem(POST_KEY, JSON.stringify(st)); } catch (e) { } },
+  postTop(L) { const P = POST_PRI; return L.slice().sort((a, b) => (P[b.kind] || 0) - (P[a.kind] || 0) || a.t - b.t || a.id - b.id)[0] || null; },
+  postSay(e) {
+    // one recorded event, said plainly: who, what, which game. No replay, no intent, no "match-deciding".
+    const g = 'Game ' + e.game + ': ', v = e.victims || [];
+    if (e.kind === 'double') return g + 'your throw put ' + v.join(' and ') + ' out together.';
+    if (e.kind === 'save') return g + 'you caught a deflection before the floor, so ' + ((e.saved || []).join(' and ') || 'your teammate') + ' stayed in' + (e.out ? ' and ' + e.out + ' was out.' : '.');
+    if (e.kind === 'catchBack') return g + 'your catch put ' + e.out + ' out and brought ' + e.back + ' back in.';
+    if (e.kind === 'catch') return g + 'your catch put ' + e.out + ' out.';
+    return g + 'your throw put ' + (v[0] || 'a player') + ' out.';
+  },
+  buildPost(result) {
+    const L = (this.mlog || []).slice(), mine = L.filter(e => e.you && e.team === 0), s = this.stats || {}, win = !!(result && result.win);
+    const cnt = (k) => mine.filter(e => e.kind === k).length, plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
+    const ids = new Set(L.map(e => e.id)); const dupFree = ids.size === L.length;
+    const st = this.postCount(true), n = st.n;
+    const welcome = win ? 'Great match. Here is what I saw.' : 'Good fight out there. Here is what I saw.';
+    // one evidenced strength: personal first, then the team's recorded totals, then the no-data line
+    const backs = cnt('catchBack'), saves = cnt('save'), dbl = cnt('double'), catches = backs + cnt('catch') + saves, outs = cnt('out') + dbl;
+    let strength = '', basis = 'none';
+    if (backs) { strength = 'You brought ' + (backs === 1 ? 'a teammate' : plural(backs, 'teammate', 'teammates')) + ' back in. That contribution matters.'; basis = 'you'; }
+    else if (saves) { strength = 'You made ' + plural(saves, 'save', 'saves') + ' off a teammate\'s deflection. That kept people in the game.'; basis = 'you'; }
+    else if (dbl) { strength = 'You put two players out with one throw' + (dbl > 1 ? ', ' + dbl + ' times' : '') + '.'; basis = 'you'; }
+    else if (catches) { strength = 'Your ' + plural(catches, 'catch', 'catches') + ' count.'; basis = 'you'; }
+    else if (outs) { strength = 'Your throws put ' + plural(outs, 'player', 'players') + ' out.'; basis = 'you'; }
+    else if (s.backIn) { strength = 'Your team brought ' + plural(s.backIn, 'teammate', 'teammates') + ' back in. That contribution matters.'; basis = 'team'; }
+    else if (s.catches) { strength = 'Your team made ' + plural(s.catches, 'catch', 'catches') + '.'; basis = 'team'; }
+    else if (s.kos) { strength = 'Your team put ' + plural(s.kos, 'player', 'players') + ' out.'; basis = 'team'; }
+    if (!strength) strength = 'One result doesn\'t define you. Let\'s focus on your next opportunity.';
+    else if (!win) strength = 'A tough result, but ' + strength.replace(/ That contribution matters\.$/, '').replace(/^Your team /, 'your team ').replace(/^Your /, 'your ').replace(/^You /, 'you ').replace(/ count\.$/, ' still count.');
+    // the highlight: a recorded personal event, or the team's recorded totals
+    const top = this.postTop(mine);
+    let hlHead = 'Your Match Highlight', hl = '';
+    if (top) { hlHead = 'Your Play of the Match'; hl = this.postSay(top); }
+    else {
+      const parts = []; if (s.catches) parts.push(plural(s.catches, 'catch', 'catches')); if (s.backIn) parts.push(plural(s.backIn, 'teammate', 'teammates') + ' back in'); if (s.saves) parts.push(plural(s.saves, 'save', 'saves')); if (s.kos) parts.push(plural(s.kos, 'out', 'outs'));
+      hl = parts.length ? 'Your team: ' + parts.join(', ') + '.' : 'No highlights were recorded this match. The next one is a fresh start.';
+    }
+    // one next step: the confirmed next opponent's authored tell and counter, or a rules-checked Fiore instruction
+    let next = '', nextKind = 'fiore';
+    const w = this.wkMatch ? this.wk : null, ni = w && !w.done ? this.wkInfo(w) : null, t = ni ? wkTeam(ni.opp) : null;
+    if (t) {
+      const ab = (t.ab || [])[0]; nextKind = 'scout';
+      next = 'Next up: ' + t.name + '. ' + (ab && ab.tell && ab.counter ? 'Watch for ' + ab.name + ': ' + ab.tell + ' ' + ab.counter : (t.scout || ''));
+    } else next = FIORE_STEPS[n % FIORE_STEPS.length];
+    // Coach Fiore's playful scouting note: fiction only. Rule: from the 5th completed match on, 5 matches apart, a win with at least
+    // 3 of your own recorded plays including a double out, a save or a catch that brought a teammate back.
+    const exceptional = win && mine.length >= 3 && mine.some(e => e.kind === 'double' || e.kind === 'save' || e.kind === 'catchBack');
+    const scout = !!(st.ok && n >= 5 && (!st.scoutAt || n - st.scoutAt >= 5) && exceptional && top);
+    if (scout) this.postSaveScout(n);
+    // Commissioner Jake Mason: every third completed match, never on a scouting moment
+    const jake = !scout && n > 0 && n % 3 === 0;
+    return { n, win, welcome, strength, basis, hlHead, hl, next, nextKind, scout, scoutText: scout ? 'Your own recorded plays: ' + [[saves, 'save', 'saves'], [backs, 'catch that brought a teammate back', 'catches that brought teammates back'], [dbl, 'double out', 'double outs'], [cnt('catch'), 'other catch', 'other catches'], [cnt('out'), 'out', 'outs']].filter(x => x[0]).map(x => plural(x[0], x[1], x[2])).join(', ') + '.' : '', scoutGoal: FIORE_STEPS[(n + 1) % FIORE_STEPS.length],
+      jake, jakeLine: JAKE_LINES[Math.floor(n / 3) % JAKE_LINES.length], events: L.length, mine: mine.length, dupFree, top: top ? top.id : null, seen: false };
+  },
+  showPost() {
+    const p = this.pm, art = (k) => assetURL(this.base, 'art/' + k);
+    const jakeMedia = this.rm
+      ? `<img class="fbg-jake-art" src="${art('commissioner-jake-480.webp')}" alt="Commissioner Jake Mason, illustrated, smiling after a bow" width="240" height="320">`
+      : `<video class="fbg-jake-art" muted playsinline autoplay preload="auto" poster="${art('commissioner-jake-480.webp')}" width="240" height="320" aria-label="Commissioner Jake Mason, illustrated, does a small two-step, opens his palms in welcome and bows"><source src="${art('commissioner-jake-dance.webm')}" type="video/webm"><source src="${art('commissioner-jake-dance.mp4')}" type="video/mp4"></video>`;
+    this.$.card.innerHTML = `<div class="fbg-post${this.rm ? ' still' : ''}" role="group" aria-labelledby="fbg-post-h">
+      <div class="fbg-post-top"><img class="fbg-post-nina" src="${art('coach-nina-256.webp')}" alt="Coach Nina Fiore, illustrated" width="96" height="96">
+        <div><p class="fbg-post-kick">COACH NINA FIORE</p><h2 id="fbg-post-h">${esc(p.welcome)}</h2></div></div>
+      <div class="fbg-post-body" id="fbg-post-body">
+        <section class="fbg-post-s fbg-post-str"><h3>What went well</h3><p>${esc(p.strength)}</p></section>
+        <section class="fbg-post-s fbg-post-hl"><h3>${esc(p.hlHead)}</h3><p>${esc(p.hl)}</p></section>
+        <section class="fbg-post-s fbg-post-next"><h3>${p.nextKind === 'scout' ? 'Your next step: the scout' : 'Your next step'}</h3><p>${esc(p.next)}</p></section>
+        ${p.scout ? `<section class="fbg-post-s fbg-post-scout"><h3>Coach Fiore's Playful Scouting Note</h3><p class="fbg-post-disc">Fictional USA-level recognition, not official scouting, affiliation or selection.</p><p>${esc(p.scoutText)} That looked USA-level to me. Development goal: ${esc(p.scoutGoal)}</p></section>` : ''}
+        ${p.jake ? `<section class="fbg-post-s fbg-post-jake">${jakeMedia}<div><h3>Commissioner Jake Mason</h3><p>${esc(p.jakeLine)}</p></div></section>` : ''}
+      </div>
+      <div class="fbg-row"><button class="fbg-btn fbg-go fbg-post-go" type="button" aria-describedby="fbg-post-h fbg-post-body">SEE RESULTS</button></div></div>`;
+    this.$.card.classList.remove('is-wk');
+    const go = () => { if (this.phase !== 'result' || !this.pm || this.pm.seen) return; this.pm.seen = true; this.showResults(); };
+    this.$.card.querySelector('.fbg-post-go').addEventListener('click', go);
+    this.$.card.querySelector('.fbg-post').addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); go(); } });
+    const v = this.$.card.querySelector('video.fbg-jake-art'); if (v) { v.addEventListener('error', () => { const i = document.createElement('img'); i.className = 'fbg-jake-art'; i.src = art('commissioner-jake-480.webp'); i.alt = 'Commissioner Jake Mason, illustrated, smiling after a bow'; v.replaceWith(i); }, true); try { const pr = v.play(); if (pr && pr.catch) pr.catch(() => { }); } catch (e) { } }
+    this.$.ov.hidden = false;
+    const b = this.$.card.querySelector('.fbg-post-go'); if (b) b.focus({ preventScroll: true });
+  },
   // ------------------------------------------------ Coach Nina Fiore's plays (FINAL BOSS, STRATEGY.md "Nina Fiore coaching note", 2026-10-26)
   ninaKey(foes) {
     // the key player: the best hands and the biggest arm on the floor (the star counts extra)
