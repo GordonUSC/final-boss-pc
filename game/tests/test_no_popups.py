@@ -38,7 +38,7 @@ INIT = """
   EventTarget.prototype.addEventListener = function (t, f, o) { if (this === document && T.has(t) && cap(o) && !live.has(t + '|' + (f && f.__id || (f.__id = Math.random())))) { live.add(t + '|' + f.__id); window.__guards = live.size; } return add.call(this, t, f, o); };
   EventTarget.prototype.removeEventListener = function (t, f, o) { if (this === document && T.has(t) && cap(o) && f && f.__id) { live.delete(t + '|' + f.__id); window.__guards = live.size; } return rem.call(this, t, f, o); };
   window.__edges = [];
-  const rec = (e) => { const g = window.FBGame && FBGame._game && FBGame._game(); if (!g || !g.edge) return; for (const k of ['pass', 'throw', 'catch']) if (g.edge[k]) window.__edges.push(k + ':' + e.type + (e.shiftKey ? '+shift' : '')); };
+  const rec = (e) => { const g = window.FBGame && FBGame._game && FBGame._game(); if (!g || !g.edge) return; for (const k of ['pass', 'throw', 'catch']) if (g.edge[k]) window.__edges.push(k + ':' + e.type + (e.shiftKey ? '+shift' : '') + (e.type === 'keydown' ? ':' + e.key : '')); };
   window.__rec = () => { add.call(window, 'keydown', rec); add.call(window, 'mousedown', rec); };   // added after the game's own listeners so it sees their edges
 })();
 """
@@ -55,7 +55,7 @@ try:
             pg.on('framenavigated', lambda f: navs.append(f.url) if f == pg.main_frame else None)
             r = {'guards0': pg.evaluate('window.__guards')}
             # first frame after START: Shift+click the chip spot and a corner right away
-            pg.click('.fbg-card .fbg-quick'); pg.keyboard.down('Shift'); pg.mouse.click(*CHIP); pg.mouse.click(W - 40, H - 30); pg.keyboard.up('Shift')
+            pg.click('.fbg-card .fbg-quick', no_wait_after=True, timeout=90000); pg.keyboard.down('Shift'); pg.mouse.click(*CHIP); pg.mouse.click(W - 40, H - 30); pg.keyboard.up('Shift')
             seen = []
             for i in range(300):
                 ph = pg.evaluate(GO); seen.append(ph)
@@ -76,7 +76,7 @@ try:
                 pg.keyboard.press('k'); pg.wait_for_timeout(120)
             ed = pg.evaluate('window.__edges'); r['edges'] = ed
             ev = 'mousedown' if NATIVE else 'keydown'
-            r['inputOK'] = any(x.startswith('throw:' + ev) for x in ed) and any(x.startswith('catch:' + ev) for x in ed) and ('throw:%s+shift' % ev) in ed and sum(x.startswith('pass:keydown') for x in ed) >= 2
+            r['inputOK'] = any(x.startswith('throw:' + ev) for x in ed) and any(x.startswith('catch:' + ev) for x in ed) and any(x.startswith('throw:%s+shift' % ev) for x in ed) and 'pass:keydown:e' in ed and any(x.startswith('pass:keydown+shift:Shift') for x in ed)
             # modified clicks everywhere during play
             clicks = 0
             for mod in ('Shift', 'Control', 'Meta'):
@@ -88,10 +88,10 @@ try:
             r['clicks'] = clicks
             # paused: the chip is visible, but a Shift+click on it is refused
             pg.evaluate('FBGame.pause()')
-            try: pg.wait_for_function("!document.getElementById('home').hidden", timeout=3000)
+            try: pg.wait_for_function("(() => { const h = document.getElementById('home'); return !!h && !h.hidden; })()", timeout=3000)
             except Exception: pass
             r['pauseState'] = pg.evaluate('FBGame.state().paused')
-            r['chipOnPause'] = pg.evaluate("!document.getElementById('home').hidden")
+            r['chipOnPause'] = pg.evaluate("(() => { const h = document.getElementById('home'); return !!h && !h.hidden; })()")
             pg.keyboard.down('Shift'); pg.mouse.click(*CHIP); pg.keyboard.up('Shift'); pg.wait_for_timeout(300)
             # first frame after RESUME
             pg.evaluate('FBGame.resume()'); pg.keyboard.down('Shift'); pg.mouse.click(*CHIP); pg.mouse.click(W - 5, H - 5); pg.keyboard.up('Shift')

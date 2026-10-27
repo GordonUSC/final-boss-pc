@@ -1,0 +1,53 @@
+{
+ "chromium": {
+  "guards0": 0,
+  "reachedPlay": false,
+  "edges": [
+   "pass:keydown+shift",
+   "pass:keydown+shift"
+  ],
+  "inputOK": false,
+  "clicks": 42,
+  "pauseState": true,
+  "chipOnPause": true,
+  "phaseEnd": "brief",
+  "guardsLive": 0,
+  "guardsAfterDestroy": 0,
+  "guardsAfterRemount": 0,
+  "listenersOK": false,
+  "popups": [
+   "about:blank",
+   "about:blank"
+  ],
+  "pages": 3,
+  "mainNavs": [],
+  "mainUrl": true,
+  "errors": []
+ },
+ "webkit": {
+  "guards0": 0,
+  "reachedPlay": true,
+  "edges": [
+   "pass:keydown+shift",
+   "throw:mousedown",
+   "pass:keydown+shift",
+   "throw:mousedown+shift",
+   "catch:mousedown"
+  ],
+  "inputOK": true,
+  "clicks": 42,
+  "pauseState": true,
+  "chipOnPause": true,
+  "phaseEnd": "play",
+  "guardsLive": 0,
+  "guardsAfterDestroy": 0,
+  "guardsAfterRemount": 0,
+  "listenersOK": false,
+  "popups": [],
+  "pages": 1,
+  "mainNavs": [],
+  "mainUrl": true,
+  "errors": []
+ }
+}
+FAIL chromium, webkit @ {"edition": "pc", "commit": "c53f585", "v": "pc-nina-20261026"}
