@@ -34,7 +34,7 @@ LOGIC = r"""async () => {
   out.visibleInPlay = O.every(a => a.root.visible);
   const foe = g.inPlayers(1)[0]; g.eliminate(foe, 'hit'); out.signal = O.some(a => a.callT > 0);
   // a game break: rotateSigns twice gives exactly one thank-you moment
-  const q0 = g.qa().filter(x => x.ev === 'staffThanks').length; g.rotateSigns(); g.rotateSigns(); const q1 = g.qa().filter(x => x.ev === 'staffThanks').length;
+  const q0 = FBGame.qa().filter(x => x.ev === 'staffThanks').length; g.rotateSigns(); g.rotateSigns(); const q1 = FBGame.qa().filter(x => x.ev === 'staffThanks').length;
   out.thanksOncePerTwo = q1 - q0 === 1;
   g.staffThanks(); out.signsThank = g.signs.filter(sg => /^\*a\d$/.test(sg.def.who)).every(sg => sg.def.t.join(' ') === 'THANK YOU STAFF!'); out.wave = g.staffWaveT > 0;
   return out;
