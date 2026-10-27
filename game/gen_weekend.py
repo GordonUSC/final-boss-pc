@@ -64,7 +64,7 @@ CARD_FIX = {
 # 2026-10-26 the six reads were re-recorded to match the corrected text (ElevenLabs David, eleven_multilingual_v2, about -17.2 LUFS like the rest)
 VO_STALE = set()
 # 2026-10-27 Gordon: thank the Sin City staff. General wording, no numbers. VO: ElevenLabs David, eleven_multilingual_v2, matched to the deck level
-EXTRA_CARDS = [{'id': 'S01', 'deck': 'A', 'layout': 'dyk', 'head': 'Thank you, Staff!', 'text': 'Behind every Sin City weekend is a staff who plan the brackets, run the courts and welcome everyone in. Gratitude is the attitude.', 'spot': 'staff-thanks', 'vo': 'S01', 'status': 'GORDON-OK', 'voSecs': 7.99}]
+EXTRA_CARDS = [{'id': 'S01', 'deck': 'A', 'layout': 'dyk', 'head': 'Thank you, Staff!', 'text': 'Thank you, Alexandra Bustamante, Jamell Dorton, Casey Flammond, Val Horton, Jake Mason, Anh Phan, Brendan Tickner, Chris Yeh and the whole Sin City Dodgeball staff. They plan the brackets, run the courts and welcome everyone in.', 'spot': 'staff-thanks', 'vo': 'S01', 'status': 'GORDON-OK', 'voSecs': 12.17}]
 
 
 def emblem_only(svg):

@@ -823,3 +823,4 @@ html.fbg-lock, html.fbg-lock body{overflow:hidden}
 .fbg-cr-list b{font:700 18px/1.05 var(--fbg-disp); color:var(--fbg-gold)}
 .fbg-cr-list span{font:500 13px/1.2 var(--fbg-ui); color:var(--fbg-ash)}
 @media (max-height:500px){ .fbg-staffwalk{bottom:6%} .fbg-staffwalk b{font-size:22px} .fbg-staffwalk span{font-size:13px} .fbg-cr-view{max-height:48vh} }
+.fbg-cr-names{font:600 16px/1.45 var(--fbg-ui); color:var(--fbg-bone); margin:12px auto 4px; max-width:540px}

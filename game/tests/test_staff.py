@@ -3,7 +3,7 @@
   - every other game break the crowd's allusion signs read THANK YOU STAFF!, the officials wave, a brush callout says so;
   - Sunday finals (winners final, grand final): the staff walk-out ribbon shows, the officials bow, Enter or Skip dismisses it at once; reduced motion is still;
   - fact card S01 exists, leads the session deck, its spot art and VO load (HTTP 200), wording has no numbers and no dashes;
-  - the credits roll opens from the title, shows 8 staff with Jake Mason named once and 7 as Sin City Staff, Escape returns to the title,
+  - the credits roll opens from the title, shows 8 staff with all 8 faces named as Gordon mapped them and all 8 names (alphabetical) in the thank-you line, Escape returns to the title,
     reduced motion = no roll animation; nothing on screen carries a dash.
 Receipts carry the commit and the ?v tag. Run: python3 tests/test_staff.py [shots_dir] (PC: python3 game/tests/test_staff.py)"""
 import functools, json, threading, sys, subprocess, re
@@ -40,6 +40,10 @@ LOGIC = r"""async () => {
   return out;
 }"""
 
+# Gordon 10/27: names exactly as given, alphabetical by last name in the thank-you line; only faces Gordon mapped carry a name
+# (photo order, left to right). Gordon mapped all eight.
+NAMED_FACES = ['Jamell Dorton', 'Casey Flammond', 'Jake Mason', 'Brendan Tickner', 'Alexandra Bustamante', 'Chris Yeh', 'Anh Phan', 'Val Horton']
+THANKS_LINE = 'With thanks to Alexandra Bustamante, Jamell Dorton, Casey Flammond, Val Horton, Jake Mason, Anh Phan, Brendan Tickner, Chris Yeh and the whole Sin City Dodgeball staff.'
 res = {}; bad = []
 try:
     with sync_playwright() as p:
@@ -58,7 +62,7 @@ try:
                 q.evaluate("document.querySelector('.fbg-card .fbg-staffb').click()"); q.wait_for_timeout(2500 if not rm else 400)
                 c = q.evaluate("""(()=>{const L=[...document.querySelectorAll('.fbg-cr-list li')]; const names=L.map(li=>li.querySelector('b').textContent);
                   const roll=document.querySelector('.fbg-cr-roll'); const done=document.querySelector('.fbg-cr-done'); const r=done.getBoundingClientRect();
-                  return {n:L.length, jake:names.filter(x=>x==='Jake Mason').length, staff:names.filter(x=>x==='Sin City Staff').length, anim:getComputedStyle(roll).animationName,
+                  const para=(document.querySelector('.fbg-cr-names')||{}).textContent||''; return {names, para, n:L.length, jake:names.filter(x=>x==='Jake Mason').length, staff:names.filter(x=>x==='Sin City Staff').length, anim:getComputedStyle(roll).animationName,
                     imgs:[...document.querySelectorAll('.fbg-credits img')].every(i=>i.complete&&i.naturalWidth>0), focus:document.activeElement===done,
                     doneVisible:r.bottom<=innerHeight+1&&r.top>=0, dashes:/[\\u2013\\u2014]/.test(document.querySelector('.fbg-credits').innerText),
                     logo:/WeHo|WEHO/.test(document.querySelector('.fbg-credits').innerText)}})()""")
@@ -86,9 +90,9 @@ try:
             r['errors'] = errs[:3]; res[eng] = r; b.close()
             for tag in ('1920', 'SEL', 'rm'):
                 u = r[tag]; c = u['credits']; f = u['fact']; w = u['walk']
-                if not (u['staffButton'] and c['n'] == 8 and c['jake'] == 1 and c['staff'] == 7 and c['imgs'] and c['focus'] and c['doneVisible'] and not c['dashes'] and not c['logo'] and u['backToTitle']): bad.append(f'{eng}:{tag}:credits')
+                if not (u['staffButton'] and c['n'] == 8 and c['jake'] == 1 and c['staff'] == 0 and c['names'] == NAMED_FACES and c['para'] == THANKS_LINE and c['imgs'] and c['focus'] and c['doneVisible'] and not c['dashes'] and not c['logo'] and u['backToTitle']): bad.append(f'{eng}:{tag}:credits')
                 if (tag == 'rm') != (c['anim'] in ('none', '')): bad.append(f'{eng}:{tag}:creditsMotion')
-                if not (f['first'] == 'S01' and f['spot'] == 200 and f['vo'] == 200 and not re.search(r'\d|[–—]', f['text'])): bad.append(f'{eng}:{tag}:fact')
+                if not (f['first'] == 'S01' and f['spot'] == 200 and f['vo'] == 200 and not re.search(r'\d|[–—]', f['text']) and all(n in f['text'] for n in ('Alexandra Bustamante', 'Jamell Dorton', 'Casey Flammond', 'Val Horton', 'Jake Mason', 'Anh Phan', 'Brendan Tickner', 'Chris Yeh'))): bad.append(f'{eng}:{tag}:fact')
                 if not (w['shown'] and w['bow'] and w['inView'] and w['skipped'] and not w['dashes'] and w['still'] == (tag == 'rm')): bad.append(f'{eng}:{tag}:walkout')
             L = r['1920']['logic']
             for k in ('notInTeams', 'offCourt', 'jakeHead', 'visibleInPlay', 'signal', 'thanksOncePerTwo', 'signsThank', 'wave'):
