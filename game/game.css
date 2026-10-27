@@ -778,3 +778,20 @@ html.fbg-lock, html.fbg-lock body{overflow:hidden}
 .fbg-post-nina{width:84px; height:84px}
 .fbg-jake-art{width:72px; height:96px}
 .fbg-post h2{text-shadow:2px 2px 0 var(--fbg-red),4px 4px 0 #2a0f48}
+/* the card never lets the button cover a section: header and button stay put, the sections scroll between them (main 10/27, SE landscape) */
+.fbg-card:has(.fbg-post){display:flex; flex-direction:column; overflow:hidden}
+.fbg-post{display:flex; flex-direction:column; flex:1 1 auto; min-height:0; width:100%}
+.fbg-post-top{flex:none}
+.fbg-post-body{flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin}
+.fbg-post .fbg-row{position:static; flex:none; margin:8px 0 0; padding:0; background:none}
+.fbg-jake-art{object-position:50% 20%}
+@media (max-height:500px){
+  .fbg-post-top{gap:10px; margin-bottom:2px}
+  .fbg-post-nina{width:48px; height:48px; border-width:2px}
+  .fbg-post-kick{font-size:11px}
+  .fbg-post h2{font-size:22px}
+  .fbg-post-body{margin:6px 0 4px}
+  .fbg-post .fbg-row{margin-top:4px}
+  .fbg-post .fbg-post-go{min-height:44px}
+}
+.fbg-post-body.more{-webkit-mask-image:linear-gradient(180deg,#000 calc(100% - 28px),transparent); mask-image:linear-gradient(180deg,#000 calc(100% - 28px),transparent)}

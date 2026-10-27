@@ -4535,7 +4535,7 @@ Object.assign(Game.prototype, {
   showPost() {
     const p = this.pm, art = (k) => assetURL(this.base, 'art/' + k);
     const jakeMedia = this.rm
-      ? `<img class="fbg-jake-art" src="${art('commissioner-jake-480.webp')}" alt="Commissioner Jake Mason, illustrated, smiling after a bow" width="240" height="320">`
+      ? `<img class="fbg-jake-art" src="${art('commissioner-jake-480.webp')}" alt="Commissioner Jake Mason, illustrated, smiling with open palms" width="240" height="320">`
       : `<video class="fbg-jake-art" muted playsinline autoplay preload="auto" poster="${art('commissioner-jake-480.webp')}" width="240" height="320" aria-label="Commissioner Jake Mason, illustrated, does a small two-step, opens his palms in welcome and bows"><source src="${art('commissioner-jake-dance.webm')}" type="video/webm"><source src="${art('commissioner-jake-dance.mp4')}" type="video/mp4"></video>`;
     this.$.card.innerHTML = `<div class="fbg-post${this.rm ? ' still' : ''}" role="group" aria-labelledby="fbg-post-h">
       <div class="fbg-post-top"><img class="fbg-post-nina" src="${art('coach-nina-256.webp')}" alt="Coach Nina Fiore, illustrated" width="96" height="96">
@@ -4552,7 +4552,11 @@ Object.assign(Game.prototype, {
     const go = () => { if (this.phase !== 'result' || !this.pm || this.pm.seen) return; this.pm.seen = true; this.showResults(); };
     this.$.card.querySelector('.fbg-post-go').addEventListener('click', go);
     this.$.card.querySelector('.fbg-post').addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); go(); } });
-    const v = this.$.card.querySelector('video.fbg-jake-art'); if (v) { v.addEventListener('error', () => { const i = document.createElement('img'); i.className = 'fbg-jake-art'; i.src = art('commissioner-jake-480.webp'); i.alt = 'Commissioner Jake Mason, illustrated, smiling after a bow'; v.replaceWith(i); }, true); try { const pr = v.play(); if (pr && pr.catch) pr.catch(() => { }); } catch (e) { } }
+    const v = this.$.card.querySelector('video.fbg-jake-art'); if (v) { v.addEventListener('ended', () => { const i = document.createElement('img'); i.className = 'fbg-jake-art'; i.src = art('commissioner-jake-480.webp'); i.alt = 'Commissioner Jake Mason, illustrated, smiling with open palms'; if (v.isConnected) v.replaceWith(i); });   // after the bow he settles on a face-forward still
+      v.addEventListener('error', () => { const i = document.createElement('img'); i.className = 'fbg-jake-art'; i.src = art('commissioner-jake-480.webp'); i.alt = 'Commissioner Jake Mason, illustrated, smiling with open palms'; v.replaceWith(i); }, true); try { const pr = v.play(); if (pr && pr.catch) pr.catch(() => { }); } catch (e) { } }
+    // when the sections scroll (small landscape phones), a soft fade at the bottom says there is more; it lifts at the end
+    const bd = this.$.card.querySelector('.fbg-post-body'), more = () => bd.classList.toggle('more', bd.scrollTop + bd.clientHeight < bd.scrollHeight - 2);
+    bd.addEventListener('scroll', more, { passive: true }); requestAnimationFrame(more); setTimeout(more, 2600);
     this.$.ov.hidden = false;
     const b = this.$.card.querySelector('.fbg-post-go'); if (b) b.focus({ preventScroll: true });
   },

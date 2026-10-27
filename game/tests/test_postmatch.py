@@ -80,10 +80,10 @@ LOGIC = r"""() => {
 
 UI = r"""async (mode) => {
   const g = FBGame._game(), out = {};
-  localStorage.setItem('fbg-post-v1', JSON.stringify({ n: mode === 'scout' ? 4 : 2, scoutAt: 0 }));   // the 3rd match: Jake; the 5th, exceptional: the scouting note
+  const SC = mode === 'scout' || mode === 'SELscout'; localStorage.setItem('fbg-post-v1', JSON.stringify({ n: SC ? 4 : 2, scoutAt: 0 }));   // the 3rd match: Jake; the 5th, exceptional: the scouting note
   g.wkMatch = null; g.start(); for (let i = 0; i < 400 && g.phase !== 'play'; i++) { if (g.phase === 'brief') g.briefGo = true; if (g.phase === 'rps' && g.rpsPick == null) g.rpsPick = 0; await new Promise(r => setTimeout(r, 30)); }
   g.mlog.push({ id: ++g.mseq, kind: 'catchBack', t: g.frame, game: 1, actor: g.user.name, num: g.user.num, team: 0, you: true, out: 'CORAL', back: 'DUKE' });
-  if (mode === 'scout') g.mlog.push({ id: ++g.mseq, kind: 'save', t: g.frame + 5, game: 2, actor: g.user.name, num: g.user.num, team: 0, you: true, saved: ['ROSA'], out: 'SCALES' }, { id: ++g.mseq, kind: 'out', t: g.frame + 9, game: 2, actor: g.user.name, num: g.user.num, team: 0, you: true, victims: ['PEARL'] });
+  if (SC) g.mlog.push({ id: ++g.mseq, kind: 'save', t: g.frame + 5, game: 2, actor: g.user.name, num: g.user.num, team: 0, you: true, saved: ['ROSA'], out: 'SCALES' }, { id: ++g.mseq, kind: 'out', t: g.frame + 9, game: 2, actor: g.user.name, num: g.user.num, team: 0, you: true, victims: ['PEARL'] });
   g.endMatch({ win: true, msg: 'Test win.' }); g.finishHandshake();
   const post = g.$.card.querySelector('.fbg-post');
   out.postShown = !!post; out.focusOnGo = document.activeElement && document.activeElement.classList.contains('fbg-post-go');
@@ -94,11 +94,24 @@ UI = r"""async (mode) => {
   const r = (el) => el && el.getBoundingClientRect(); const go = g.$.card.querySelector('.fbg-post-go'), gr = r(go);
   out.goVisible = !!gr && gr.bottom <= innerHeight + 1 && gr.top >= 0 && gr.width >= 44 && gr.height >= 44;
   out.noHScroll = document.documentElement.scrollWidth <= innerWidth + 1;
+  // main 10/27: every section must be fully readable above the button, never covered or clipped. Scroll each one into view inside the body.
+  const body = g.$.card.querySelector('.fbg-post-body'), secs = [...g.$.card.querySelectorAll('.fbg-post-s')], bad = [];
+  const br = body.getBoundingClientRect(); if (br.bottom > gr.top + 0.5) bad.push('body under button');
+  for (const s of secs) { s.style.animation = 'none'; }
+  for (const s of secs) {
+    s.scrollIntoView({ block: 'nearest' }); const b = body.getBoundingClientRect(), q = s.getBoundingClientRect(), g2 = go.getBoundingClientRect();
+    const name = s.className.replace('fbg-post-s ', '');
+    if (q.height > b.height + 1) bad.push(name + ' taller than the body');
+    else if (q.top < b.top - 1 || q.bottom > b.bottom + 1) bad.push(name + ' clipped');
+    if (q.bottom > g2.top + 0.5 && q.top < g2.bottom && q.right > g2.left && q.left < g2.right && q.bottom <= b.bottom + 1 && q.top >= b.top - 1) bad.push(name + ' under button');
+  }
+  body.scrollTop = 0; out.sectionsReadable = bad.length === 0; out.sectionIssues = bad; out.sections = secs.length;
   return out;
 }"""
 UI2 = r"""() => {
   const g = FBGame._game(), out = {};
   const n0 = JSON.parse(localStorage.getItem('fbg-post-v1')).n;
+  out.jakeSettled = !g.$.card.querySelector('.fbg-post-jake') || !!g.$.card.querySelector('.fbg-post-jake img.fbg-jake-art');   // after the bow he settles on a face-forward still
   g.$.card.querySelector('.fbg-post').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
   out.resultsAfterEsc = !!g.$.card.querySelector('.fbg-res') && !g.$.card.querySelector('.fbg-post');
   g.showResults(); out.reopenNoPost = !g.$.card.querySelector('.fbg-post') && !!g.$.card.querySelector('.fbg-res');
@@ -114,13 +127,13 @@ try:
             pg = b.new_page(viewport={'width': 1280, 'height': 720}); pg.on('pageerror', lambda e: errs.append(str(e)))
             pg.add_init_script(f"try{{localStorage.setItem('fbg-edition','{ED}')}}catch(e){{}}")
             pg.goto(f'http://127.0.0.1:{srv.server_port}/play/', timeout=120000); pg.wait_for_function('window.FBGame && FBGame._game() && FBGame.state()', timeout=120000)
-            r = {'logic': pg.evaluate(LOGIC)}
-            for (tag, vw, vh, rm) in (('1920', 1920, 1080, False), ('SEL', 667, 375, False), ('rm', 1280, 720, True), ('scout', 1920, 1080, False)):
-                ctx = b.new_context(viewport={'width': vw, 'height': vh}, reduced_motion='reduce' if rm else 'no-preference', device_scale_factor=2 if tag == 'SEL' else 1)
+            r = {'logic': pg.evaluate(LOGIC)}; pg.close()   # one live game at a time keeps a loaded machine responsive
+            for (tag, vw, vh, rm) in (('1920', 1920, 1080, False), ('SEL', 667, 375, False), ('rm', 1280, 720, True), ('scout', 1920, 1080, False), ('P15L', 734, 343, False), ('SELscout', 667, 375, False)):
+                ctx = b.new_context(viewport={'width': vw, 'height': vh}, reduced_motion='reduce' if rm else 'no-preference', device_scale_factor=2 if tag in ('SEL', 'P15L', 'SELscout') else 1)
                 q = ctx.new_page(); q.on('pageerror', lambda e: errs.append(str(e)))
                 q.add_init_script(f"try{{localStorage.setItem('fbg-edition','{ED}')}}catch(e){{}}")
                 q.goto(f'http://127.0.0.1:{srv.server_port}/play/', timeout=120000); q.wait_for_function('window.FBGame && FBGame._game() && FBGame.state()', timeout=120000); q.wait_for_timeout(600)
-                u = q.evaluate(UI, tag); q.wait_for_timeout(3200)
+                print('case', eng, tag, flush=True); u = q.evaluate(UI, tag); q.wait_for_timeout(6000)
                 if OUT: OUT.mkdir(parents=True, exist_ok=True); q.screenshot(path=str(OUT / f'post-{ED}-{eng}-{tag}.png'))
                 u.update(q.evaluate(UI2)); u['text'] = u['text'][:400]; r[tag] = u; ctx.close()
             r['errors'] = errs[:3]; res[eng] = r; b.close()
@@ -129,14 +142,14 @@ try:
             for c in checks:
                 if not L.get(c): bad.append(f'{eng}:{c}')
             if not (r['scout'].get('scout') and r['scout'].get('disclaimer') and not r['scout'].get('jake')): bad.append(f'{eng}:scoutUI')
-            for tag in ('1920', 'SEL', 'rm', 'scout'):
+            for tag in ('1920', 'SEL', 'rm', 'scout', 'P15L', 'SELscout'):
                 u = r[tag]
-                for c in ('postShown', 'focusOnGo', 'goVisible', 'noHScroll', 'resultsAfterEsc', 'reopenNoPost', 'countOnce'):
+                for c in ('sectionsReadable', 'jakeSettled', 'postShown', 'focusOnGo', 'goVisible', 'noHScroll', 'resultsAfterEsc', 'reopenNoPost', 'countOnce'):
                     if not u.get(c): bad.append(f'{eng}:{tag}:{c}')
                 if u['dashes']: bad.append(f'{eng}:{tag}:dashes')
                 if tag == 'rm' and (not u['still'] or u['hasVideo'] or not u['hasJakeImg']): bad.append(f'{eng}:rm:still')
-                if tag != 'scout' and not u['jake']: bad.append(f'{eng}:{tag}:jake')
-                if tag in ('1920', 'SEL') and (u['still'] or not u['hasVideo']): bad.append(f'{eng}:{tag}:motion')
+                if tag not in ('scout', 'SELscout') and not u['jake']: bad.append(f'{eng}:{tag}:jake')
+                if tag in ('1920', 'SEL', 'P15L') and (u['still'] or not u['hasVideo']): bad.append(f'{eng}:{tag}:motion')
             if errs: bad.append(f'{eng}:errors')
     print('RECEIPT', json.dumps(receipt()))
     print(json.dumps(res, indent=1)[:9000])
