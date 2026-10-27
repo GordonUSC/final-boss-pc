@@ -4476,7 +4476,8 @@ Object.assign(Game.prototype, {
     const kit = kitFrom(['#141018', '#ff3fa1', '#ffc83d', '#7b34e6']);
     this.officials = STAFF_OFFICIALS.map((o, i) => {
       const a = new Athlete(this, { key: 'STAFF', num: '', look: o.look }, 0); a.drawKit(kit);
-      { const pal = Object.assign(a.palette(kit), { shorts: '#141018', sock: '#141018', band: '#141018', shoe: '#141018', shoeT: '#ffc83d' }); for (const gg of a.geos) paintGeo(gg, pal); }   // dark trousers, plain staff look a.offIdx = i; a.role = 'official'; a.active = false;
+      { const pal = Object.assign(a.palette(kit), { shorts: '#141018', sock: '#141018', band: '#141018', shoe: '#141018', shoeT: '#ffc83d' }); for (const gg of a.geos) paintGeo(gg, pal); }   // dark trousers, plain staff look
+      a.offIdx = i; a.role = 'official'; a.active = false;
       a.x = o.x; a.z = o.z; a.yaw = Math.atan2(-o.x * 0.35, -o.z); a.callT = 0; a.setExpr('happy'); a.staffName = o.name; return a;
     });
   },
