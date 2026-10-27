@@ -159,7 +159,7 @@ const SIGNS = [
   { t: ['COACH NINA', '#1'], who: 'FIORE' }, { t: ['NEW CHALLENGER', 'THAT\'S YOU!'], who: 'YOU' }, { t: ['HAWKINS 3', 'HYPE'], who: 'HAWKINS' },
   { t: ['BELLAMY 4', 'FINAL BOSS'], who: 'BELLAMY' }, { t: ['BELLAMY III', '#5'], who: 'BELLAMY III' }, { t: ['REED 6', 'ALL DAY'], who: 'REED' },
   { t: ['KRAMER 31', 'ARM CANNON'], who: 'KRAMER' }, { t: ['KETCHUM 83', 'GOLDEN BOY'], who: 'KETCHUM' }, { t: ['ALL HEART', 'no sting'], who: '*go' }, { t: ['PHASE TWO!'], who: '*p2' },
-  { t: ['CATCH =', 'BACK IN'], who: '*a0', style: 'bb' }, { t: ['FINAL', 'BOSS'], who: '*a1', style: 'gold' }, { t: ['COMEBACK'], who: '*a2', style: 'bb' }, { t: [''], who: '*opp0', style: 'opp' }, { t: [''], who: '*opp1', style: 'opp' },
+  { t: ['THANK YOU', 'STAFF!'], who: '*a0', style: 'bb' }, { t: ['FINAL', 'BOSS'], who: '*a1', style: 'gold' }, { t: ['COMEBACK'], who: '*a2', style: 'bb' }, { t: [''], who: '*opp0', style: 'opp' }, { t: [''], who: '*opp1', style: 'opp' },
 ];
 const CREST_FB = '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M6 6h36v20c0 9-8 15-18 18C14 41 6 35 6 26z" fill="var(--fbg-tb)" stroke="#ffc83d" stroke-width="3"/><path d="M13 30V17l6 6 5-9 5 9 6-6v13z" fill="#ffc83d" stroke="#3a1a00" stroke-width="1.5"/></svg>';
 const CREST_GL = '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M6 6h36v20c0 9-8 15-18 18C14 41 6 35 6 26z" fill="#17131f" stroke="#a6f23a" stroke-width="3"/><g fill="#a6f23a"><rect x="16" y="13" width="16" height="4"/><rect x="13" y="17" width="22" height="8"/><rect x="16" y="25" width="16" height="4"/><rect x="18" y="29" width="3" height="4"/><rect x="27" y="29" width="3" height="4"/></g><g fill="#17131f"><rect x="16" y="19" width="5" height="4"/><rect x="27" y="19" width="5" height="4"/></g></svg>';
@@ -3922,7 +3922,7 @@ const GLITCHES_WK = { id: 'glitches', name: 'THE GLITCHES', short: 'GLITCHES', l
   who: 'The final boss: a crew of corrupted sprites led by the GLITCH KING, the strongest player on the floor.', scout: 'Big arms, wandering eyes, a few slippery dodgers. When they are down to 3, the GLITCH KING powers up.',
   weak: { stat: 'none', text: 'No weakness. Phase two at 3 players left.', teaches: 'Everything this weekend taught you.' }, ab: [], signs: ['GAME OVER?', 'PHASE TWO!', 'NEW HIGH SCORE'], taunt: 'Insert coin to continue!' };
 // crowd allusions (STANDS.md, SAFE only, 3 words or fewer; Astra: no logos, no casino names, no HIGH ROLLER)
-const ALLUDE = [['CATCH =', 'BACK IN'], ['FINAL', 'BOSS'], ['COMEBACK'], ['NO STING'], ['HAND UP!'], ['20TH', 'ANNIVERSARY'], ['ALL IN'], ['HIT ME!']];   // Astra 10/26: the advertised anniversary, not a counted run
+const ALLUDE = [['THANK YOU', 'STAFF!'], ['CATCH =', 'BACK IN'], ['FINAL', 'BOSS'], ['COMEBACK'], ['NO STING'], ['HAND UP!'], ['20TH', 'ANNIVERSARY'], ['ALL IN'], ['HIT ME!']];   // Astra 10/26: the advertised anniversary, not a counted run
 // the arena marquee alludes to the weekend without printing the tournament's name (rectangular frame, never the welcome-sign silhouette)
 const MARQUEE = ['WELCOME TO THE FAMILY', '15 YEARS OF DODGEBALL'];
 const FACTS_GORDON_STORY = true;   // deck B (Gordon's own Sin City story) is approved by Gordon (relayed by main 2026-10-26)
