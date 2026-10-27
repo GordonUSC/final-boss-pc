@@ -128,7 +128,7 @@ function ruleIcon(k) {
   return `<svg viewBox="0 0 48 48" width="34" height="34" aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
 }
 const SIGNS = [
-  { t: ['GO FIORE', '#1'], who: 'FIORE' }, { t: ['ZABOKRITSKY', '2!'], who: 'ZABOKRITSKY' }, { t: ['HAWKINS 3', 'HYPE'], who: 'HAWKINS' },
+  { t: ['GO FIORE', '#1'], who: 'FIORE' }, { t: ['THANK YOU', 'STAFF!'], who: 'STAFF' }, { t: ['HAWKINS 3', 'HYPE'], who: 'HAWKINS' },
   { t: ['BELLAMY 4', 'FINAL BOSS'], who: 'BELLAMY' }, { t: ['BELLAMY III', '#5'], who: 'BELLAMY III' }, { t: ['REED 6', 'ALL DAY'], who: 'REED' },
   { t: ['KRAMER 31', 'ARM CANNON'], who: 'KRAMER' }, { t: ['KETCHUM 83', 'GOLDEN BOY'], who: 'KETCHUM' }, { t: ['ALL HEART', 'no sting'], who: '*go' }, { t: ['PHASE TWO!'], who: '*p2' },
   { t: ['CATCH =', 'BACK IN'], who: '*a0', style: 'bb' }, { t: ['FINAL', 'BOSS'], who: '*a1', style: 'gold' }, { t: ['COMEBACK'], who: '*a2', style: 'bb' }, { t: [''], who: '*opp0', style: 'opp' }, { t: [''], who: '*opp1', style: 'opp' },
@@ -3462,7 +3462,9 @@ class Game {
     const dots = (t) => this.teams[t].map(a => `<i class="${a.role === 'in' || a.role === 'returning' ? '' : 'off'}${a === this.user ? ' me' : ''}" title="${esc(a.name)}"></i>`).join('');
     this.$.l0.innerHTML = dots(0); this.$.l1.innerHTML = dots(1);
     this.$.l0.classList.toggle('danger', this.liveCount(0) <= 2 && this.phase === 'play'); this.$.l1.classList.toggle('danger', this.liveCount(1) <= 2 && this.phase === 'play');
-    const q = (t) => this.queue[t].map((a, i) => `<span>${i === 0 ? 'NEXT ' : ''}${a.num && a.num !== '?' ? '#' + a.num : esc(a.name)}</span>`).join('');
+    // main 10/27: a bare "NEXT #0" read like a placeholder; the next player in the outline is named, the rest keep their numbers
+    const num = (a) => a.num && a.num !== '?' ? '#' + a.num : '';
+    const q = (t) => this.queue[t].map((a, i) => `<span>${i === 0 ? 'NEXT ' + esc(a.name) + (num(a) ? ' ' + num(a) : '') : (num(a) || esc(a.name))}</span>`).join('');
     this.$.q0.innerHTML = this.queue[0].length ? 'Outline: ' + q(0) : '';
     { const nx = this.root.querySelector('.fbg-next'), n0 = this.queue[0][0]; if (nx) { nx.hidden = !n0 || this.phase !== 'play'; if (n0) nx.innerHTML = `<b>NEXT IN</b> ${esc(n0.name)}${n0.num && n0.num !== '?' ? ' #' + n0.num : ''}${this.queue[0].length > 1 ? ` <i>+${this.queue[0].length - 1}</i>` : ''}`; } } this.$.q1.innerHTML = this.queue[1].length ? 'Outline: ' + q(1) : '';
   }
