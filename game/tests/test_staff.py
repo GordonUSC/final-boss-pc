@@ -67,7 +67,7 @@ try:
                     doneVisible:r.bottom<=innerHeight+1&&r.top>=0, dashes:/[\\u2013\\u2014]/.test(document.querySelector('.fbg-credits').innerText),
                     logo:/WeHo|WEHO/.test(document.querySelector('.fbg-credits').innerText)}})()""")
                 u['credits'] = c
-                if OUT: OUT.mkdir(parents=True, exist_ok=True); q.screenshot(path=str(OUT / f'staff-{ED}-{eng}-{tag}-credits.png'))
+                if OUT: OUT.mkdir(parents=True, exist_ok=True); q.screenshot(path=str(OUT / f'staff-{ED}-{eng}-{tag}-credits.png'), timeout=180000)
                 q.evaluate("document.querySelector('.fbg-credits').dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}))"); q.wait_for_timeout(300)
                 u['backToTitle'] = q.evaluate("!!document.querySelector('.fbg-card .fbg-quick') && !document.querySelector('.fbg-credits')")
                 # fact card S01 and its media
@@ -77,14 +77,14 @@ try:
                 u['fact'] = f
                 if tag == '1920':
                     u['logic'] = q.evaluate(LOGIC); q.wait_for_timeout(1500)
-                    if OUT: q.screenshot(path=str(OUT / f'staff-{ED}-{eng}-thanks.png'))
+                    if OUT: q.screenshot(path=str(OUT / f'staff-{ED}-{eng}-thanks.png'), timeout=180000)
                 # Sunday finals walk-out
                 q.evaluate("""(()=>{const g=FBGame._game(); FBGame.opponent('glitches'); g.wkMatch={day:'sun', step:4, opp:'glitches', label:'SUNDAY: GRAND FINAL', short:'GRAND FINAL'}; g.start();})()""")
                 q.wait_for_timeout(900)
                 w = q.evaluate("""(()=>{const el=document.querySelector('.fbg-staffwalk'); const g=FBGame._game(); if(!el) return {shown:false};
                    const b=el.getBoundingClientRect(); return {shown:true, still:el.classList.contains('still'), bow:g.staffBowT>0, inView:b.top>=0&&b.bottom<=innerHeight+1&&b.left>=0&&b.right<=innerWidth+1,
                    dashes:/[\\u2013\\u2014]/.test(el.innerText)}})()""")
-                if OUT: q.screenshot(path=str(OUT / f'staff-{ED}-{eng}-{tag}-walkout.png'))
+                if OUT: q.screenshot(path=str(OUT / f'staff-{ED}-{eng}-{tag}-walkout.png'), timeout=180000)
                 q.keyboard.press('Enter'); q.wait_for_timeout(500); w['skipped'] = q.evaluate("!document.querySelector('.fbg-staffwalk') || document.querySelector('.fbg-staffwalk').classList.contains('out')")
                 u['walk'] = w; r[tag] = u; ctx.close()
             r['errors'] = errs[:3]; res[eng] = r; b.close()
