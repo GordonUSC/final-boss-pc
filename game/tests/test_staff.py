@@ -79,7 +79,7 @@ try:
                     u['logic'] = q.evaluate(LOGIC); q.wait_for_timeout(1500)
                     if OUT: q.screenshot(path=str(OUT / f'staff-{ED}-{eng}-thanks.png'))
                 # Sunday finals walk-out
-                q.evaluate("""(()=>{const g=FBGame._game(); g.wkMatch={day:'sun', step:4, opp:'glitches', label:'SUNDAY: GRAND FINAL', short:'GRAND FINAL'}; g.setOpponent(wkTeam('glitches')); g.start();})()""")
+                q.evaluate("""(()=>{const g=FBGame._game(); FBGame.opponent('glitches'); g.wkMatch={day:'sun', step:4, opp:'glitches', label:'SUNDAY: GRAND FINAL', short:'GRAND FINAL'}; g.start();})()""")
                 q.wait_for_timeout(900)
                 w = q.evaluate("""(()=>{const el=document.querySelector('.fbg-staffwalk'); const g=FBGame._game(); if(!el) return {shown:false};
                    const b=el.getBoundingClientRect(); return {shown:true, still:el.classList.contains('still'), bow:g.staffBowT>0, inView:b.top>=0&&b.bottom<=innerHeight+1&&b.left>=0&&b.right<=innerWidth+1,
