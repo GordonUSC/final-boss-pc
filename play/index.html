@@ -60,7 +60,7 @@
 <script>
 (function () {
   var boot = document.getElementById('boot'), home = document.getElementById('home'), mount = document.getElementById('game');
-  var s = document.createElement('script'); s.src = '../game/game.bundle.js?v=pc-nina-20261026';
+  var s = document.createElement('script'); s.src = '../game/game.bundle.js?v=pc-nopop-20261026';
   var fail = function (msg) { document.getElementById('boot-p').textContent = msg; };
   var t = setTimeout(function () { if (!window.FBGame) fail('The arena is taking a while. Check your connection, then reload.'); }, 12000);
   s.onerror = function () { clearTimeout(t); fail('The arena could not load. Reload to try again.'); };
@@ -70,7 +70,15 @@
     boot.remove();
     window.FBGame.mount(mount, { edition: 'pc', native: true, fill: true, picker: /[?&]pick/.test(location.search) ? 'always' : undefined });
     // the site link shows on the picker, title and results, never over a live match
-    setInterval(function () { var st = window.FBGame.state(); home.hidden = !!(st && st.phase && !/title|result/.test(st.phase) && !st.paused); document.body.classList.toggle('chip-on', !home.hidden); }, 400);
+    // the site chip shows only on the title, picker, results and pause cards; during play it is gone, unfocusable and click-through, so a
+    // Shift+click (PASS + THROW) can never open the site in a new window
+    var syncHome = function () { var st = window.FBGame.state(); var off = !!(st && st.phase && !/title|result/.test(st.phase) && !st.paused);
+      home.hidden = off; home.tabIndex = off ? -1 : 0; home.setAttribute('aria-hidden', off ? 'true' : 'false'); home.style.pointerEvents = off ? 'none' : ''; document.body.classList.toggle('chip-on', !off); };
+    // and the chip itself refuses any click that could open a window: a held modifier, a non-left button, or any phase that is not a menu
+    var guardHome = function (e) { var st = window.FBGame.state(); var menu = !st || !st.phase || /title|result|unavailable/.test(st.phase) || st.paused;
+      if (!menu || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey || e.button !== 0) { e.preventDefault(); e.stopPropagation(); } };
+    home.addEventListener('click', guardHome, true); home.addEventListener('auxclick', guardHome, true);
+    setInterval(syncHome, 200); document.addEventListener('pointerdown', syncHome, true); document.addEventListener('keydown', syncHome, true);
   };
   document.body.appendChild(s);
 })();

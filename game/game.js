@@ -919,7 +919,7 @@ class Game {
   <div class="fbg-next" aria-live="polite" hidden></div>
   <div class="fbg-cd" hidden aria-hidden="true"><div class="fbg-cd-disc"><b class="fbg-cd-n"></b></div><span class="fbg-cd-t"></span></div>
   <div class="fbg-meter"><b>DASH</b><div class="fbg-steps"></div><span class="fbg-mhint"></span></div>
-  <div class="fbg-keys" aria-hidden="true"><span class="fbg-kmkeys"><i>WASD</i>Move</span><span class="k-throw"><i>J</i><i class="m">LMB</i>Throw</span><span class="k-catch"><i>K</i><i class="m">RMB</i>Catch</span><span class="k-dash"><i>U</i>Dash</span><span><i>L</i>Jump</span><span class="k-pass"><i>Shift</i>Pass</span><span><i>Q</i>Switch</span><span><i>Esc</i>Time out</span><span><i>M</i>Menu</span></div>
+  <div class="fbg-keys" aria-hidden="true"><span class="fbg-kmkeys"><i>WASD</i>Move</span><span class="k-throw"><i>J</i><i class="m">LMB</i>Throw</span><span class="k-catch"><i>K</i><i class="m">RMB</i>Catch</span><span class="k-dash"><i>U</i>Dash</span><span><i>L</i>Jump</span><span class="k-pass"><i>Shift</i><i>E</i>Pass</span><span><i>Q</i>Switch</span><span><i>Esc</i>Time out</span><span><i>M</i>Menu</span></div>
   <div class="fbg-btns"><button class="fbg-btn ghost fbg-qual" type="button">Quality: Auto</button><button class="fbg-btn ghost fbg-menu" type="button" hidden>Menu <span class="fbg-kbd">M</span></button><button class="fbg-btn ghost fbg-sound" type="button" aria-pressed="false">Sound off</button><button class="fbg-btn ghost fbg-pause" type="button">Time out</button></div>
   <div class="fbg-vs" hidden></div>
   <div class="fbg-poster"><p>Boss Rush needs WebGL. This is a still from the game.</p></div>
@@ -1301,7 +1301,7 @@ class Game {
     if (this.drawBanner) this.drawBanner();
   }
   bindInput() {
-    const map = { ArrowLeft: 'left', a: 'left', A: 'left', ArrowRight: 'right', d: 'right', D: 'right', ArrowUp: 'up', w: 'up', W: 'up', ArrowDown: 'down', s: 'down', S: 'down', j: 'throw', J: 'throw', ' ': 'throw', u: 'sprint', U: 'sprint', k: 'catch', K: 'catch', l: 'jump', L: 'jump', Shift: 'pass', q: 'switch', Q: 'switch', Escape: 'pause', p: 'pause', P: 'pause', Enter: 'enter', '1': 'rock', '2': 'paper', '3': 'scissors', f: 'fs', F: 'fs', m: 'menu', M: 'menu' };
+    const map = { ArrowLeft: 'left', a: 'left', A: 'left', ArrowRight: 'right', d: 'right', D: 'right', ArrowUp: 'up', w: 'up', W: 'up', ArrowDown: 'down', s: 'down', S: 'down', j: 'throw', J: 'throw', ' ': 'throw', u: 'sprint', U: 'sprint', k: 'catch', K: 'catch', l: 'jump', L: 'jump', Shift: 'pass', e: 'pass', E: 'pass', q: 'switch', Q: 'switch', Escape: 'pause', p: 'pause', P: 'pause', Enter: 'enter', '1': 'rock', '2': 'paper', '3': 'scissors', f: 'fs', F: 'fs', m: 'menu', M: 'menu' };
     this.onKeyDown = (e) => {
       const k = map[e.key]; if (!k) return;
       const inGame = this.phase !== 'title' && this.phase !== 'result';
@@ -1371,7 +1371,17 @@ class Game {
     });
     this.onMouseUp = (e) => { if (e.button === 2) this.keys.catch = false; };
     window.addEventListener('mouseup', this.onMouseUp);
-    this.$.stage.addEventListener('contextmenu', (e) => { if (this.native) e.preventDefault(); });
+    this.$.stage.addEventListener('contextmenu', (e) => { e.preventDefault(); });   // right button is CATCH; never a browser menu over the court
+    // Gordon 10/26 (PC): Shift is PASS and the mouse throws, and Shift+click on a link opens a new window. During a match nothing on the page may
+    // open a window or tab: modified clicks (Shift, Ctrl, Cmd, Alt) and middle clicks are cancelled page-wide while play is live; the game still gets its mousedown
+    this.onGuardClick = (e) => {
+      const live = !this.dead && this.phase !== 'title' && this.phase !== 'result' && !this.paused;
+      if (!live || !(e.shiftKey || e.ctrlKey || e.metaKey || e.altKey || e.button === 1)) return;
+      e.preventDefault(); if (e.type !== 'mousedown') e.stopPropagation();
+    };
+    for (const ev of ['mousedown', 'click', 'auxclick']) document.addEventListener(ev, this.onGuardClick, true);
+    this.onGuardCtx = (e) => { if (this.root.contains(e.target) && !this.dead && this.phase !== 'title' && this.phase !== 'result') e.preventDefault(); };
+    document.addEventListener('contextmenu', this.onGuardCtx, true);
   }
   userIntent() {
     const k = this.keys, t = this.touch, e = this.edge;
@@ -1937,7 +1947,7 @@ class Game {
     const rules = [['rush', 'Rush right only', 'on GO, run only for the balls on your right as you face the other team'], ['line', 'Clear the line', 'carry a rushed ball past your attack line before you throw'], ['catch', 'Catch = back in', 'the thrower is out and your next teammate returns'],
       ['head', 'No headshots', 'a standing headshot puts the thrower out'], ['clock', '15 s control', '3 or more balls on your side, held or loose, starts 15 s. Drop to 2 and it resets. At 0, all 5 balls go over'], ['back', 'Back line only', 'leave only out the back, 10 s to return']];
     const ctl = touch ? 'Left pad moves (flick to dash). <b>THROW</b>, <b>CATCH</b> (hold to duck), <b>JUMP</b>, <b>PASS</b>.'
-      : '<span class="fbg-kmtext">' + this.kmLine() + '</span>, double-tap to dash. <span class="fbg-kbd">J</span>' + (this.native ? '/<span class="fbg-kbd">Left click</span>' : '') + ' throw, <span class="fbg-kbd">K</span>' + (this.native ? '/<span class="fbg-kbd">Right click</span>' : '') + ' catch (hold to duck), <span class="fbg-kbd">L</span> jump, <span class="fbg-kbd">Shift</span> pass, <span class="fbg-kbd">Q</span> switch.';
+      : '<span class="fbg-kmtext">' + this.kmLine() + '</span>, double-tap to dash. <span class="fbg-kbd">J</span>' + (this.native ? '/<span class="fbg-kbd">Left click</span>' : '') + ' throw, <span class="fbg-kbd">K</span>' + (this.native ? '/<span class="fbg-kbd">Right click</span>' : '') + ' catch (hold to duck), <span class="fbg-kbd">L</span> jump, <span class="fbg-kbd">Shift</span> or <span class="fbg-kbd">E</span> pass, <span class="fbg-kbd">Q</span> switch.';
     this.$.vs.innerHTML = `<div class="fbg-rps fbg-brief" role="dialog" aria-label="${title} rules"><h3>${title}</h3>
       <p class="fbg-bwho">${this.lastCtl < 0 ? 'Ro-sham-bo decides who rushes the 3 balls. After that, the 3 balls alternate every game.' : (this.lastCtl === 1 ? 'FINAL BOSS rushes the 3 balls on its right this game. ' + this.opp.name + ' rush the 2 on theirs.' : '' + this.opp.name + ' rush the 3 balls on their right this game. FINAL BOSS rushes the 2 on its right.')}</p>
       <p>Out by a live ball, a caught throw, or crossing the center or a side line. Clear the other team to win the game.</p>
@@ -2120,7 +2130,7 @@ class Game {
          <li data-n="3"><b>CATCH</b> right before impact (hold to duck). <b>JUMP</b>, <b>PASS</b>.</li>`
       : `<li data-n="1"><span class="fbg-kmtext">${this.kmLine()}</span>. Double-tap to <b>dash</b>. <span class="fbg-kbd">Q</span> switches player.</li>
          <li data-n="2"><span class="fbg-kbd">J</span>${this.native ? ', <span class="fbg-kbd">Left click</span>' : ''} or <span class="fbg-kbd">Space</span> throws. Throw on dash steps 4 to 7 for a <b>power shot</b>.</li>
-         <li data-n="3"><span class="fbg-kbd">K</span>${this.native ? ' or <span class="fbg-kbd">Right click</span>' : ''} catches or blocks right before impact (hold to duck). <span class="fbg-kbd">L</span> jumps, <span class="fbg-kbd">Shift</span> passes.</li>`;
+         <li data-n="3"><span class="fbg-kbd">K</span>${this.native ? ' or <span class="fbg-kbd">Right click</span>' : ''} catches or blocks right before impact (hold to duck). <span class="fbg-kbd">L</span> jumps, <span class="fbg-kbd">Shift</span> or <span class="fbg-kbd">E</span> passes.</li>`;
     const rules = [['rush', 'Rush right', 'grab only the balls on your right'], ['line', 'Clear the line', 'carry it past your attack line first'], ['catch', 'Catch = back in', 'thrower out, your next teammate returns'],
       ['head', 'No headshots', 'a standing headshot puts the thrower out'], ['clock', '15 s control', '3+ on your side, held or loose. 2 resets it. At 0, all 5 go over'], ['back', 'Back line only', 'leave only out the back, 10 s to return']];
     this.$.card.classList.remove('is-picker'); this.$.ov.classList.remove('picker');
@@ -3816,7 +3826,7 @@ class Game {
     this.$.world.appendChild(el); setTimeout(() => el.remove(), dur * 1000 + 60);
     this.say(text + (sub ? '. ' + sub : ''));
   }
-  destroy() { if (this.full) this.setFull(false); cancelAnimationFrame(this.raf); window.removeEventListener('keydown', this.onKeyDown); window.removeEventListener('keyup', this.onKeyUp); window.removeEventListener('mouseup', this.onMouseUp); document.removeEventListener('fullscreenchange', this.onFs); document.removeEventListener('webkitfullscreenchange', this.onFs); this.ro && this.ro.disconnect(); this.io && this.io.disconnect(); this.renderer && this.renderer.dispose(); this.root.remove(); }
+  destroy() { for (const ev of ['mousedown', 'click', 'auxclick']) document.removeEventListener(ev, this.onGuardClick, true); document.removeEventListener('contextmenu', this.onGuardCtx, true); if (this.full) this.setFull(false); cancelAnimationFrame(this.raf); window.removeEventListener('keydown', this.onKeyDown); window.removeEventListener('keyup', this.onKeyUp); window.removeEventListener('mouseup', this.onMouseUp); document.removeEventListener('fullscreenchange', this.onFs); document.removeEventListener('webkitfullscreenchange', this.onFs); this.ro && this.ro.disconnect(); this.io && this.io.disconnect(); this.renderer && this.renderer.dispose(); this.root.remove(); }
 }
 
 // ================================================================ Phase 2 (2026-10-26): Sin City Weekend, opponent abilities, Fun Fabulous Facts, the stands, the share chip

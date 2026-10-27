@@ -725,7 +725,7 @@ body[data-mode="vc"] .alan .plaque b{font:700 20px/1 'Teko',sans-serif;color:#ff
     <p class="pcnote"><strong>PC Edition.</strong> Plays full window at your screen's native resolution, keyboard and mouse. Press <b>F</b> for fullscreen and <b>M</b> for the menu, where Auto, High and Ultra quality live. Auto holds 60 fps by trimming render scale before it trims detail.</p>
     <p class="pcnote pc-phone">Prefer a lighter arena or touch controls? <a href="https://gordonusc.github.io/final-boss/#play">Play the regular edition</a>.</p>
   </div>
-  <details class="pc-controls" id="pc-controls"><summary>Keyboard guide for the 3D arena</summary><p><kbd>W A S D</kbd> or arrow keys move. <kbd>J</kbd> or <kbd>Space</kbd> throws. <kbd>K</kbd> catches. <kbd>L</kbd> jumps. <kbd>Shift</kbd> passes. <kbd>Q</kbd> switches player.</p><p>Mouse: left click throws, right click catches (hold to duck). <kbd>F</kbd> toggles fullscreen and <kbd>M</kbd> opens the menu (quality and display) without using your time out. The arena plays full window; <kbd>Esc</kbd> on the title or results card returns to this page.</p><p><kbd>P</kbd> or <kbd>Esc</kbd> calls time out. Your first time out resumes after 30 seconds; later pauses wait for you. Sound starts off. Choose your lineup, then enter the court.</p></details>
+  <details class="pc-controls" id="pc-controls"><summary>Keyboard guide for the 3D arena</summary><p><kbd>W A S D</kbd> or arrow keys move. <kbd>J</kbd> or <kbd>Space</kbd> throws. <kbd>K</kbd> catches. <kbd>L</kbd> jumps. <kbd>Shift</kbd> or <kbd>E</kbd> passes. <kbd>Q</kbd> switches player.</p><p>Mouse: left click throws, right click catches (hold to duck). <kbd>F</kbd> toggles fullscreen and <kbd>M</kbd> opens the menu (quality and display) without using your time out. The arena plays full window; <kbd>Esc</kbd> on the title or results card returns to this page.</p><p><kbd>P</kbd> or <kbd>Esc</kbd> calls time out. Your first time out resumes after 30 seconds; later pauses wait for you. Sound starts off. Choose your lineup, then enter the court.</p></details>
   <p class="pc-status" id="pc-game-status" role="status">The 3D arena loads when you choose. A keyboard and WebGL are required.</p>
   <p><button type="button" class="btn" id="pc-load-game" hidden>Load 3D arena</button></p>
   <noscript><p class="pcnote">The arena needs JavaScript. The team, kits and source notes remain available below.</p></noscript>
@@ -1121,7 +1121,7 @@ $('pc-load-game').addEventListener('click',()=>{
   if(gameLoading||gameMounted||fallbackOn)return;
   gameLoading=true;$('pc-load-game').disabled=true;$('pc-load-game').textContent='Loading arena…';
   $('pc-game-status').textContent='Loading the 3D arena. If it cannot start, the lighter arena will open.';
-  const s=document.createElement('script');s.src='game/game.bundle.js?v=pc-nina-20261026';
+  const s=document.createElement('script');s.src='game/game.bundle.js?v=pc-nopop-20261026';
   const timer=setTimeout(()=>{if(!gameMounted&&!fallbackOn)startFallback()},9000);
   s.onload=()=>{clearTimeout(timer);mountArena()};s.onerror=()=>{clearTimeout(timer);startFallback()};document.body.appendChild(s);
 });
