@@ -3163,6 +3163,8 @@ class Game {
     this.abOnCatch(f);
     if (this.aiPlays(f)) { this.awStat('catchOK_' + f.arch); f.ai.react = null; f.ai.plan = { k: 'throw' }; f.ai.delay = 8 + ((Math.random() * 10) | 0); f.ai.t = 0; }   // catch, then answer right away
     this.crowdReact(f.team === 0 ? (this.liveCount(0) === 1 ? 'clutch' : 'catch') : 'oppcatch');
+    // every team catch the stats count is one event (a save is recorded as the save); WebKit sim 10/27 found one catch with no event
+    const cev = f.team === 0 && !save ? this.mev('catch', f, { you: f === this.user, out: thrower ? thrower.name : '' }) : null;
     if (f.team === 0) { this.stats.catches++; this.addScore(clean ? 150 : 90); } else this.breakCombo();
     if (thrower && thrower.role === 'in') { this.quietPop = save ? thrower : null; this.eliminate(thrower, 'caught'); this.quietPop = null; }
     this.addMomentum(f.team, 0.12);
@@ -3175,7 +3177,7 @@ class Game {
       if (f.team === 0) this.stats.backIn++;
       this.layoutQueue(f.team);
     } else if (save) { /* the sequence below says it */ } else if (f.team === 0) this.popBrush(clean ? 'CATCH!' : 'BOBBLE!', thrower ? `${thrower.name} OUT` : '', ''); else this.pop(f, 'CATCH!', 'lime');
-    if (f.team === 0 && !save && thrower && thrower.team !== f.team) this.mev(back ? 'catchBack' : 'catch', f, { you: f === this.user, out: thrower.name, back: back ? back.name : '' });
+    if (cev && back) { cev.kind = 'catchBack'; cev.back = back.name; }
     if (save) { const cl = f.team === 0 ? 'gold' : 'lime'; this.calloutSeq([{ t: 'SAVE!', sub: (saved.length ? saved.map(v => v.name).join(' AND ') + (saved.length > 1 ? ' STAY IN' : ' STAYS IN') : 'CAUGHT OFF THE DEFLECTION'), cls: cl, dur: 1.05 }, { t: (thrower ? thrower.name : 'THROWER') + ' OUT', sub: 'CAUGHT OFF THE DEFLECTION', cls: 'red', dur: 1.0 }].concat(back ? [{ t: 'BACK IN', sub: `${back.name} ${back.num}`, cls: cl, dur: 1.1 }] : [])); this.qaLog('saveSeq', { steps: back ? 3 : 2 }); }
     this.checkTide();
     this.renderLive();
@@ -4480,8 +4482,8 @@ Object.assign(Game.prototype, {
   // the human controlled (you); team totals are labeled as the team's. Event priority for the highlight: double out, save,
   // catch that brought a teammate back, other catch, out; ties go to the earliest event, then the lowest id.
   mev(kind, a, x) {
-    if (!this.mlog || this.over) return;
-    this.mlog.push(Object.assign({ id: ++this.mseq, kind, t: this.frame, game: this.gameNo || 1, actor: a ? a.name : '', num: a ? a.num : '', team: a ? a.team : 0, you: false }, x || {}));
+    if (!this.mlog) return null;
+    const e = Object.assign({ id: ++this.mseq, kind, t: this.frame, game: this.gameNo || 1, actor: a ? a.name : '', num: a ? a.num : '', team: a ? a.team : 0, you: false }, x || {}); this.mlog.push(e); return e;
   },
   postCount(bump) {
     // completed matches, stored per browser; without storage the scouting note stays off (no reliable counter)
@@ -4497,8 +4499,8 @@ Object.assign(Game.prototype, {
     const g = 'Game ' + e.game + ': ', v = e.victims || [];
     if (e.kind === 'double') return g + 'your throw put ' + v.join(' and ') + ' out together.';
     if (e.kind === 'save') return g + 'you caught a deflection before the floor, so ' + ((e.saved || []).join(' and ') || 'your teammate') + ' stayed in' + (e.out ? ' and ' + e.out + ' was out.' : '.');
-    if (e.kind === 'catchBack') return g + 'your catch put ' + e.out + ' out and brought ' + e.back + ' back in.';
-    if (e.kind === 'catch') return g + 'your catch put ' + e.out + ' out.';
+    if (e.kind === 'catchBack') return g + (e.out ? 'your catch put ' + e.out + ' out and brought ' : 'your catch brought ') + e.back + ' back in.';
+    if (e.kind === 'catch') return g + (e.out ? 'your catch put ' + e.out + ' out.' : 'you made a catch.');
     return g + 'your throw put ' + (v[0] || 'a player') + ' out.';
   },
   buildPost(result) {
