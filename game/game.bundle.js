@@ -3224,7 +3224,7 @@ class Game {
     if (this.aiPlays(f)) { this.awStat('catchOK_' + f.arch); f.ai.react = null; f.ai.plan = { k: 'throw' }; f.ai.delay = 8 + ((Math.random() * 10) | 0); f.ai.t = 0; }   // catch, then answer right away
     this.crowdReact(f.team === 0 ? (this.liveCount(0) === 1 ? 'clutch' : 'catch') : 'oppcatch');
     // every team catch the stats count is one event (a save is recorded as the save); WebKit sim 10/27 found one catch with no event
-    const cev = f.team === 0 && !save ? this.mev('catch', f, { you: f === this.user, out: thrower ? thrower.name : '' }) : null;
+    const cev = f.team === 0 && !save ? this.mev('catch', f, { you: f === this.user, out: thrower && thrower.role === 'in' ? thrower.name : '' }) : null;   // dot 10/27: name an out only if the thrower was in play
     if (f.team === 0) { this.stats.catches++; this.addScore(clean ? 150 : 90); } else this.breakCombo();
     if (thrower && thrower.role === 'in') { this.quietPop = save ? thrower : null; this.eliminate(thrower, 'caught'); this.quietPop = null; }
     this.addMomentum(f.team, 0.12);
@@ -3277,7 +3277,7 @@ class Game {
     if (saver && RULES.saveOnTeammateCatch) {
       // confirmed by Gordon 2026-10-26 ("that is in the rules"): a teammate catching a deflection off a hit player before the floor saves that player and puts the thrower out
       for (const v of victims) { if (v.role === 'in') v.set('idle'); }
-      if (saver.team === 0) this.mev('save', saver, { you: saver === this.user, saved: victims.map(v => v.name), out: P.thrower ? P.thrower.name : '' }); this.awStat('saves'); if (saver.team === 0) this.stats.saves = (this.stats.saves || 0) + 1; this.bigMoment('save', saver.team, saver, true);
+      if (saver.team === 0) this.mev('save', saver, { you: saver === this.user, saved: victims.map(v => v.name), out: P.thrower && P.thrower.role === 'in' && P.thrower.team !== saver.team ? P.thrower.name : '' }); this.awStat('saves'); if (saver.team === 0) this.stats.saves = (this.stats.saves || 0) + 1; this.bigMoment('save', saver.team, saver, true);
       return victims;
     }
     const gone = victims.filter(v => v.role === 'in');
@@ -4711,7 +4711,7 @@ Object.assign(Game.prototype, {
     const p = this.pm, art = (k) => assetURL(this.base, 'art/' + k);
     const jakeMedia = this.rm
       ? `<img class="fbg-jake-art" src="${art('commissioner-jake-480.webp')}" alt="Commissioner Jake Mason, illustrated, smiling with open palms" width="240" height="320">`
-      : `<video class="fbg-jake-art" muted playsinline autoplay preload="auto" poster="${art('commissioner-jake-480.webp')}" width="240" height="320" aria-label="Commissioner Jake Mason, illustrated, does a small two-step, opens his palms in welcome and bows"><source src="${art('commissioner-jake-dance.webm')}" type="video/webm"><source src="${art('commissioner-jake-dance.mp4')}" type="video/mp4"></video>`;
+      : `<video class="fbg-jake-art" muted playsinline preload="auto" poster="${art('commissioner-jake-480.webp')}" width="240" height="320" aria-label="Commissioner Jake Mason, illustrated, does a small two-step, opens his palms in welcome and bows"><source src="${art('commissioner-jake-dance.webm')}" type="video/webm"><source src="${art('commissioner-jake-dance.mp4')}" type="video/mp4"></video>`;
     this.$.card.innerHTML = `<div class="fbg-post${this.rm ? ' still' : ''}" role="group" aria-labelledby="fbg-post-h">
       <div class="fbg-post-top"><img class="fbg-post-nina" src="${art('coach-nina-256.webp')}" alt="Coach Nina Fiore, illustrated" width="96" height="96">
         <div><p class="fbg-post-kick">COACH NINA FIORE</p><h2 id="fbg-post-h">${esc(p.welcome)}</h2></div></div>
@@ -4728,7 +4728,10 @@ Object.assign(Game.prototype, {
     this.$.card.querySelector('.fbg-post-go').addEventListener('click', go);
     this.$.card.querySelector('.fbg-post').addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); go(); } });
     const v = this.$.card.querySelector('video.fbg-jake-art'); if (v) { v.addEventListener('ended', () => { const i = document.createElement('img'); i.className = 'fbg-jake-art'; i.src = art('commissioner-jake-480.webp'); i.alt = 'Commissioner Jake Mason, illustrated, smiling with open palms'; if (v.isConnected) v.replaceWith(i); });   // after the bow he settles on a face-forward still
-      v.addEventListener('error', () => { const i = document.createElement('img'); i.className = 'fbg-jake-art'; i.src = art('commissioner-jake-480.webp'); i.alt = 'Commissioner Jake Mason, illustrated, smiling with open palms'; v.replaceWith(i); }, true); try { const pr = v.play(); if (pr && pr.catch) pr.catch(() => { }); } catch (e) { } }
+      v.addEventListener('error', () => { const i = document.createElement('img'); i.className = 'fbg-jake-art'; i.src = art('commissioner-jake-480.webp'); i.alt = 'Commissioner Jake Mason, illustrated, smiling with open palms'; v.replaceWith(i); }, true);
+      const play = () => { try { const pr = v.play(); if (pr && pr.catch) pr.catch(() => { }); } catch (e) { } };
+      // dot 10/27: on a phone or a short window the Jake row can sit below the fold of the card; start the bow only once it is in view
+      if ('IntersectionObserver' in window) { const io = new IntersectionObserver((es) => { if (es.some(x => x.isIntersecting && x.intersectionRatio >= 0.6)) { io.disconnect(); play(); } }, { root: this.$.card.querySelector('.fbg-post-body'), threshold: [0.6] }); io.observe(v); this._jakeIO = io; } else play(); }
     // when the sections scroll (small landscape phones), a soft fade at the bottom says there is more; it lifts at the end
     const bd = this.$.card.querySelector('.fbg-post-body'), more = () => bd.classList.toggle('more', bd.scrollTop + bd.clientHeight < bd.scrollHeight - 2);
     bd.addEventListener('scroll', more, { passive: true }); requestAnimationFrame(more); setTimeout(more, 2600);
