@@ -31,12 +31,12 @@ LOGIC = r"""async () => {
   out.offCourt = O.every(a => Math.abs(a.z) > 5.2 + 0.3 || Math.abs(a.x) > 9 + 0.3);
   out.jakeHead = O[0] && O[0].staffName === 'Jake Mason' && !!O[0].look.beard;
   g.wkMatch = null; g.start(); for (let i = 0; i < 300 && g.phase !== 'play'; i++) { if (g.phase === 'brief') g.briefGo = true; if (g.phase === 'rps' && g.rpsPick == null) g.rpsPick = 0; await wait(30); }
-  out.visibleInPlay = O.every(a => a.root.visible);
+  out.visibleInPlay = O.every(a => a.root.visible && Number.isFinite(a.hips.position.y) && [a.pose.hipY, a.pose.lean, a.pose.head].every(Number.isFinite));   // a NaN pose renders nothing
   const foe = g.inPlayers(1)[0]; g.eliminate(foe, 'hit'); out.signal = O.some(a => a.callT > 0);
   // a game break: rotateSigns twice gives exactly one thank-you moment
   const q0 = FBGame.qa().filter(x => x.ev === 'staffThanks').length; g.rotateSigns(); g.rotateSigns(); const q1 = FBGame.qa().filter(x => x.ev === 'staffThanks').length;
   out.thanksOncePerTwo = q1 - q0 === 1;
-  g.staffThanks(); out.signsThank = g.signs.filter(sg => /^\*a\d$/.test(sg.def.who)).every(sg => sg.def.t.join(' ') === 'THANK YOU STAFF!'); out.wave = g.staffWaveT > 0;
+  g.staffThanks(); g.drawSigns(); out.signsThank = g.signs.filter(sg => /^\*a\d$/.test(sg.def.who)).every(sg => sg.def.t.join(' ') === 'THANK YOU STAFF!'); out.wave = g.staffWaveT > 0;
   return out;
 }"""
 

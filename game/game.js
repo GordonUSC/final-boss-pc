@@ -4468,10 +4468,10 @@ Object.assign(Game.prototype, {
     });
   },
   staffPose(a) {
-    const p = a.blankPose(), t = (this.frame + a.offIdx * 23) * 0.05;
+    const p = a.blankPose(), t = ((this.frame || 0) + a.offIdx * 23) * 0.05;
     p.sh = [0.12, 0.12, 0.12, 0.12]; p.el = [-0.25, -0.25]; p.kn = [0.06, 0.06]; p.hp = [0, 0]; p.hipY = Math.sin(t) * 0.006; p.lean = 0.02; p.head = 0.02;
     if (this.staffBowT > 0) { const k = Math.min(1, Math.sin(Math.min(1, (150 - this.staffBowT) / 60) * Math.PI) * 1.2); p.lean = 0.9 * k; p.head = 0.3 * k; p.sh = [0.5, 0.15, 0.5, 0.15]; p.el = [-0.4, -0.4]; }
-    else if (this.staffWaveT > 0) { const w = Math.sin((this.frame + a.offIdx * 9) * 0.25); p.sh[2] = -2.7; p.sh[3] = 0.35 + w * 0.35; p.el[1] = -0.3; }
+    else if (this.staffWaveT > 0) { const w = Math.sin(((this.frame || 0) + a.offIdx * 9) * 0.25); p.sh[2] = -2.7; p.sh[3] = 0.35 + w * 0.35; p.el[1] = -0.3; }
     else if (a.callT > 0) { p.sh[2] = -2.95; p.sh[3] = 0.12; p.el[1] = -0.05; }
     return p;
   },
@@ -4481,6 +4481,7 @@ Object.assign(Game.prototype, {
     const show = this.phase !== 'title' || !this.picking;
     for (const a of this.officials) {
       if (a.callT > 0) a.callT--;
+      if (!Number.isFinite(a.pose.hipY) || !Number.isFinite(a.pose.lean)) a.pose = a.blankPose();   // a NaN pose (no frame count yet) would hide the official for good
       a.root.visible = show; a.shadow.visible = show; a.tgt = this.staffPose(a); this.blend(a, this.rm ? 1 : 0.2); this.place(a);
     }
   },
