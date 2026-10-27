@@ -35,7 +35,7 @@ const AI_LEVEL = { easy: { c: 0.15, p: 0.10, r: 20 }, normal: { c: 0.40, p: 0.35
 // ---------------------------------------------------------------- roster
 const ROSTER = [
   { key: 'FIORE', num: '1', skin: '#e3ad88', hair: '#3b2418', style: 'pony', build: 0.96 },
-  { key: 'ZABOKRITSKY', num: '2', skin: '#f0c7a6', hair: '#b8873f', style: 'pony', build: 0.95 },
+  { key: 'YOU', num: '?', label: 'YOU', skin: '#c68a62', hair: '#1b1210', style: 'cap', build: 1.0, open: true },
   { key: 'HAWKINS', num: '3', skin: '#c58c66', hair: '#2a1b12', style: 'short', build: 1.0 },
   { key: 'BELLAMY', num: '4', skin: '#6a4029', hair: '#1b1210', style: 'crop', build: 1.12, shots: ['comet', 'moon'] },
   { key: 'BELLAMY III', num: '5', skin: '#8a5a3c', hair: '#17100c', style: 'short', build: 1.04 },
@@ -43,7 +43,7 @@ const ROSTER = [
   { key: 'KRAMER', num: '31', skin: '#eec3a0', hair: '#6b4a2a', style: 'short', build: 1.03 },
   { key: 'KETCHUM', num: '83', skin: '#d6a07a', hair: '#24170f', style: 'short', build: 1.02 },
 ];
-const SHOTS_BY = { FIORE: ['hook', 'hop'], ZABOKRITSKY: ['hook', 'moon'], HAWKINS: ['comet', 'hop'], 'BELLAMY III': ['hook', 'hop'], REED: ['comet', 'moon'], KRAMER: ['comet', 'hop'], KETCHUM: ['hook', 'moon'] };
+const SHOTS_BY = { FIORE: ['hook', 'hop'], YOU: ['comet', 'hop'], HAWKINS: ['comet', 'hop'], 'BELLAMY III': ['hook', 'hop'], REED: ['comet', 'moon'], KRAMER: ['comet', 'hop'], KETCHUM: ['hook', 'moon'] };
 const BOSS_TEAM = {
   name: 'THE GLITCHES', short: 'GLITCHES',
   colors: ['#17131f', '#a6f23a', '#a6f23a', '#ff3fa1'],
@@ -109,6 +109,21 @@ const ATK = 3;                     // attack lines, 3 m from center
 // (https://www.wehododgeball.com/rules); Gordon 2026-10-26: "oh i am wrong clearly on the 15 second rule"
 // saveOnTeammateCatch: a teammate catching a body-hit pop-up before the floor saves the hit player (league convention; NEEDS GORDON'S CONFIRMATION, the rulebook text states it only for dropped blocks)
 const RULES = { saveOnTeammateCatch: true, match: 180, ot: 60, mercy: 8, control: 15, oob: 10, back: 5, timeout: 30, balls: 5, rushF: 300 };
+// the open slot: a recruit puts their own name, number and skin tone on the back (saved on their device only)
+const YOU_SKINS = ['#f3d2b8', '#e3ad88', '#c68a62', '#8a5a3c', '#5a3826'];
+const TAKEN_NUMS = new Set(['1', '3', '4', '5', '6', '31', '83']);
+function youDef() { return ROSTER.find(r => r.key === 'YOU'); }
+function cleanYouName(v) { return String(v || '').toUpperCase().replace(/[^A-Z .'-]/g, '').replace(/\s+/g, ' ').trim().slice(0, 11); }
+function loadYou() {
+  const d = youDef(); if (!d) return;
+  let v = null; try { v = JSON.parse(localStorage.getItem('fbg-you') || 'null'); } catch (e) { }
+  if (!v) return;
+  const nm = cleanYouName(v.name); if (nm) d.label = nm;
+  const n = String(v.num || '').replace(/\D/g, '').slice(0, 2); if (n && !TAKEN_NUMS.has(String(+n))) d.num = String(+n);
+  if (YOU_SKINS.includes(v.skin)) d.skin = v.skin;
+}
+function saveYou() { const d = youDef(); if (!d) return; try { localStorage.setItem('fbg-you', JSON.stringify({ name: d.label === 'YOU' ? '' : d.label, num: d.num === '?' ? '' : d.num, skin: d.skin })); } catch (e) { } }
+loadYou();
 function rosterKey(v) { if (!v) return null; const pk = String(v).toUpperCase().trim().replace('#', ''); const hit = ROSTER.find(r => r.key === pk) || ROSTER.find(r => r.num === pk) || ROSTER.find(r => r.key.startsWith(pk)); return hit ? hit.key : null; }
 function rpsIcon(i) {
   const s = ['<circle cx="24" cy="26" r="14"/><path d="M14 22h20M15 29h18" stroke="#120818" stroke-width="2.5" fill="none"/>',
@@ -128,7 +143,7 @@ function ruleIcon(k) {
   return `<svg viewBox="0 0 48 48" width="34" height="34" aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
 }
 const SIGNS = [
-  { t: ['GO FIORE', '#1'], who: 'FIORE' }, { t: ['THANK YOU', 'STAFF!'], who: 'STAFF' }, { t: ['HAWKINS 3', 'HYPE'], who: 'HAWKINS' },
+  { t: ['COACH NINA', '#1'], who: 'FIORE' }, { t: ['NEW CHALLENGER', 'THAT\'S YOU!'], who: 'YOU' }, { t: ['HAWKINS 3', 'HYPE'], who: 'HAWKINS' },
   { t: ['BELLAMY 4', 'FINAL BOSS'], who: 'BELLAMY' }, { t: ['BELLAMY III', '#5'], who: 'BELLAMY III' }, { t: ['REED 6', 'ALL DAY'], who: 'REED' },
   { t: ['KRAMER 31', 'ARM CANNON'], who: 'KRAMER' }, { t: ['KETCHUM 83', 'GOLDEN BOY'], who: 'KETCHUM' }, { t: ['ALL HEART', 'no sting'], who: '*go' }, { t: ['PHASE TWO!'], who: '*p2' },
   { t: ['CATCH =', 'BACK IN'], who: '*a0', style: 'bb' }, { t: ['FINAL', 'BOSS'], who: '*a1', style: 'gold' }, { t: ['COMEBACK'], who: '*a2', style: 'bb' }, { t: [''], who: '*opp0', style: 'opp' }, { t: [''], who: '*opp1', style: 'opp' },
@@ -386,7 +401,7 @@ function glitchGlyph(c, x, y, s, col) {
 // ---------------------------------------------------------------- hi-fi athletes (merged per-bone meshes, faces, expressions)
 const APPEAR = {
   FIORE: { g: 'f', hs: 'pony', hc: '#3b2418', skin: '#e3ad88', ht: 0.95, bw: 0.9, eye: '#5a3a1a' },
-  ZABOKRITSKY: { g: 'f', hs: 'bun', hc: '#c99a52', skin: '#f0c7a6', ht: 0.97, bw: 0.9, eye: '#3d6a8a' },
+  YOU: { g: 'f', hs: 'cap', hc: '#1b1210', skin: '#c68a62', ht: 0.99, bw: 0.97, eye: '#3a2412' },
   HAWKINS: { g: 'm', hs: 'curly', hc: '#3a2414', skin: '#c58c66', ht: 1.0, bw: 1.0, eye: '#4a2a12' },
   BELLAMY: { g: 'm', hs: 'crop', hc: '#141010', skin: '#6a4029', ht: 1.03, bw: 1.14, eye: '#2a1608' },
   'BELLAMY III': { g: 'm', hs: 'fade', hc: '#120c0a', skin: '#8a5a3c', ht: 1.05, bw: 1.04, eye: '#2a1608' },
@@ -540,11 +555,11 @@ function drawFace(c, a, expr) {
 }
 class Athlete {
   constructor(game, def, team) {
-    this.g = game; this.def = def; this.team = team; this.name = def.key; this.key = def.key; this.num = def.num;   // key: stable id for ratings and tactics
+    this.g = game; this.def = def; this.team = team; this.key = def.key; this.name = def.label || def.key; this.num = def.num;   // key: stable id for ratings and tactics; name: what the jersey says
     this.boss = !!def.isBoss;
     const L = Object.assign({ g: 'm', hs: 'cap', hc: '#2a1a10', skin: def.skin || '#d9a07a', ht: 1, bw: 1 }, APPEAR[def.key] || {});
     if (def.look) Object.assign(L, def.look);   // weekend teams carry their own look (teams.json)
-    if (def.skin && !APPEAR[def.key]) L.skin = def.skin;
+    if (def.skin && (!APPEAR[def.key] || def.open)) L.skin = def.skin;
     this.look = L;
     this.scale = CHAR * L.ht * (this.boss ? 1.22 : 1);
     this.shots = def.shots || SHOTS_BY[def.key] || ['comet', 'moon'];
@@ -1908,7 +1923,7 @@ class Game {
     for (const b of this.balls) { this.resetBall(b); b.mesh.visible = true; }
     if (this.signs && this.gameNo > 1) this.rotateSigns();
     if (this.abState) { this.abState.key = false; this.abState.mid = false; this.abState.burstUsed = false; }
-    this.user = this.teams[0].find(a => a.name === this.controlKey) || this.teams[0][3];
+    this.user = this.teams[0].find(a => a.key === this.controlKey) || this.teams[0][3];
     this.renderLive();
   }
   placeRushBalls(w) {
@@ -2249,14 +2264,51 @@ class Game {
   }
   renderPicker() {
     const pool = this.$.card.querySelector('.fbg-pool'); if (!pool) return;
-    pool.innerHTML = ROSTER.map(r => `<button class="fbg-pick${r.key.length > 9 ? ' long' : ''}" type="button" aria-pressed="${r.key === this.controlKey}" data-k="${r.key}">${r.key}<small>#${r.num}${r.key === this.controlKey ? ' you' : ''}</small></button>`).join('');
+    pool.innerHTML = ROSTER.map(r => { const nm = r.label || r.key; const sub = r.open ? (r.label === 'YOU' ? 'open slot' : '#' + r.num + ' new') : (r.key === 'FIORE' ? '#1 coach' : '#' + r.num); return `<button class="fbg-pick${nm.length > 9 ? ' long' : ''}${r.open ? ' open' : ''}" type="button" aria-pressed="${r.key === this.controlKey}" data-k="${r.key}">${esc(nm)}<small>${sub}${r.key === this.controlKey ? ' you' : ''}</small></button>`; }).join('');
+    this.renderYouEditor();
     pool.querySelectorAll('.fbg-pick').forEach(b => b.addEventListener('click', () => {
-      this.controlKey = b.dataset.k; this.user = this.teams[0].find(a => a.name === this.controlKey); this.renderPicker();
+      this.controlKey = b.dataset.k; this.user = this.teams[0].find(a => a.key === this.controlKey); this.renderPicker();
       const nb = pool.querySelector(`[data-k="${CSS.escape(this.controlKey)}"]`); if (nb) nb.focus();
     }));
   }
 
   // ------------------------------------------------ main tick
+  renderYouEditor() {
+    const box = this.$.card.querySelector('.fbg-lineup'); if (!box) return;
+    let ed = box.querySelector('.fbg-youed');
+    if (this.controlKey !== 'YOU') { if (ed) ed.remove(); return; }
+    const d = youDef(); if (!d) return;
+    if (!ed) {
+      ed = document.createElement('div'); ed.className = 'fbg-youed';
+      ed.innerHTML = `<p class="fbg-youp">Put yourself on the court.</p>
+        <label>Name on your back <input class="fbg-yn" maxlength="11" autocomplete="off" spellcheck="false" placeholder="YOUR NAME"></label>
+        <label>Number <input class="fbg-yno" inputmode="numeric" maxlength="2" placeholder="?"></label>
+        <div class="fbg-skins" role="group" aria-label="Skin tone">${YOU_SKINS.map((c, i) => `<button type="button" class="fbg-sk" data-c="${c}" style="background:${c}" aria-label="Skin tone ${i + 1}"></button>`).join('')}</div>
+        <p class="fbg-ymsg" aria-live="polite"></p>`;
+      box.appendChild(ed);
+      const yn = ed.querySelector('.fbg-yn'), yno = ed.querySelector('.fbg-yno'), msg = ed.querySelector('.fbg-ymsg');
+      yn.addEventListener('input', () => { const v = cleanYouName(yn.value); d.label = v || 'YOU'; this.applyYou(); });
+      yno.addEventListener('input', () => {
+        const raw = yno.value.replace(/\D/g, '').slice(0, 2); yno.value = raw;
+        if (!raw) { d.num = '?'; msg.textContent = ''; }
+        else if (TAKEN_NUMS.has(String(+raw))) { msg.textContent = '#' + (+raw) + ' is taken on this team. Try another.'; return; }
+        else { d.num = String(+raw); msg.textContent = ''; }
+        this.applyYou();
+      });
+      ed.querySelectorAll('.fbg-sk').forEach(b => b.addEventListener('click', () => { d.skin = b.dataset.c; this.applyYou(); }));
+    }
+    ed.querySelector('.fbg-yn').value = d.label === 'YOU' ? '' : d.label;
+    ed.querySelector('.fbg-yno').value = d.num === '?' ? '' : d.num;
+    ed.querySelectorAll('.fbg-sk').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.c === d.skin)));
+  }
+  applyYou() {
+    const d = youDef(); saveYou();
+    const a = this.teams[0].find(x => x.key === 'YOU');
+    if (a) { a.name = d.label; a.num = d.num; a.look.skin = d.skin; a.drawKit(this.kit || kitFrom(DEFAULT_LOOK.colors)); const e = a.expr; a.expr = ''; a.setExpr(e || 'neutral'); }
+    const pool = this.$.card.querySelector('.fbg-pool'); const btn = pool && pool.querySelector('[data-k="YOU"]');
+    if (btn) { const nm = d.label; btn.firstChild.textContent = nm; btn.querySelector('small').textContent = (d.label === 'YOU' ? 'open slot' : '#' + d.num + ' new') + (this.controlKey === 'YOU' ? ' you' : ''); btn.classList.toggle('long', nm.length > 9); }
+    this.$.card.querySelectorAll('.fbg-sk').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.c === d.skin)));
+  }
   tick() {
     this.frame++;
     if (this.paused) { this.timeoutTick(); this.edge = {}; return; }

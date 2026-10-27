@@ -824,3 +824,17 @@ html.fbg-lock, html.fbg-lock body{overflow:hidden}
 .fbg-cr-list span{font:500 13px/1.2 var(--fbg-ui); color:var(--fbg-ash)}
 @media (max-height:500px){ .fbg-staffwalk{bottom:6%} .fbg-staffwalk b{font-size:22px} .fbg-staffwalk span{font-size:13px} .fbg-cr-view{max-height:48vh} }
 .fbg-cr-names{font:600 16px/1.45 var(--fbg-ui); color:var(--fbg-bone); margin:12px auto 4px; max-width:540px}
+
+/* open slot: a recruit makes the YOU player their own */
+.fbg-pick.open{background:#3a2410; box-shadow:inset 0 0 0 2px var(--fbg-gold)}
+.fbg-pick.open[aria-pressed="true"]{background:var(--fbg-gold)}
+.fbg-youed{display:grid; grid-template-columns:1fr auto; gap:8px 10px; align-items:end; margin-top:10px; padding:10px; background:rgba(255,200,61,.08); border-left:4px solid var(--fbg-gold)}
+.fbg-youp{grid-column:1/-1; margin:0; font:700 16px/1.2 var(--fbg-ui); color:var(--fbg-bone)}
+.fbg-youed label{display:grid; gap:4px; font:600 12px/1 var(--fbg-ui); color:var(--fbg-ash)}
+.fbg-youed input{font:700 20px/1 var(--fbg-disp); letter-spacing:.04em; text-transform:uppercase; color:#120818; background:var(--fbg-bone); border:0; padding:8px 8px 6px; min-height:44px; width:100%; min-width:0}
+.fbg-youed .fbg-yno{width:64px; text-align:center}
+.fbg-youed input:focus-visible,.fbg-sk:focus-visible{outline:3px solid var(--fbg-gold); outline-offset:2px}
+.fbg-skins{grid-column:1/-1; display:flex; gap:8px}
+.fbg-sk{width:36px; height:36px; border-radius:50%; border:3px solid #120818; cursor:pointer; padding:0}
+.fbg-sk[aria-pressed="true"]{box-shadow:0 0 0 3px var(--fbg-gold)}
+.fbg-ymsg{grid-column:1/-1; margin:0; min-height:1em; font:600 13px/1.2 var(--fbg-ui); color:var(--fbg-gold)}

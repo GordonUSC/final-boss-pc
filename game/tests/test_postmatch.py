@@ -134,6 +134,9 @@ try:
                 q.add_init_script(f"try{{localStorage.setItem('fbg-edition','{ED}')}}catch(e){{}}")
                 q.goto(f'http://127.0.0.1:{srv.server_port}/play/', timeout=120000); q.wait_for_function('window.FBGame && FBGame._game() && FBGame.state()', timeout=120000); q.wait_for_timeout(600)
                 print('case', eng, tag, flush=True); u = q.evaluate(UI, tag); q.wait_for_timeout(6000)
+                # the 5 s clip ends on the face-forward still; on a loaded machine headless video runs slow, so allow it to finish
+                try: q.wait_for_function("!document.querySelector('.fbg-post-jake') || !!document.querySelector('.fbg-post-jake img.fbg-jake-art')", timeout=60000)
+                except Exception: pass
                 if OUT: OUT.mkdir(parents=True, exist_ok=True); q.screenshot(path=str(OUT / f'post-{ED}-{eng}-{tag}.png'))
                 u.update(q.evaluate(UI2)); u['text'] = u['text'][:400]; r[tag] = u; ctx.close()
             r['errors'] = errs[:3]; res[eng] = r; b.close()
