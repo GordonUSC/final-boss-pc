@@ -125,7 +125,10 @@ UI = r"""async (mode) => {
     else if (q.top < b.top - 1 || q.bottom > b.bottom + 1) bad.push(name + ' clipped');
     if (q.bottom > g2.top + 0.5 && q.top < g2.bottom && q.right > g2.left && q.left < g2.right && q.bottom <= b.bottom + 1 && q.top >= b.top - 1) bad.push(name + ' under button');
   }
-  body.scrollTop = 0; out.sectionsReadable = bad.length === 0; out.sectionIssues = bad; out.sections = secs.length;
+  body.scrollTop = 0;
+  // a player who scrolls to Jake sees the bow: leave his row in view so the observer starts it and he settles on the still
+  { const jk = g.$.card.querySelector('.fbg-post-jake'); if (jk) jk.scrollIntoView({ block: 'nearest' }); }
+  out.sectionsReadable = bad.length === 0; out.sectionIssues = bad; out.sections = secs.length;
   return out;
 }"""
 UI2 = r"""() => {

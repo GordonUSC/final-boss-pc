@@ -795,6 +795,10 @@ html.fbg-lock, html.fbg-lock body{overflow:hidden}
   .fbg-post .fbg-post-go{min-height:44px}
 }
 .fbg-post-body.more{-webkit-mask-image:linear-gradient(180deg,#000 calc(100% - 28px),transparent); mask-image:linear-gradient(180deg,#000 calc(100% - 28px),transparent)}
+/* iPhone 15 Pro landscape with Safari bars (734x343): the Jake row must fit the scrolling body in one view */
+@media (max-height:380px){
+  .fbg-jake-art{width:60px; height:80px}
+}
 
 /* the Sin City staff: the finals bow ribbon and the thank-you roll */
 .fbg-staffwalk{position:absolute; left:50%; bottom:12%; transform:translateX(-50%); z-index:7; width:min(92%,760px); display:flex; gap:14px; align-items:center;
