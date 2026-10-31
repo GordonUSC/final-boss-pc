@@ -116,7 +116,9 @@ const DIFF_OFF = { easy: -0.14, normal: 0, hard: 0.1 };
 function hash01(s) { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return ((h >>> 0) % 10007) / 10007; }
 function clampR(v) { return Math.max(0.05, Math.min(0.97, v)); }
 
-const DEFAULT_LOOK = { id: 'fb01', name: 'Chosen Family', mode: 'fb', colors: ['#14523f', '#2ab3b8', '#f3e6c8', '#c9a24a'] };
+// the team's final jersey (Gordon 10/31, "reintegrate the final jersey"): Day One is the pool at sunset; on Sunday (double elimination) the lights go out
+const LIGHTS_OUT = { id: 'lo01', name: 'Lights Out', mode: 'fb', colors: ['#38D6F5', '#14254F', '#F9B4D6', '#F2B23A'], special: 'lightsout' };
+const DEFAULT_LOOK = LIGHTS_OUT;
 const ATK = 3;                     // attack lines, 3 m from center
 // control: 15 s, per the WeHo/Sin City rulebook: "Once a team gains ball control, that team has 15 seconds to relinquish majority possession"
 // (https://www.wehododgeball.com/rules); Gordon 2026-10-26: "oh i am wrong clearly on the 15 second rule"
@@ -190,6 +192,49 @@ function kitFrom(colors) {
   return { base, trim, num, shorts, accent, extra: c[3], outline, all: c };
 }
 
+// Lights Out: spec from the KBS guide. Day One: Sunset Pink 0 to 22% into Pool Aqua by 55%, white pool light, navy numbers with a white outline.
+// Playoff: Final Black with Pinstripe Purple lines, fading into Deep Water navy from 45% to 75%, solid Boss Gold numbers (black and gold lead).
+function lightsOutKit(colors, playoff) {
+  const k = kitFrom(colors); k.special = 'lightsout';
+  if (playoff) return Object.assign(k, { variant: 'playoff', base: '#111111', num: '#F2B23A', trim: '#7A3FC2', shorts: '#111111', accent: '#F2B23A', outline: '#120818', sleeve: '#111111', deep: '#0A2F72', all: ['#111111', '#7A3FC2', '#0A2F72', '#F2B23A'] });
+  return Object.assign(k, { variant: 'dayone', base: '#38D6F5', num: '#14254F', trim: '#F9B4D6', shorts: '#14254F', accent: '#F2B23A', outline: '#ffffff', sleeve: '#F9B4D6' });
+}
+const LO_BG = {};
+function poolLight(ctx, w, y0, y1, alpha, seed) {
+  // a soft white water-caustic network: a jittered lattice joined by curved strands, drawn twice (glow, then core)
+  const R = seeded(seed), cols = 11, rows = Math.max(3, Math.round((y1 - y0) / (w / cols))), dx = w / cols, dy = (y1 - y0) / rows, P = [];
+  for (let j = 0; j <= rows; j++) { P[j] = []; for (let i = 0; i <= cols; i++) P[j][i] = [i * dx + (j % 2 ? dx * 0.5 : 0) + (R() - 0.5) * dx * 0.7, y0 + j * dy + (R() - 0.5) * dy * 0.7]; }
+  const strand = (a, b) => { const mx = (a[0] + b[0]) / 2 + (R() - 0.5) * dx * 0.5, my = (a[1] + b[1]) / 2 + (R() - 0.5) * dy * 0.5; ctx.moveTo(a[0], a[1]); ctx.quadraticCurveTo(mx, my, b[0], b[1]); };
+  ctx.beginPath();
+  for (let j = 0; j <= rows; j++) for (let i = 0; i <= cols; i++) { if (i < cols) strand(P[j][i], P[j][i + 1]); if (j < rows) strand(P[j][i], P[j + 1][i]); if (j < rows && i < cols && R() < 0.5) strand(P[j][i], P[j + 1][i + 1]); }
+  ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#ffffff';
+  ctx.globalAlpha = alpha * 0.35; ctx.lineWidth = 7; ctx.stroke();
+  ctx.globalAlpha = alpha; ctx.lineWidth = 2.2; ctx.stroke(); ctx.restore();
+}
+function lightsOutBody(w, h, variant) {
+  const key = variant + w + 'x' + h; if (LO_BG[key]) return LO_BG[key];
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const ctx = cv.getContext('2d');
+  if (variant === 'playoff') {
+    const g = ctx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#111111'); g.addColorStop(0.45, '#111111'); g.addColorStop(0.75, '#0A2F72'); g.addColorStop(1, '#0A2F72');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+    // purple pinstripes from the collar, fading out with the black between 45% and 75%
+    const s = ctx.createLinearGradient(0, 0, 0, h); s.addColorStop(0, 'rgba(122,63,194,0.8)'); s.addColorStop(0.45, 'rgba(122,63,194,0.7)'); s.addColorStop(0.75, 'rgba(122,63,194,0)');
+    ctx.fillStyle = s; for (let x = 6; x < w; x += 22) ctx.fillRect(x, 0, 2, h);
+    // pool light under the lights-out fade
+    ctx.save(); const m = ctx.createLinearGradient(0, h * 0.4, 0, h); m.addColorStop(0, 'rgba(0,0,0,0)'); m.addColorStop(0.45, 'rgba(0,0,0,1)'); ctx.globalCompositeOperation = 'source-over';
+    const lc = document.createElement('canvas'); lc.width = w; lc.height = h; const l = lc.getContext('2d'); poolLight(l, w, h * 0.35, h + 20, 0.5, 2027);
+    l.globalCompositeOperation = 'destination-in'; l.fillStyle = m; l.fillRect(0, 0, w, h);
+    ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.55; ctx.drawImage(lc, 0, 0); ctx.restore();
+    ctx.fillStyle = '#111111'; ctx.fillRect(0, 0, w, 12);   // black collar
+  } else {
+    const g = ctx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#F9B4D6'); g.addColorStop(0.22, '#F9B4D6'); g.addColorStop(0.55, '#38D6F5'); g.addColorStop(1, '#38D6F5');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+    poolLight(ctx, w, -10, h + 10, 0.5, 627);
+    ctx.fillStyle = '#F9B4D6'; ctx.fillRect(0, 0, w, 12);   // pink collar
+  }
+  LO_BG[key] = cv; return cv;
+}
+
 // ---------------------------------------------------------------- canvas textures
 function canvasTex(w, h, draw, q = 1) {
   // q > 1 backs the texture with a denser canvas (PC native: crowd signs and banners stay sharp at 1440p and 4K); draw code keeps logical w x h
@@ -203,6 +248,10 @@ const DISP = "700 {s}px Teko, 'Arial Narrow', Impact, sans-serif";
 function font(s) { return DISP.replace('{s}', s); }
 function drawJersey(ctx, w, h, kit, name, num, boss) {
   ctx.clearRect(0, 0, w, h);
+  if (kit.special === 'lightsout') {
+    // Lights Out: the sublimated body is the whole design (no side panels or hem bands); numbers and nameplate below keep the shared code
+    ctx.drawImage(lightsOutBody(w, h, kit.variant), 0, 0);
+  } else {
   ctx.fillStyle = kit.base; ctx.fillRect(0, 0, w, h);
   // subtle sublimated texture: diagonal pinstripes
   ctx.save(); ctx.globalAlpha = 0.035; ctx.strokeStyle = lum(kit.base) > 0.5 ? '#000' : '#fff'; ctx.lineWidth = 3;
@@ -220,6 +269,7 @@ function drawJersey(ctx, w, h, kit, name, num, boss) {
   ctx.strokeStyle = kit.accent; ctx.globalAlpha = 0.45; ctx.lineWidth = 2;
   for (const cx of [w * 0.25, w * 0.75]) { ctx.strokeRect(cx - 26, 24, 52, h - 52); }
   ctx.globalAlpha = 1;
+  }
   // back: nameplate (arched, auto-fit) and big number, centered at u = 0.5
   const cx = w * 0.5;
   ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
@@ -682,7 +732,7 @@ class Athlete {
     const base = { skin: L.skin, skinD: shade(L.skin, -0.12), hair: L.hc, white: '#ffffff', gold: '#ffc83d', rb0: '#e8333a', rb1: '#ff8a1f', rb2: '#ffd23a', rb3: '#2fb84a', rb4: '#2f7de8', rb5: '#8a3fd8' };
     if (this.team === 1 && this.g.opp.visor !== false) return Object.assign(base, { sleeve: '#17131f', trim: '#a6f23a', shorts: '#0e0b14', sock: '#17131f', band: '#a6f23a', shoe: '#a6f23a', shoeT: '#17131f', sole: '#101010', pad: '#101010', glass: '#a6f23a', lens: '#0c1418' });
     const lightBase = lum(kit.base) > 0.75;
-    return Object.assign(base, { sleeve: kit.base, trim: kit.trim, shorts: kit.shorts, sock: lightBase ? '#ffffff' : kit.base, band: kit.accent, shoe: '#f4f2ee', shoeT: kit.trim, sole: lightBase ? kit.trim : '#ffffff', pad: '#1c1a20', glass: '#222', lens: '#111' });
+    return Object.assign(base, { sleeve: kit.sleeve || kit.base, trim: kit.trim, shorts: kit.shorts, sock: lightBase ? '#ffffff' : kit.base, band: kit.accent, shoe: '#f4f2ee', shoeT: kit.trim, sole: lightBase ? kit.trim : '#ffffff', pad: '#1c1a20', glass: '#222', lens: '#111' });
   }
   drawKit(kit) {
     this.jerseyTex.userData.redraw((c, w, h) => { drawJersey(c, w, 256, kit, this.name, this.num, this.boss); c.fillStyle = '#ffffff'; c.fillRect(0, 256, w, 16); });
@@ -1294,7 +1344,11 @@ class Game {
   }
   applyLook(look) {
     this.look = look || this.look;
-    this.kit = kitFrom(this.look.colors);
+    // the page sends looks without the special flag, so Lights Out is also known by its id
+    const special = this.look.special || (this.look.id === LIGHTS_OUT.id ? LIGHTS_OUT.special : null);
+    this.loPlayoff = special === 'lightsout' ? this.isSunday() : null;
+    this.kit = special === 'lightsout' ? lightsOutKit(this.look.colors, this.loPlayoff) : kitFrom(this.look.colors);
+
     const kit = this.kit;
     for (const p of this.teams[0]) p.drawKit(kit);
     const r = this.root.style;
@@ -1306,6 +1360,8 @@ class Game {
     if (this.ribbonTex) this.paintRibbon();
     if (this.drawSigns) this.drawSigns();
   }
+  isSunday() { return !!(this.wkMatch && this.wkMatch.day === 'sun'); }
+  lightsOutStale() { return this.loPlayoff != null && this.loPlayoff !== this.isSunday(); }
   applyMode(mode) {
     this.mode = mode === 'vc' ? 'vc' : 'fb';
     const vc = this.mode === 'vc';
@@ -1950,6 +2006,7 @@ class Game {
   start() {
     if (this.dead) return;
     if (!this.wkMatch && this.opp && (this.opp.id || 'glitches') !== 'glitches') this.setOpponent(null);   // quick match: THE GLITCHES, one tap from the title
+    if (this.lightsOutStale()) this.applyLook(this.look);   // Lights Out: Playoff kit on Sunday, Day One otherwise
     this.$.card.classList.remove('is-wk');
     this.sfx.enable(this.sfx.on);
     this.resetMatch();
