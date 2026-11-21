@@ -53,7 +53,7 @@ const ROSTER = [
   { key: 'BELLAMY', num: '4', skin: '#6a4029', hair: '#1b1210', style: 'crop', build: 1.12, shots: ['comet', 'moon'] },
   { key: 'BELLAMY III', num: '5', skin: '#8a5a3c', hair: '#17100c', style: 'short', build: 1.04 },
   { key: 'REED', num: '6', skin: '#e9b997', hair: '#5a3a22', style: 'short', build: 0.98 },
-  { key: 'KRAMER', num: '31', skin: '#eec3a0', hair: '#6b4a2a', style: 'short', build: 1.03 },
+  { key: 'KRAMER', num: '36', skin: '#eec3a0', hair: '#6b4a2a', style: 'short', build: 1.03 },
   { key: 'KETCHUM', num: '83', skin: '#d6a07a', hair: '#24170f', style: 'short', build: 1.02 },
 ];
 const SHOTS_BY = { FIORE: ['hook', 'hop'], YOU: ['comet', 'hop'], HAWKINS: ['comet', 'hop'], 'BELLAMY III': ['hook', 'hop'], REED: ['comet', 'moon'], KRAMER: ['comet', 'hop'], KETCHUM: ['hook', 'moon'] };
@@ -126,7 +126,7 @@ const ATK = 3;                     // attack lines, 3 m from center
 const RULES = { saveOnTeammateCatch: true, match: 180, ot: 60, mercy: 8, control: 15, oob: 10, back: 5, timeout: 30, balls: 5, rushF: 300 };
 // the open slot: a recruit puts their own name, number and skin tone on the back (saved on their device only)
 const YOU_SKINS = ['#f3d2b8', '#e3ad88', '#c68a62', '#8a5a3c', '#5a3826'];
-const TAKEN_NUMS = new Set(['1', '3', '4', '5', '6', '31', '83']);
+const TAKEN_NUMS = new Set(['1', '3', '4', '5', '6', '36', '83']);
 function youDef() { return ROSTER.find(r => r.key === 'YOU'); }
 function cleanYouName(v) { return String(v || '').toUpperCase().replace(/[^A-Z .'-]/g, '').replace(/\s+/g, ' ').trim().slice(0, 11); }
 function loadYou() {
@@ -160,7 +160,7 @@ function ruleIcon(k) {
 const SIGNS = [
   { t: ['COACH NINA', '#1'], who: 'FIORE' }, { t: ['NEW CHALLENGER', 'THAT\'S YOU!'], who: 'YOU' }, { t: ['HAWKINS 3', 'HYPE'], who: 'HAWKINS' },
   { t: ['BELLAMY 4', 'FINAL BOSS'], who: 'BELLAMY' }, { t: ['BELLAMY III', '#5'], who: 'BELLAMY III' }, { t: ['REED 6', 'ALL DAY'], who: 'REED' },
-  { t: ['KRAMER 31', 'ARM CANNON'], who: 'KRAMER' }, { t: ['KETCHUM 83', 'GOLDEN BOY'], who: 'KETCHUM' }, { t: ['ALL HEART', 'no sting'], who: '*go' }, { t: ['PHASE TWO!'], who: '*p2' },
+  { t: ['KRAMER 36', 'ARM CANNON'], who: 'KRAMER' }, { t: ['KETCHUM 83', 'GOLDEN BOY'], who: 'KETCHUM' }, { t: ['ALL HEART', 'no sting'], who: '*go' }, { t: ['PHASE TWO!'], who: '*p2' },
   { t: ['THANK YOU', 'STAFF!'], who: '*a0', style: 'bb' }, { t: ['FINAL', 'BOSS'], who: '*a1', style: 'gold' }, { t: ['COMEBACK'], who: '*a2', style: 'bb' }, { t: [''], who: '*opp0', style: 'opp' }, { t: [''], who: '*opp1', style: 'opp' },
 ];
 const CREST_FB = '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M6 6h36v20c0 9-8 15-18 18C14 41 6 35 6 26z" fill="var(--fbg-tb)" stroke="#ffc83d" stroke-width="3"/><path d="M13 30V17l6 6 5-9 5 9 6-6v13z" fill="#ffc83d" stroke="#3a1a00" stroke-width="1.5"/></svg>';
