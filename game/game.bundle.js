@@ -748,6 +748,7 @@ class Athlete {
     this.ai = { t: 0, plan: null, delay: 0, press: -1, dodge: 0, dz: 0, home: null, think: 0, claimBall: null, dodgeAt: 0 };
     this.wantPower = false; this.throwType = 'normal'; this.throwTarget = null; this.passTarget = null;
     this.visible = true; this.root.visible = true; this.shadow.visible = true; this.popScale = 1;
+    this.gait = null;
     this.lane = null; this.knock = null; this.happyT = 0; this.pendingOut = null; this.pendWhy = null; this.rushCarry = false; this.rushThrow = false; this.xAim = null; this.noLook = false; this.ninaPlay = null;
     this.boundaryRisk = null; this.balanceNX = this.balanceNZ = 0; this.stumbleT = 0; this.outOrder = null; this.greetT = 0;
     if (this.faceTex) this.setExpr('neutral');
@@ -1504,6 +1505,7 @@ class Game {
     if (!a.active) return;
     let k = 0.35;
     const s = a.state, t = a.st;
+    const gait = this.updateCourtGait(a);
     let P;
     switch (s) {
       case 'idle': P = a.role === 'outline' ? this.poseBench(a) : (a.hasBall ? this.poseHold(a) : this.poseIdle(a)); k = 0.25; break;
@@ -1538,9 +1540,50 @@ class Game {
       case 'stagger': P = this.poseHit(a); k = 0.3; break;
       default: P = this.poseIdle(a);
     }
+    if (gait) this.styleCourtGait(a, P, gait);
     a.setExpr(exprFor(a, this));
     if (a.stumbleT > 0) { a.stumbleT--; P.side += Math.sin(a.stumbleT * 0.5) * 0.12; P.sh[1] = P.sh[3] = 0.8; }
     a.tgt = P; this.blend(a, k); this.place(a);
+  }
+  // Lower-body pose only: derive cadence from measured displacement after physics.
+  // Gameplay velocity, facing, step counters and line rulings remain authoritative.
+  updateCourtGait(a) {
+    const eligible = this.phase === 'play' && a.role === 'in' && !a.oob && a.h < 0.001 &&
+      /^(idle|walk|run|teeter|balance)$/.test(a.state);
+    const g = a.gait || (a.gait = { x: a.x, z: a.z, speed: 0, phase: a.team ? Math.PI : 0,
+      dx: 0, dz: 0, turn: 0 });
+    const x = a.x - g.x, z = a.z - g.z, d = Math.hypot(x, z);
+    g.x = a.x; g.z = a.z;
+    if (!eligible || d > 0.18) { g.speed = g.dx = g.dz = g.turn = 0; return null; }
+    const moving = d > 0.003 && (a.state === 'walk' || a.state === 'run');
+    const speed = moving ? d / DT : 0, was = g.speed;
+    g.turn *= 0.72;
+    if (moving) {
+      const nx = x / d, nz = z / d;
+      if (was < 0.3) { g.phase = Math.cos(a.yaw) * nz + Math.sin(a.yaw) * nx < 0 ? Math.PI : 0; }
+      else if (nx * g.dx + nz * g.dz < 0.48) { g.turn = 1; g.phase = Math.cos(g.phase) >= 0 ? 0 : Math.PI; }
+      g.dx = nx; g.dz = nz;
+      g.phase = (g.phase + d * (a.state === 'run' ? 4.1 : 6.1)) % (Math.PI * 2);
+    }
+    g.speed = speed;
+    return g;
+  }
+  styleCourtGait(a, p, g) {
+    if (a.state !== 'walk' && a.state !== 'run') return;
+    // Do not change hips position, torso, arms or the body transform. The held ball reads the hand.
+    const run = a.state === 'run', load = Math.min(1, g.speed / (run ? TUNE.run : TUNE.walk));
+    const sy = Math.sin(a.yaw), cy = Math.cos(a.yaw);
+    const side = (g.dx * cy - g.dz * sy) * load, front = g.dx * sy + g.dz * cy;
+    const toCenter = this.rushT >= RULES.rushF ? Math.max(0, a.x * a.side) : 10;
+    const toSide = Math.abs(a.x) < HX ? Math.max(0, HZ - Math.abs(a.z)) : 10;
+    const clearance = Math.min(1, 0.30 + 1.2 * Math.min(toCenter, toSide));
+    const swing = Math.sin(g.phase), beat = Math.cos(g.phase), amp = load * (1 - 0.55 * g.turn) * clearance;
+    const stride = swing * amp * (run ? 0.80 : 0.49) * front;
+    p.hp = [stride - 0.19, -stride - 0.19];
+    p.kn = [0.29 + Math.max(0, -beat) * amp * (run ? 0.91 : 0.62),
+      0.29 + Math.max(0, beat) * amp * (run ? 0.91 : 0.62)];
+    p.spread = [0.13 + Math.max(0, -side) * clearance * (0.31 + swing * 0.14),
+      0.13 + Math.max(0, side) * clearance * (0.31 - swing * 0.14)];
   }
   bp(a) { return a.blankPose(); }
   poseIdle(a) { const p = this.bp(a); const t = (this.frame + a.num.length * 17) * 0.09; if (a.role !== 'in') { p.hipY = -0.02; p.kn = [0.25, 0.25]; p.hp = [-0.12, -0.12]; p.sh = [-0.5, 0.2, -0.5, 0.2]; p.el = [-1.0, -1.0]; return p; } p.hipY = Math.sin(t) * 0.02 - 0.13; p.kn = [0.95, 0.95]; p.hp = [-0.62, -0.62]; p.spread = [0.2, 0.2]; p.lean = 0.30 + Math.sin(t) * 0.025; p.sh = [-0.85, 0.38, -0.85, 0.38]; p.el = [-0.95, -0.95]; p.head = -0.25 + Math.sin(t * 0.5) * 0.05; return p; }
