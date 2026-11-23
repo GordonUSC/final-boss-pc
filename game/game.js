@@ -111,6 +111,13 @@ const ATK = 3;                     // attack lines, 3 m from center
 // (https://www.wehododgeball.com/rules); Gordon 2026-10-26: "oh i am wrong clearly on the 15 second rule"
 // saveOnTeammateCatch: a teammate catching a body-hit pop-up before the floor saves the hit player (league convention; NEEDS GORDON'S CONFIRMATION, the rulebook text states it only for dropped blocks)
 const RULES = { saveOnTeammateCatch: true, match: 180, ot: 60, mercy: 8, control: 15, oob: 10, back: 5, timeout: 30, balls: 5, rushF: 300 };
+// TAC2 (11/23): the throw clock and ball count are settings (Sin City 2027 Mixed No-Sting does not publish them); read once at load
+const TAC2_RULESET = (() => { let v = null; try { v = JSON.parse(localStorage.getItem('fbg-rules') || 'null'); } catch (e) { } v = v && typeof v === 'object' ? v : {};
+  const clock = [10, 15, 20].includes(+v.clock) ? +v.clock : 15, balls = [5, 6].includes(+v.balls) ? +v.balls : 5; RULES.control = clock; RULES.balls = balls; return { preset: v.preset === 'sincity' ? 'sincity' : 'arcade', clock, balls }; })();
+const TAC2_MAJ = () => (RULES.balls >> 1) + 1;   // ball control starts at a majority of the balls (3 of 5, 4 of 6)
+const TAC2_CALLS = [{ id: 'go', label: '3, 2, 1, GO!' }, { id: 'ball', label: 'BALL ME!' }, { id: 'cover', label: 'COVER!' }, { id: 'trade', label: 'TRADE!' }, { id: 'counter', label: 'COUNTER!' }];
+// Quick Play draws its opponent from every team in the game; each must meet the coed rule (2+ non-male players)
+function tac2NonMale(t) { const ps = (t.players || []).concat(t.boss ? [t.boss] : []); return ps.filter(p => { const g = (p.look && p.look.g) || (APPEAR[String(p.key || '').toUpperCase()] || {}).g; return g && g !== 'm'; }).length; }
 // the open slot: a recruit puts their own name, number and skin tone on the back (saved on their device only)
 const YOU_SKINS = ['#f3d2b8', '#e3ad88', '#c68a62', '#8a5a3c', '#5a3826'];
 const TAKEN_NUMS = new Set(['1', '3', '4', '5', '6', '36', '83']);
@@ -1006,6 +1013,7 @@ class Game {
     <button class="fbg-tb" data-b="jump" type="button">JUMP</button>
   </div>
   <button class="fbg-tb sw" data-b="switch" type="button" aria-label="Switch player">SWITCH</button>
+  <button class="fbg-tb callb" data-b="call" type="button" aria-label="Call a team play">CALL</button>
 </div>
 <div class="fbg-ov" hidden><div class="fbg-card"></div></div>`;
     this.el.appendChild(r);
@@ -1052,9 +1060,16 @@ class Game {
   }
   settingsHTML() {
     if (!this.native) return '';
+    if (!this.tac2RulesBound) { this.tac2RulesBound = true; this.root.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-rp],[data-rc],[data-rb]'); if (!b) return;
+      const v = Object.assign({}, TAC2_RULESET); if (b.dataset.rp) v.preset = b.dataset.rp; if (b.dataset.rc) v.clock = +b.dataset.rc; if (b.dataset.rb) v.balls = +b.dataset.rb;
+      try { localStorage.setItem('fbg-rules', JSON.stringify(v)); } catch (er) { } location.reload(); }); }
     const q = (k, n) => `<button type="button" class="fbg-sb" data-q="${k}" aria-pressed="${this.qMode === k}">${n}</button>`;
     return `<div class="fbg-set"><div class="fbg-seg" role="group" aria-label="Quality"><span>Quality</span>${q('auto', 'Auto')}${q('high', 'High')}${q('ultra', 'Ultra')}</div>
       <div class="fbg-seg fbg-kmseg" role="group" aria-label="Keyboard movement"><span>Keys</span><button type="button" class="fbg-sb" data-km="standard" aria-pressed="${this.km !== 'infield'}">STANDARD</button><button type="button" class="fbg-sb" data-km="infield" aria-pressed="${this.km === 'infield'}">IN FIELD MOVEMENT</button></div>
+      <div class="fbg-seg" role="group" aria-label="Rules"><span>Rules</span>${['arcade', 'sincity'].map(p => `<button type="button" class="fbg-sb" data-rp="${p}" aria-pressed="${TAC2_RULESET.preset === p}">${p === 'arcade' ? 'Arcade' : 'Sin City 2027'}</button>`).join('')}</div>
+      <div class="fbg-seg" role="group" aria-label="Throw clock"><span>Clock</span>${[10, 15, 20].map(c => `<button type="button" class="fbg-sb" data-rc="${c}" aria-pressed="${TAC2_RULESET.clock === c}">${c} s</button>`).join('')}</div>
+      <div class="fbg-seg" role="group" aria-label="Balls"><span>Balls</span>${[5, 6].map(c => `<button type="button" class="fbg-sb" data-rb="${c}" aria-pressed="${TAC2_RULESET.balls === c}">${c}</button>`).join('')}</div>
+      ${TAC2_RULESET.preset === 'sincity' ? '<p class="fbg-setnote">Sin City 2027, Mixed No-Sting: up to 8 on court, at least 2 women per team. Every team in Boss Rush meets it. The event page does not publish the ball count or throw clock, so set yours.</p>' : ''}
       <div class="fbg-seg" role="group" aria-label="Display"><span>Display</span><button type="button" class="fbg-sb" data-d="full"></button><button type="button" class="fbg-sb" data-d="fs"></button></div>
       <p class="fbg-setnote"></p></div>`;
   }
@@ -1377,7 +1392,7 @@ class Game {
     if (this.drawBanner) this.drawBanner();
   }
   bindInput() {
-    const map = { ArrowLeft: 'left', a: 'left', A: 'left', ArrowRight: 'right', d: 'right', D: 'right', ArrowUp: 'up', w: 'up', W: 'up', ArrowDown: 'down', s: 'down', S: 'down', j: 'throw', J: 'throw', ' ': 'throw', u: 'sprint', U: 'sprint', k: 'catch', K: 'catch', l: 'jump', L: 'jump', Shift: 'pass', e: 'pass', E: 'pass', q: 'switch', Q: 'switch', Escape: 'pause', p: 'pause', P: 'pause', Enter: 'enter', '1': 'rock', '2': 'paper', '3': 'scissors', f: 'fs', F: 'fs', m: 'menu', M: 'menu' };
+    const map = { ArrowLeft: 'left', a: 'left', A: 'left', ArrowRight: 'right', d: 'right', D: 'right', ArrowUp: 'up', w: 'up', W: 'up', ArrowDown: 'down', s: 'down', S: 'down', j: 'throw', J: 'throw', ' ': 'throw', u: 'sprint', U: 'sprint', k: 'catch', K: 'catch', l: 'jump', L: 'jump', Shift: 'pass', e: 'pass', E: 'pass', q: 'switch', Q: 'switch', c: 'call', C: 'call', Escape: 'pause', p: 'pause', P: 'pause', Enter: 'enter', '1': 'rock', '2': 'paper', '3': 'scissors', f: 'fs', F: 'fs', m: 'menu', M: 'menu' };
     this.onKeyDown = (e) => {
       const k = map[e.key]; if (!k) return;
       const inGame = this.phase !== 'title' && this.phase !== 'result';
@@ -1468,7 +1483,7 @@ class Game {
     if (sprint && !(mx * fwd > 0.3)) mx = (this.user && this.user.x * this.user.side < 1.0 && this.rushT >= RULES.rushF) ? 0 : fwd;   // DASH alone never carries you over the center line
     let mz = km.mz + t.mz;
     mx = Math.max(-1, Math.min(1, mx)); mz = Math.max(-1, Math.min(1, mz));
-    const it = { mx, mz, dash: e.dash || (e.sprint ? fwd : 0), holdRun: (km.run || t.run || sprint), throw: !!e.throw, catch: !!e.catch, catchHeld: !!(k.catch || t.btn.catch), jump: !!e.jump, pass: !!e.pass, sw: !!e.switch };
+    const it = { mx, mz, dash: e.dash || (e.sprint ? fwd : 0), holdRun: (km.run || t.run || sprint), throw: !!e.throw, catch: !!e.catch, catchHeld: !!(k.catch || t.btn.catch), jump: !!e.jump, pass: !!e.pass, sw: !!e.switch, call: !!e.call };
     this.edge = {};
     return it;
   }
@@ -2027,15 +2042,16 @@ class Game {
   }
   placeRushBalls(w) {
     this.lastCtl = w;
-    const z0 = w === 0 ? [1.0, 2.3, 3.6] : [1.7, 3.3];
-    const z1 = w === 1 ? [-1.0, -2.3, -3.6] : [-1.7, -3.3];
+    const nb = RULES.balls, hi = Math.ceil(nb / 2), lo = nb - hi, row = (n) => n === 3 ? [1.0, 2.3, 3.6] : n === 2 ? [1.7, 3.3] : n === 1 ? [2.3] : Array.from({ length: n }, (_, i) => 0.8 + i * (3.2 / Math.max(1, n - 1)));
+    const z0 = row(w === 0 ? hi : lo);
+    const z1 = row(w === 1 ? hi : lo).map(z => -z);
     let i = 0;
     for (const z of z0) { const b = this.balls[i++]; this.resetBall(b); b.z = z; b.rushTeam = 0; }
     for (const z of z1) { const b = this.balls[i++]; this.resetBall(b); b.z = z; b.rushTeam = 1; }
   }
   start() {
     if (this.dead) return;
-    if (!this.wkMatch && this.opp && (this.opp.id || 'glitches') !== 'glitches') this.setOpponent(null);   // quick match: THE GLITCHES, one tap from the title
+    if (!this.wkMatch) { const qid = this.quickOppId || 'glitches'; if (this.opp && (this.opp.id || 'glitches') !== qid) this.setOpponent(qid === 'glitches' ? null : wkTeam(qid)); }   // TAC2: quick match plays the drawn opponent (THE GLITCHES until a draw)
     if (this.lightsOutStale()) this.applyLook(this.look);   // Lights Out: Playoff kit on Sunday, Day One otherwise
     this.$.card.classList.remove('is-wk');
     this.sfx.enable(this.sfx.on);
@@ -2051,7 +2067,7 @@ class Game {
   showVS() {
     const t0 = this.teams[0], t1 = this.teams[1];
     this.$.vs.innerHTML = `<div class="fbg-vsp l"><small>${esc(this.look.name || '')}</small><h3>FINAL BOSS</h3><ul class="two">${t0.map(a => `<li${a === this.user ? ' class="me"' : ''}><span>#${a.num}</span>${a.name}</li>`).join('')}</ul></div>
-      <div class="fbg-vsp r"><small>${this.wkMatch ? esc(this.wkMatch.label) : 'Boss team'}</small><h3>${this.opp.name}</h3><ul class="two">${t1.map(a => `<li>${a.name}<span>#${a.num}</span></li>`).join('')}</ul></div><div class="fbg-vsx">VS</div>`;
+      <div class="fbg-vsp r${!this.wkMatch && this.quickOppId ? ' qd' : ''}"><small>${this.wkMatch ? esc(this.wkMatch.label) : (this.quickOppId ? 'QUICK DRAW' : 'Boss team')}</small><h3>${this.opp.name}</h3>${!this.wkMatch && this.quickOppId ? `<p class="fbg-vswho">${esc((this.opp.wk && this.opp.wk.who) || (this.opp.id && this.opp.id !== 'glitches' ? '' : 'Scrappy and chaotic: big arms, wandering eyes.'))}</p>` : ''}<ul class="two">${t1.map(a => `<li>${a.name}<span>#${a.num}</span></li>`).join('')}</ul></div><div class="fbg-vsx">VS</div>`;
     this.$.vs.hidden = false;
     if (this.opp.wk && this.opp.id !== 'glitches') { const id = this.opp.id; setTimeout(() => { if (this.phase === 'intro' && this.opp.id === id) this.sfx.vo('intro_' + id + '_1', 4); }, 1400); }
   }
@@ -2065,7 +2081,7 @@ class Game {
     const touch = this.root.classList.contains('has-touch');
     const title = this.ot ? 'OVERTIME: 60 S' : 'GAME ' + this.gameNo;
     const rules = [['rush', 'Rush right only', 'on GO, run only for the balls on your right as you face the other team'], ['line', 'Clear the line', 'carry a rushed ball past your attack line before you throw'], ['catch', 'Catch = back in', 'the thrower is out and your next teammate returns'],
-      ['head', 'No headshots', 'a standing headshot puts the thrower out'], ['clock', '15 s control', '3 or more balls on your side, held or loose, starts 15 s. Drop to 2 and it resets. At 0, all 5 balls go over'], ['back', 'Back line only', 'leave only out the back, 10 s to return']];
+      ['head', 'No headshots', 'a standing headshot puts the thrower out'], ['clock', RULES.control + ' s control', TAC2_MAJ() + ' or more balls on your side, held or loose, starts ' + RULES.control + ' s. Drop to ' + (TAC2_MAJ() - 1) + ' and it resets. At 0, all ' + RULES.balls + ' balls go over'], ['back', 'Back line only', 'leave only out the back, 10 s to return']];
     const ctl = touch ? 'Left pad moves (flick to dash). <b>THROW</b>, <b>CATCH</b> (hold to duck), <b>JUMP</b>, <b>PASS</b>.'
       : '<span class="fbg-kmtext">' + this.kmLine() + '</span>, double-tap to dash. <span class="fbg-kbd">J</span>' + (this.native ? '/<span class="fbg-kbd">Left click</span>' : '') + ' throw, <span class="fbg-kbd">K</span>' + (this.native ? '/<span class="fbg-kbd">Right click</span>' : '') + ' catch (hold to duck), <span class="fbg-kbd">L</span> jump, <span class="fbg-kbd">Shift</span> or <span class="fbg-kbd">E</span> pass, <span class="fbg-kbd">Q</span> switch.';
     this.$.vs.innerHTML = `<div class="fbg-rps fbg-brief" role="dialog" aria-label="${title} rules"><h3>${title}</h3>
@@ -2236,9 +2252,10 @@ class Game {
       <div class="fbg-resgrid">${this.chipHTML()}<div class="fbg-res"><div><b>${this.points[0]} to ${this.points[1]}</b><span>Games</span></div><div><b>${this.score.toLocaleString()}</b><span>Score</span></div><div><b>${s.kos}</b><span>Outs you made</span></div>
       <div><b>${s.catches}</b><span>Catches</span></div><div><b>${s.backIn}</b><span>Teammates back in</span></div><div><b>${s.headshots}</b><span>Headshot calls</span></div></div></div>
       <p style="color:var(--fbg-ash)">Look: ${esc(this.look.name || '')}. Honor system, always.</p>
-      <div class="fbg-row">${wk ? `<button class="fbg-btn fbg-go" type="button">${w && w.done ? 'SEE THE WEEKEND' : 'CONTINUE WEEKEND'}</button>` : '<button class="fbg-btn fbg-go" type="button">RUN IT BACK</button>'}<button class="fbg-btn ghost fbg-lineup-b" type="button">PICK A PLAYER</button>${wk && w && w.done ? '<button class="fbg-btn ghost fbg-staffb" type="button">THANK YOU, STAFF</button>' : ''}${this.full ? '<button class="fbg-btn ghost" type="button" data-d="full">Back to the page</button>' : ''}</div>`;
+      <div class="fbg-row">${wk ? `<button class="fbg-btn fbg-go" type="button">${w && w.done ? 'SEE THE WEEKEND' : 'CONTINUE WEEKEND'}</button>` : '<button class="fbg-btn fbg-go" type="button">REMATCH</button><button class="fbg-btn ghost fbg-newdraw" type="button">NEW DRAW</button>'}<button class="fbg-btn ghost fbg-lineup-b" type="button">PICK A PLAYER</button>${wk && w && w.done ? '<button class="fbg-btn ghost fbg-staffb" type="button">THANK YOU, STAFF</button>' : ''}${this.full ? '<button class="fbg-btn ghost" type="button" data-d="full">Back to the page</button>' : ''}</div>`;
     this.$.card.querySelector('.fbg-go').addEventListener('click', () => { if (wk) { this.wkMatch = null; this.showBracket(); } else this.start(); });
     this.$.card.querySelector('.fbg-lineup-b').addEventListener('click', () => { this.wkMatch = null; this.resetMatch(); this.phase = 'title'; this.showTitle(); });
+    { const nd = this.$.card.querySelector('.fbg-newdraw'); if (nd) nd.addEventListener('click', () => { this.wkMatch = null; this.quickDraw(); this.start(); }); }
     { const sb = this.$.card.querySelector('.fbg-staffb'); if (sb) sb.addEventListener('click', () => this.showStaffCredits(() => this.showResults())); }
     this.$.ov.hidden = false;
     this.bindChip();
@@ -2255,12 +2272,12 @@ class Game {
          <li data-n="2"><span class="fbg-kbd">J</span>${this.native ? ', <span class="fbg-kbd">Left click</span>' : ''} or <span class="fbg-kbd">Space</span> throws. Throw on dash steps 4 to 7 for a <b>power shot</b>.</li>
          <li data-n="3"><span class="fbg-kbd">K</span>${this.native ? ' or <span class="fbg-kbd">Right click</span>' : ''} catches or blocks right before impact (hold to duck). <span class="fbg-kbd">L</span> jumps, <span class="fbg-kbd">Shift</span> or <span class="fbg-kbd">E</span> passes.</li>`;
     const rules = [['rush', 'Rush right', 'grab only the balls on your right'], ['line', 'Clear the line', 'carry it past your attack line first'], ['catch', 'Catch = back in', 'thrower out, your next teammate returns'],
-      ['head', 'No headshots', 'a standing headshot puts the thrower out'], ['clock', '15 s control', '3+ on your side, held or loose. 2 resets it. At 0, all 5 go over'], ['back', 'Back line only', 'leave only out the back, 10 s to return']];
+      ['head', 'No headshots', 'a standing headshot puts the thrower out'], ['clock', RULES.control + ' s control', TAC2_MAJ() + '+ on your side, held or loose. ' + (TAC2_MAJ() - 1) + ' resets it. At 0, all ' + RULES.balls + ' go over'], ['back', 'Back line only', 'leave only out the back, 10 s to return']];
     this.$.card.classList.remove('is-picker'); this.$.ov.classList.remove('picker');
     this.sfx.music('music_menu');
     this.$.card.innerHTML = `${this.edChip()}
       <h2>BOSS <em>RUSH</em></h2>
-      <p>Sin City style, arcade format: 8 on 8, 5 balls, no sting. Most games in 3 minutes wins.</p>
+      <p>Sin City style, arcade format: 8 on 8, ${RULES.balls} balls, no sting. Most games in 3 minutes wins.</p>
       <ul class="fbg-rules">${rules.map(r => `<li>${ruleIcon(r[0])}<b>${r[1]}</b><span>${r[2]}</span></li>`).join('')}</ul>
       <details class="fbg-more"><summary>How Sin City plays</summary>
         <p class="fbg-kmp"${this.km === 'infield' ? '' : ' hidden'}>${this.kmHow()}</p>
@@ -2272,11 +2289,11 @@ class Game {
       <ol class="fbg-how">${how}</ol>
       <div class="fbg-lineup"><h3>PICK YOUR PLAYER</h3><div class="fbg-pool"></div></div>
       ${this.settingsHTML()}<div class="fbg-row"><button class="fbg-btn fbg-go fbg-wkb" type="button">${(() => { const w = wkLoad(); return w && !w.done && w.fb.length ? 'CONTINUE WEEKEND' : 'SIN CITY WEEKEND'; })()}</button><button class="fbg-btn ghost fbg-quick" type="button">Quick match</button><button class="fbg-btn ghost fbg-staffb" type="button">Thank you, Staff</button><button class="fbg-btn ghost fbg-snd" type="button">${this.sfx.on ? 'Sound on' : 'Sound off'}</button></div>
-      <p class="fbg-wkp">Sin City Weekend: Saturday pools, then Sunday double elimination against 16 fabulous teams. Quick match: one match against THE GLITCHES.</p>`;
+      <p class="fbg-wkp">Sin City Weekend: Saturday pools, then Sunday double elimination against 16 fabulous teams. Quick match: one match against a team drawn at random from all ${QUICK_POOL().length}.</p>`;
     this.renderPicker(); this.syncMenu(); this.bindEdChip('title');
     // Gordon 10/26: Sin City Weekend is the default; a quick match is one tap away
     this.$.card.querySelector('.fbg-wkb').addEventListener('click', () => { this.sfx.ui('select'); this.showBracket(); });
-    this.$.card.querySelector('.fbg-quick').addEventListener('click', () => { this.wkMatch = null; this.start(); });
+    this.$.card.querySelector('.fbg-quick').addEventListener('click', () => { this.wkMatch = null; this.quickDraw(); this.start(); });
     this.$.card.querySelector('.fbg-snd').addEventListener('click', () => this.toggleSound());
     this.$.card.querySelector('.fbg-staffb').addEventListener('click', () => this.showStaffCredits(() => this.showTitle()));
     this.$.ov.hidden = false;
@@ -2439,6 +2456,8 @@ class Game {
     this.wf = (this.wf || 0) + 1;
     const ui = this.userIntent();
     if (ui.sw) this.switchUser(true);
+    if (ui.call) this.tac2CallPress();
+    this.tac2Tick();
     this.assignClaims();
     this.coachTick(0); this.coachTick(1);
     for (const a of this.all) {
@@ -2486,7 +2505,7 @@ class Game {
       let best = null, bd = 1e9;
       for (const a of this.teams[team]) {
         if (!ok(a) || (a.ai.claimBall && a.ai.claimBall !== b && a.ai.claimBall.claim === a)) continue;
-        const d = Math.hypot(a.x - b.x, a.z - b.z); if (d < bd) { bd = d; best = a; }
+        const d = Math.hypot(a.x - b.x, a.z - b.z) - (b.state === 'rest' && this.rushT < RULES.rushF ? 2.4 * ((a.rt || FB_BASE).foot - 0.6) : 0); if (d < bd) { bd = d; best = a; }   // TAC2 speed split: quick feet run the rush
       }
       if (c && c.ai.claimBall === b) c.ai.claimBall = null;
       b.claim = best; if (best) best.ai.claimBall = b;
@@ -2619,7 +2638,7 @@ class Game {
       if (t === 0 && ai.length >= 2 && !C.plan && this.ninaCall(t, ai)) { /* Coach Nina's play is on (DELAY, SMALL X, WIDE X) */ }
       else if (n >= 3 && ai.length >= 2 && !C.plan && Math.random() < T.push) {
         const mode = Math.random() < T.fake ? 'fake' : 'multi';
-        C.plan = { k: 'push', mode, members: ai.slice(0, 3), t0: this.frame }; this.awStat('plan_push_' + mode); if (t === 0) this.coachSay(mode === 'fake' ? 'PUMP FAKE' : 'PUSH');
+        C.plan = { k: 'push', mode, members: ai.slice(0, n >= 4 && ai.length >= 3 ? Math.min(3, ai.length - 1) : 3), t0: this.frame }; if (n >= 4) this.awStat('tac_reserve'); this.awStat('plan_push_' + mode); if (t === 0) this.coachSay(mode === 'fake' ? 'PUMP FAKE' : 'PUSH');
         for (const m of C.plan.members) { m.ai.plan = { k: 'coach' }; m.ai.t = 0; }
       } else if (n >= 1 && C.patient && this.ctlTeam !== t) { this.awStat('plan_patience'); if (t === 0) this.coachSay('HOLD'); }
       else if (n === 1 && C.lastHold && t === 0) this.coachSay('LAST BALL: KEEP IT');
@@ -2661,8 +2680,8 @@ class Game {
       shooter.syncTarget = baited.length ? baited[0] : null; shooter.ai.plan = { k: 'throw' }; shooter.ai.t = 0; shooter.ai.delay = 9; shooter.fakeShot = !!baited.length; this.abOnFake(t, shooter);
     } else {
       const target = this.pickTarget(M[0], null); if (!target) return;
-      M.forEach((m, i) => { m.ai.plan = { k: 'sync', s: { at: this.frame + 2 + (i ? ((Math.random() * 8) | 0) : 0), target, team: t } }; });
-      this.awStat('sync'); this.pop(M[0], 'THREE!', 'small ' + (t === 0 ? 'gold sh0' : 'lime sh1')); this.sfx.smp(t === 0 ? 'call_fb' : 'call_gl', 0.85);
+      this.tac2Count(t, M, target); return;
+      
     }
   }
   trySync(a) {
@@ -2675,15 +2694,13 @@ class Game {
     if (!mate || a.oob > 0) return false;
     const target = this.pickTarget(a, null); if (!target) return false;
     if (team === 1 && this.abMulti(a, target)) { this.syncCool[team] = this.frame + 360; return true; }
-    const S = { at: this.frame + 42, target, team };
-    a.ai.plan = { k: 'sync', s: S }; mate.ai.plan = { k: 'sync', s: S }; mate.ai.t = 0;
+    this.tac2Count(team, [a, mate], target); mate.ai.t = 0;
     this.syncCool[team] = this.frame + 360;
-    this.awStat('sync');
-    this.pop(a, 'THREE!', 'small ' + (team === 0 ? 'gold' : 'lime')); this.sfx.smp(team === 0 ? 'call_fb' : 'call_gl', 0.85);
     return true;
   }
   aiWithBall(a, it) {
     const b = a.held, ai = a.ai;
+    if (ai.plan && ai.plan.k === 'cover') { const cv = this.tac2CoverIt(a, it); if (cv) return cv; }
     if (ai.plan && ai.plan.k === 'pumpAt') { if (this.frame >= ai.plan.at) { ai.plan = null; if (!a.locked()) { a.set('pump'); this.awStat('ninaPumpCover'); } } return it; }
     if (a.oob > 0) return this.seek(a, it, a.side * (HX - 0.9), Math.max(-3, Math.min(3, a.z)), false);
     { const nr = this.ninaHold(a, it); if (nr) return nr; }
@@ -2730,11 +2747,11 @@ class Game {
     if (P.k === 'sync') {
       const S = P.s;
       if (!S.target || S.target.role !== 'in' || this.frame > S.at + 30) { ai.plan = null; a.syncTarget = null; return it; }
-      if (this.frame >= S.at) { a.syncTarget = S.target; it.throw = true; ai.plan = null; return it; }
+      if (this.frame >= S.at) { a.syncTarget = S.target; a.tac2Vid = S.vid || 0; it.throw = true; ai.plan = null; return it; }
       const tx = a.side * (ATK + 0.9); if (Math.abs(tx - a.x) > 0.4) it.mx = Math.sign(tx - a.x) * 0.7; return it;
     }
     if (ai.t < ai.delay) { const tx = a.side * 4.2; if (Math.abs(tx - a.x) > 0.6) it.mx = Math.sign(tx - a.x) * 0.5; return it; }
-    if (P.k === 'pass') { const m = this.inPlayers(a.team).filter(x => x !== a && !x.held && Math.abs(x.x) > ATK); if (m.length) { a.passTarget = m[(Math.random() * m.length) | 0]; it.pass = true; } else it.throw = true; ai.plan = null; return it; }
+    if (P.k === 'pass') { const m = P.to && P.to.role === 'in' && P.to !== a && !P.to.held ? [P.to] : this.inPlayers(a.team).filter(x => x !== a && !x.held && Math.abs(x.x) > ATK); if (m.length) { a.passTarget = m[(Math.random() * m.length) | 0]; it.pass = true; } else it.throw = true; ai.plan = null; return it; }
     if (P.k === 'throw') { it.throw = true; ai.plan = null; return it; }
     if (P.k === 'run') {
       if (!P.go) { const bx = a.side * 8.3; if (Math.abs(a.x - bx) > 0.4 && ai.t < ai.delay + 60) { it.mx = Math.sign(bx - a.x); return it; } P.go = true; it.dash = -a.side; }
@@ -2806,7 +2823,7 @@ class Game {
         // no-sting balls are very catchable: catch first at chest height, then duck high balls, else sidestep
         const chest = hImp > 0.6 * sc && hImp < 1.5 * sc;
         let pc = (chest ? 0.4 + 0.55 * r.catch : 0.12 + 0.3 * r.catch) * (1 + this.abil('catchWindow', a.team)); if (trick) pc *= 0.55; if (heavy) pc *= 0.7; if (last) pc *= 0.7;
-        pc *= this.abCatchMul(a, hImp, sc); if (B.hard) pc *= 0.6;
+        pc *= this.abCatchMul(a, hImp, sc); if (B.hard) pc *= 0.6; pc *= this.tac2CatchMul(B);
         if (Math.random() < pc || this.abHighCatch(a, hImp, sc)) kind = 'catch';
         else kind = this.pickEvade(a, hImp, sc, impactF - (this.wf || 0) - delay);
       }
@@ -2980,6 +2997,125 @@ class Game {
     if (!inAir) { a.vx *= power ? 0.5 : 0.35; a.vz *= 0.3; }
     if (power) { this.aura(a); if (a.team === 0) this.stats.power++; if (a === this.user) { this.meterFire = this.frame + 30; this.haptic([20, 30, 40]); } }
   }
+
+  // ---------------------------------------------------------------- TAC2 (11/23): advanced team tactics, the Call Wheel, the Sin City preset, Quick Draw
+  // Researched in ~/work/boss-rush-tactics-20261123/TACTICS-RESEARCH.md. Targets come from game state only (never from gender).
+  quickDraw() {
+    const pool = QUICK_POOL(); let last = this.quickOppId || null; try { last = last || localStorage.getItem('fbg-lastq'); } catch (e) { }
+    const pick = pool.filter(id => id !== last), rnd = typeof this.opts.seed === 'number' ? (this.seedRnd || (this.seedRnd = tac2Seeded(this.opts.seed))) : Math.random;
+    const id = pick[(rnd() * pick.length) | 0] || 'glitches';
+    this.quickOppId = id; try { localStorage.setItem('fbg-lastq', id); } catch (e) { }
+    this.qaLog('quickDraw', { id }); this.qd = (this.qd || []).concat([id]); return id;
+  }
+  tac2State() { return this.tac2 || (this.tac2 = { count: [null, null], call: null, counterUntil: [0, 0], cover: null, showdownSet: -1, gaps: [], vols: {}, vid: 0, wheelEl: null }); }
+  tac2Count(team, members, target) {
+    // "3, 2, 1, THROW!": everyone releases on THROW. Composure keeps a release on time; a nervous arm lets go late (off-sync)
+    const T = this.tac2State(); if (T.count[team]) return false;
+    const vid = ++T.vid, go = this.frame + 66;
+    T.count[team] = { t0: this.frame, go, target, vid, step: -1, user: this.user && this.user.team === team && this.user.held && this.user.held.cleared };
+    for (const m of members) {
+      if (m === this.user && !this.simAll) continue;
+      const comp = (m.rt || FB_BASE).comp, late = Math.random() < 0.3 * (1 - comp) ? 9 + ((Math.random() * 12) | 0) : ((Math.random() * 3) | 0);
+      m.ai.plan = { k: 'sync', s: { at: go + late, target, team, vid } }; m.ai.t = 0;
+    }
+    this.awStat('sync'); this.awStat('tac_count'); this.qaLog('count', { team, n: members.length });
+    return true;
+  }
+  tac2Tick() {
+    if (this.phase !== 'play') return;
+    const T = this.tac2State();
+    for (const team of [0, 1]) {
+      const C = T.count[team]; if (!C) continue;
+      const step = Math.min(3, Math.floor((this.frame - C.t0) / 22));
+      if (step !== C.step) {
+        C.step = step; const lab = ['3', '2', '1', 'THROW!'][step], cls = 'small ' + (team === 0 ? 'gold sh0' : 'lime sh1');
+        const who = this.inPlayers(team).find(m => m.held) || this.inPlayers(team)[0];
+        if (who) this.pop(who, lab, cls);
+        if (step === 0) this.sfx.smp(team === 0 ? 'call_fb' : 'call_gl', 0.85);
+        if (step === 3 && C.user && team === this.user.team && this.user.held) this.ref('THROW ON GO');
+      }
+      if (this.frame > C.go + 40) T.count[team] = null;
+    }
+    // the Call Wheel commits after a short pause on the chosen call
+    if (T.call && this.frame >= T.call.commitAt) { const c = TAC2_CALLS[T.call.i]; T.call = null; this.tac2Wheel(null); this.tac2DoCall(0, c.id, this.user); }
+    // COVER: a teammate with a ball steps in front of the caller for 3 s
+    if (T.cover && (this.frame > T.cover.until || T.cover.mate.role !== 'in' || !T.cover.mate.held)) T.cover = null;
+    // AI teams make their own calls too (Ball left and Push already exist; Counter and Cover come from here)
+    if (this.frame % 30 === 0) for (const team of [0, 1]) this.tac2AiCalls(team);
+    // SHOWDOWN: the last one standing on each side
+    if (this.liveCount(0) === 1 && this.liveCount(1) === 1 && T.showdownSet !== this.gameNo) {
+      T.showdownSet = this.gameNo; this.ref('SHOWDOWN: LAST ONE STANDING'); if (this.coachSay) this.coachSay('SHOWDOWN'); this.awStat('tac_showdown'); this.qaLog('showdown', {});
+      if (this.sfx.vo) this.sfx.smp('crowd_ooh', 0.8);
+    }
+  }
+  tac2CallPress() {
+    // C (or CALL) steps through the wheel; the call goes out 0.8 s after the last press
+    if (this.phase !== 'play' || !this.user || this.user.role !== 'in') return;
+    const T = this.tac2State(); const i = T.call ? (T.call.i + 1) % TAC2_CALLS.length : 0;
+    T.call = { i, commitAt: this.frame + 48 }; this.tac2Wheel(i);
+  }
+  tac2Wheel(i) {
+    const T = this.tac2State();
+    if (!T.wheelEl) { const el = document.createElement('div'); el.className = 'fbg-callw'; el.setAttribute('aria-live', 'polite'); el.hidden = true; (this.$.stage || this.root).appendChild(el); T.wheelEl = el; }
+    const el = T.wheelEl; if (i == null) { el.hidden = true; return; }
+    el.innerHTML = TAC2_CALLS.map((c, k) => `<span class="${k === i ? 'on' : ''}">${c.label}</span>`).join(''); el.hidden = false;
+  }
+  tac2DoCall(team, id, caller) {
+    const T = this.tac2State(), mates = this.inPlayers(team).filter(m => m !== caller && this.aiPlays(m));
+    const holders = mates.filter(m => m.held && m.held.cleared && m.oob === 0 && !m.locked());
+    const lab = (TAC2_CALLS.find(c => c.id === id) || {}).label || id;
+    if (caller) this.pop(caller, lab, 'small ' + (team === 0 ? 'gold sh0' : 'lime sh1'));
+    this.awStat('call_' + id); this.qaLog('teamCall', { team, id });
+    if (id === 'go') {
+      const M = holders.slice(0, 3); if (caller && caller.held && caller.held.cleared && this.aiPlays(caller)) M.push(caller);
+      const tgt = this.pickTarget(M[0] || caller, null); if (M.length && tgt) this.tac2Count(team, M, tgt);
+    } else if (id === 'ball') {
+      const h = holders.slice().sort((p, q) => Math.hypot(p.x - caller.x, p.z - caller.z) - Math.hypot(q.x - caller.x, q.z - caller.z))[0];
+      if (h && caller && !caller.held) { h.ai.plan = { k: 'pass', to: caller }; h.ai.t = 0; h.ai.delay = 4; }
+    } else if (id === 'cover') {
+      const h = holders.slice().sort((p, q) => Math.hypot(p.x - caller.x, p.z - caller.z) - Math.hypot(q.x - caller.x, q.z - caller.z))[0];
+      if (h) { T.cover = { mate: h, who: caller, until: this.frame + 180, team }; h.ai.plan = { k: 'cover' }; h.ai.t = 0; }
+    } else if (id === 'trade') {
+      const foes = this.inPlayers(1 - team).filter(f => f.oob === 0), threat = foes.filter(f => f.held || f.state === 'windup').sort((p, q) => Math.hypot(p.x - caller.x, p.z - caller.z) - Math.hypot(q.x - caller.x, q.z - caller.z))[0];
+      if (threat) for (const h of holders.slice(0, 2)) { h.syncTarget = threat; h.throwTarget = threat; h.ai.plan = { k: 'throw' }; h.ai.t = 0; h.ai.delay = 2; }
+    } else if (id === 'counter') { T.counterUntil[team] = this.frame + 240; }
+  }
+  tac2AiCalls(team) {
+    // AI callers: COUNTER when the other side is loaded up; COVER for the last two on a side
+    const T = this.tac2State(), tac = this.tactic && this.tactic[team]; if (!tac || this.rushT < RULES.rushF) return;
+    const foeHeld = this.balls.filter(b => b.holder && b.holder.team !== team).length, mine = this.inPlayers(team).filter(m => m.held && m.held.cleared).length;
+    const caller = this.inPlayers(team).find(m => this.aiPlays(m)); if (!caller) return;
+    if (this.frame > T.counterUntil[team] && foeHeld >= 2 && mine >= 1 && Math.random() < 0.18 * tac.calls) this.tac2DoCall(team, 'counter', caller);
+    else if (!T.cover && this.liveCount(team) === 2 && mine >= 1 && Math.random() < 0.12 * tac.calls) {
+      const free = this.inPlayers(team).find(m => !m.held && this.aiPlays(m)); if (free) this.tac2DoCall(team, 'cover', free);
+    }
+  }
+  tac2OnRelease(a, B) {
+    const T = this.tac2State(); if (B.type === 'pass') return;
+    // volley sync: a ball released 8 or more frames after the first one in its volley is off-sync
+    const P = a.tac2Vid; a.tac2Vid = 0; const C = T.count[a.team], vid = P || (C && Math.abs(this.frame - C.go) <= 30 ? C.vid : 0);
+    if (vid) {
+      const V = T.vols[vid] || (T.vols[vid] = { first: this.frame, n: 0 }); V.n++;
+      const gap = this.frame - V.first; if (V.n > 1) { T.gaps.push(gap); if (gap >= 8) { B.offSync = true; this.awStat('tac_offSync'); } else { B.inSync = true; this.awStat('tac_inSync'); } }
+      if (a === this.user && !this.simAll && C && Math.abs(this.frame - C.go) <= 8) { B.inSync = true; B.sync = true; this.pop(a, 'IN SYNC!', 'small gold sh0'); this.awStat('tac_userSync'); }
+    }
+    // COUNTER: the other side just threw, so its thrower is in the post-throw window; loaded teammates fire back
+    const foe = 1 - a.team;
+    if (B.cleared !== false && this.frame <= T.counterUntil[foe]) {
+      for (const h of this.inPlayers(foe).filter(m => this.aiPlays(m) && m.held && m.held.cleared && m.oob === 0 && !m.locked()).slice(0, 2)) {
+        h.syncTarget = a; h.throwTarget = a; h.ai.plan = { k: 'throw' }; h.ai.t = 0; h.ai.delay = 3; this.awStat('tac_counter');
+      }
+    }
+  }
+  tac2CatchMul(B) { return B.offSync ? 2 : (B.inSync ? 0.75 : 1); }
+  tac2CoverIt(a, it) {
+    // the covering teammate stands between the caller and the nearest loaded opponent, ball up to block
+    const T = this.tac2State(), K = T.cover; if (!K || K.mate !== a) { if (a.ai.plan && a.ai.plan.k === 'cover') a.ai.plan = null; return null; }
+    const foes = this.inPlayers(1 - a.team).filter(f => f.held), w = K.who; if (!w || w.role !== 'in') { T.cover = null; return null; }
+    const f = foes.sort((p, q) => Math.hypot(p.x - w.x, p.z - w.z) - Math.hypot(q.x - w.x, q.z - w.z))[0];
+    const tx = f ? w.x + (f.x - w.x) * 0.22 : w.x - w.side * 0.9, tz = f ? w.z + (f.z - w.z) * 0.22 : w.z;
+    this.awStat('tac_coverStep'); return this.seek(a, it, Math.max(Math.min(tx, a.side > 0 ? HX - 0.3 : -0.3), a.side > 0 ? 0.3 : -(HX - 0.3)), Math.max(-(HZ - 0.4), Math.min(HZ - 0.4, tz)), false);
+  }
   pickTarget(a, it) {
     const foes = this.inPlayers(1 - a.team).filter(f => f.oob === 0); if (!foes.length) return null;
     if (a === this.user) {
@@ -3027,7 +3163,7 @@ class Game {
       return;
     }
     const t = a.throwTarget && a.throwTarget.role === 'in' ? a.throwTarget : this.pickTarget(a, null);
-    B.target = t; B.sync = !!a.syncTarget; a.syncTarget = null;
+    B.target = t; B.sync = !!a.syncTarget; a.syncTarget = null; this.tac2OnRelease(a, B);
     const cpu = a !== this.user || !!this.simAll, rt = a.rt || FB_BASE;
     // a power arm's ball is heavier: faster, louder, a wider trail
     B.heavy = cpu && rt.power >= 0.84;
@@ -3480,7 +3616,7 @@ class Game {
       if (Math.abs(b.x) < 0.05) continue;
       held[b.x < 0 ? 0 : 1]++;
     }
-    const maj = held[0] >= 3 ? 0 : (held[1] >= 3 ? 1 : -1);
+    const mj = TAC2_MAJ(), maj = held[0] >= mj ? 0 : (held[1] >= mj ? 1 : -1);
     if (maj < 0 || maj !== this.ctlTeam) { if (this.ctlTeam >= 0 && maj < 0) this.$.ctl.hidden = true; this.ctlTeam = maj; this.ctlT = 0; this.lastCtlSec = -1; this.ctlCountdown(0); }
     if (maj >= 0) {
       this.ctlT += DT; const left = Math.max(0, Math.ceil(RULES.control - this.ctlT));
@@ -4050,6 +4186,8 @@ const FIORE_STEPS = [
 const JAKE_LINES = ['Big respect for every player. Let\'s keep it kind!', 'Win or lose, there\'s room for a fresh start.', 'Make room to celebrate each other.', 'Take a bow, take a breath, and bring kindness next round!'];
 const WK_KEY = 'fbg-weekend-v1';
 const SUN_ROUNDS = ['WINNERS ROUND 1', 'WINNERS QUARTERFINAL', 'WINNERS SEMIFINAL', 'WINNERS FINAL', 'GRAND FINAL'];
+function QUICK_POOL() { return ['glitches'].concat(WK_TEAMS.filter(t => tac2NonMale(t) >= 2).map(t => t.id)).filter(id => id !== 'finalboss'); }
+function tac2Seeded(seed) { let x = (seed >>> 0) || 1; return () => { x ^= x << 13; x >>>= 0; x ^= x >> 17; x ^= x << 5; x >>>= 0; return x / 4294967296; }; }
 function wkTeam(id) { return id === 'glitches' ? GLITCHES_WK : (WK_TEAMS.find(t => t.id === id) || null); }
 function wkLoad() { try { const v = JSON.parse(localStorage.getItem(WK_KEY) || 'null'); return v && v.v === 1 && v.pools ? v : null; } catch (e) { return null; } }
 function wkSave(w) { try { if (w) localStorage.setItem(WK_KEY, JSON.stringify(w)); else localStorage.removeItem(WK_KEY); } catch (e) { } }
@@ -4462,7 +4600,7 @@ Object.assign(Game.prototype, {
     const q = (s) => this.$.card.querySelector(s);
     if (q('.fbg-wk-go')) q('.fbg-wk-go').addEventListener('click', () => this.startWeekendMatch());
     this.$.card.querySelectorAll('.fbg-wk-new').forEach(b => b.addEventListener('click', () => { this.wk = this.wkNew(); wkSave(this.wk); this.showBracket(); }));
-    q('.fbg-wk-quick').addEventListener('click', () => { this.wkView = false; this.wkMatch = null; this.$.card.classList.remove('is-wk'); this.setOpponent(null); this.start(); });
+    q('.fbg-wk-quick').addEventListener('click', () => { this.wkView = false; this.wkMatch = null; this.$.card.classList.remove('is-wk'); this.quickDraw(); this.start(); });
     q('.fbg-wk-back').addEventListener('click', () => { this.wkView = false; this.$.card.classList.remove('is-wk'); this.showTitle(); });
     this.$.ov.hidden = false;
     const go = q('.fbg-wk-go') || q('.fbg-wk-new'); try { go.focus({ preventScroll: true }); } catch (e) { }

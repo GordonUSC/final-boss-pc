@@ -842,3 +842,18 @@ html.fbg-lock, html.fbg-lock body{overflow:hidden}
 .fbg-sk{width:36px; height:36px; border-radius:50%; border:3px solid #120818; cursor:pointer; padding:0}
 .fbg-sk[aria-pressed="true"]{box-shadow:0 0 0 3px var(--fbg-gold)}
 .fbg-ymsg{grid-column:1/-1; margin:0; min-height:1em; font:600 13px/1.2 var(--fbg-ui); color:var(--fbg-gold)}
+
+/* TAC2 (11/23): Call Wheel chip and the CALL touch button. Steady, no flashing (each change waits for a press). */
+.fbg-callw{position:absolute; left:50%; bottom:calc(14px + var(--sb,0px)); transform:translateX(-50%); max-width:calc(100% - 340px); display:flex; gap:6px; padding:6px 8px; background:rgba(14,11,22,.82); box-shadow:inset 0 0 0 2px var(--fbg-cream); z-index:6; pointer-events:none; font:800 12px/1 var(--fbg-ui); letter-spacing:.04em; color:var(--fbg-cream)}
+.fbg-callw span{padding:6px 8px; opacity:.55; white-space:nowrap}
+.fbg-callw{flex-wrap:wrap; justify-content:center}
+.fbg-vswho{margin:.4em 0 0; max-width:30em; font:600 15px/1.35 var(--fbg-ui); color:var(--fbg-cream,#f4ead8); opacity:.92}
+.fbg-vsp.r.qd h3, .fbg-vsp.r.qd .fbg-vswho{animation:fbgDraw .55s cubic-bezier(.2,.9,.25,1) both}
+.fbg-vsp.r.qd .fbg-vswho{animation-delay:.18s}
+@keyframes fbgDraw{from{opacity:0; transform:translateY(14px)}to{opacity:1; transform:none}}
+@media (prefers-reduced-motion: reduce){.fbg-vsp.r.qd h3, .fbg-vsp.r.qd .fbg-vswho{animation:none}}
+.fbg-callw span.on{opacity:1; background:var(--fbg-gold,#f2c14e); color:#14101c}
+.fbg-tb.callb{display:none}
+.fbg-root.has-touch .fbg-touch > .fbg-tb.callb{display:flex; position:absolute; align-items:center; justify-content:center; left:calc(14px + var(--sl,0px)); bottom:calc(98px + var(--sb,0px)); width:58px; height:44px; padding:0; font:800 11px/1 var(--fbg-ui); letter-spacing:.04em; color:var(--fbg-cream); background:rgba(14,11,22,.72); box-shadow:inset 0 0 0 2px var(--fbg-cream); clip-path:polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%); border-radius:0; z-index:2}
+.fbg-root.is-mobile.has-touch .fbg-touch > .fbg-tb.callb{left:auto; right:calc(172px + var(--sr)); bottom:calc(204px + var(--sb)); width:56px; height:40px; font-size:10px}
+.fbg-root.is-mobile.has-touch.is-narrow .fbg-touch > .fbg-tb.callb{right:calc(92px + var(--sr)); bottom:calc(232px + var(--sb))}
